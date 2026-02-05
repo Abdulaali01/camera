@@ -1,0 +1,418 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>📋 الطلبات — النسخة الكاملة v21</title>
+
+<!-- مكتبات -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  body{font-family:Tahoma,Arial,sans-serif;background:#fafafa;margin:0;padding:18px}
+  h2{margin:0 0 12px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  button{padding:6px 10px;border:none;border-radius:8px;cursor:pointer}
+  .btn{background:#eee}
+  .btn-view{background:#0b74da;color:#fff}
+  .btn-wa{background:#25D366;color:#fff}
+  .btn-done{background:#f44336;color:#fff}
+  .copy-btn{background:#555;color:#fff;border-radius:4px;padding:2px 6px;font-size:11px}
+  table{width:100%;min-width:900px;border-collapse:collapse;background:#fff}
+  th,td{border:1px solid #ddd;padding:6px;text-align:center;vertical-align:middle}
+  th{background:#f0f0f0}
+  tr.done-row{background:#ffdddd}
+
+  .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);justify-content:center;align-items:center;z-index:9999;padding:14px}
+  .modal-content{background:#fff;border-radius:10px;padding:14px;max-height:95vh;overflow:auto;width:95vw;max-width:1100px}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .close{cursor:pointer;color:#d00;font-weight:bold;font-size:18px}
+
+  .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .calendar .header{background:#eee;font-weight:bold}
+  .calendar div{border:1px solid #ccc;border-radius:4px;padding:4px;min-height:85px;font-size:12px;background:#fff}
+  .calendar .day{position:relative;cursor:pointer}
+  .calendar .day span{display:block;font-size:10px;margin-top:2px;line-height:11px}
+
+  .blink{animation:blinkAnim 1s infinite;}
+  @keyframes blinkAnim{
+    0%{opacity:1}
+    50%{opacity:0.3}
+    100%{opacity:1}
+  }
+</style>
+</head>
+
+<body>
+
+<h2>📋 الطلبات</h2>
+
+<div class="toolbar">
+  <input type="file" id="file" accept=".xlsx,.xls">
+  <button class="btn" id="btnCalendar">📅 الكليندر الشهري</button>
+</div>
+
+<div id="countRow" style="margin:6px 0; display:none">عدد النتائج: <b id="count">0</b></div>
+<table id="tbl" style="display:none"></table>
+
+<!-- مودال الكليندر -->
+<div id="calendarModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>📅 الكليندر الشهري</h3>
+      <span class="close" onclick="toggleModal('calendarModal',false)">✖</span>
+    </div>
+    <input type="month" id="monthPicker">
+    <div id="calendarGrid" class="calendar" style="margin-top:6px"></div>
+  </div>
+</div>
+
+<!-- مودال المتكررة -->
+<div id="viewModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>📋 الطلبات المتكررة</h3>
+      <span class="close" onclick="toggleModal('viewModal',false)">✖</span>
+    </div>
+    <table id="modalTbl"></table>
+    <div style="margin-top:8px">
+      <button class="btn-done" onclick="markAllDuplicatesDone()">✔️ تم للجميع</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// -------------------------
+// ⬅️ تخزين البلاغات المنجزة
+// -------------------------
+let doneStore = JSON.parse(localStorage.getItem("doneOrders") || "[]");
+
+const state={rows:[],dateCol:"تاريخ الإنشاء",mobileCol:"رقم جوال المستفيد"};
+const $=id=>document.getElementById(id);
+let currentMobile=null;
+
+const TARGET_STATUSES=[
+  "معلق - قرار الإدارة",
+  "معلق - بانتظار مراجعة المشرف"
+];
+
+// تحميل الملف
+$("file").addEventListener("change",async e=>{
+  const f=e.target.files[0];
+  if(!f) return;
+
+  const buf=await f.arrayBuffer();
+  const wb=XLSX.read(buf,{type:"array"});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+
+  // توحيد رقم الجوال
+  state.rows = XLSX.utils.sheet_to_json(ws,{defval:""}).map(r=>{
+      let p = String(r[state.mobileCol] || "").replace(/\D/g,"");
+      if(p.startsWith("0")) p = "966" + p.slice(1);
+      else if(!p.startsWith("966")) p = "966" + p;
+      r[state.mobileCol] = p;
+
+      // إذا كان الطلب محفوظ مسبقًا كمنجز
+      if (doneStore.includes(String(r["رقم الطلب"]))) {
+          r["حالة الطلب"] = "تم إنجازه";
+      }
+
+      return r;
+  });
+
+});
+
+// فتح الكليندر
+$("btnCalendar").addEventListener("click",()=>{
+  if(!state.rows.length) return;
+  toggleModal("calendarModal",true);
+  $("monthPicker").value=new Date().toISOString().slice(0,7);
+  renderCalendar();
+});
+$("monthPicker").addEventListener("change",renderCalendar);
+
+// عرض الجدول
+function renderMainTable(rows){
+  const table=$("tbl");
+  table.innerHTML="";
+  $("count").textContent=rows.length;
+  $("tbl").style.display="table";
+  $("countRow").style.display="block";
+
+  if(!rows.length){
+    table.innerHTML="<tr><td>لا بيانات</td></tr>";
+    return;
+  }
+
+  const head=document.createElement("tr");
+  ["رقم الطلب","الوصف","التاريخ","الحالة","إجراءات"].forEach(t=>{
+    const th=document.createElement("th");
+    th.textContent=t;
+    head.appendChild(th);
+  });
+  table.appendChild(head);
+
+  rows.forEach(r=>{
+    const tr=document.createElement("tr");
+
+    const order=(r["رقم الطلب"]||"").toString();
+    const desc=(r["وصف الطلب"]||"").toString();
+    const dt=normalizeDateTime(r[state.dateCol]);
+    const phone=(r[state.mobileCol]||"").toString();
+
+    tr.innerHTML = `
+      <td>${order} <button class="copy-btn" data-text="${order}">📋</button></td>
+      <td>${desc} <button class="copy-btn" data-text="${desc}">📋</button></td>
+      <td>${dt}</td>
+      <td class="status-cell">${r["حالة الطلب"]||""}</td>
+      <td>
+        <button class="btn-view" onclick="openViewModal('${phone}')">عرض</button>
+        <button class="btn-wa" onclick="sendWA('${phone}','${order}','${desc}')">واتساب</button>
+        <button class="btn-done" onclick="markDone(this,'${order}','${normalizeDate(r[state.dateCol])}')">تم</button>
+      </td>
+    `;
+
+    // لو محفوظ من قبل
+    if (doneStore.includes(order)) {
+        tr.classList.add("done-row");
+        r["حالة الطلب"] = "تم إنجازه";
+    }
+
+    table.appendChild(tr);
+  });
+}
+
+// تقويم
+function renderCalendar(){
+  const m=$("monthPicker").value;
+  if(!m) return;
+
+  const [yy,mm]=m.split("-");
+  const year=parseInt(yy), month=+mm-1;
+
+  const first=new Date(year,month,1);
+  const last=new Date(year,month+1,0);
+
+  const grid=$("calendarGrid");
+  grid.innerHTML="";
+
+  ["أحد","إثنين","ثلاثاء","أربعاء","خميس","جمعة","سبت"].forEach(d=>{
+    const h=document.createElement("div");
+    h.textContent=d;
+    h.className="header";
+    grid.appendChild(h);
+  });
+
+  for(let i=0;i<first.getDay();i++) grid.appendChild(document.createElement("div"));
+
+  for(let d=1; d<=last.getDate(); d++){
+    const cell=document.createElement("div");
+    cell.className="day";
+    cell.innerHTML=d;
+
+    const dateStr=`${year}-${pad(month+1)}-${pad(d)}`;
+
+    const rows=state.rows.filter(r=>normalizeDate(r[state.dateCol])===dateStr);
+
+    const pending=rows.filter(r=>TARGET_STATUSES.includes(r["حالة الطلب"]||""));
+    const total=pending.length;
+
+    if(rows.length>0){
+      cell.innerHTML += `<span>معلق: ${total}</span>`;
+    } else {
+      cell.style.background="#f0f0f0";
+    }
+
+    if(rows.length>0 && total === 0){
+      cell.style.background="#c8e6c9";
+    }
+
+    if(rows.length>0 && total > 0){
+      const firstDate = new Date(
+        Math.min(...rows.map(r => new Date(r[state.dateCol])))
+      );
+
+      const diffDays = Math.floor((new Date() - firstDate) / (1000 * 60 * 60 * 24));
+      const daysLeft = 42 - diffDays;
+
+      cell.innerHTML += `
+        <span>مضى: ${diffDays} يوم</span>
+        <span>${daysLeft > 0 ? `باقي: ${daysLeft} يوم` : "انتهت المدة"}</span>
+      `;
+
+      if(diffDays > 42){
+        cell.style.background="#ff9999";
+      }
+      else if(diffDays === 41){
+        cell.style.background="#ffcc80";
+        cell.classList.add("blink");
+      }
+      else if(diffDays >= 35){
+        cell.style.background="#fff7a3";
+      }
+      else{
+        cell.style.background="#ffe0b2";
+      }
+    }
+
+    cell.addEventListener("click",()=>{
+      const filtered=state.rows.filter(r =>
+        normalizeDate(r[state.dateCol])===dateStr &&
+        TARGET_STATUSES.includes(r["حالة الطلب"]||"")
+      );
+      renderMainTable(filtered);
+    });
+
+    grid.appendChild(cell);
+  }
+}
+
+// مودال الجوال
+function openViewModal(mobile){
+  currentMobile=mobile;
+  const rows=state.rows.filter(r=>String(r[state.mobileCol])===String(mobile));
+
+  const table=$("modalTbl");
+  table.innerHTML="";
+
+  const head=document.createElement("tr");
+  ["رقم الطلب","الوصف","التاريخ","الحالة","إجراءات"].forEach(t=>{
+    const th=document.createElement("th");
+    th.textContent=t;
+    head.appendChild(th);
+  });
+  table.appendChild(head);
+
+  rows.forEach(r=>{
+    const tr=document.createElement("tr");
+
+    const order=r["رقم الطلب"];
+    const desc=r["وصف الطلب"];
+    const dt=normalizeDateTime(r[state.dateCol]);
+    const phone=r[state.mobileCol];
+
+    tr.innerHTML=`
+      <td>${order} <button class="copy-btn" data-text="${order}">📋</button></td>
+      <td>${desc} <button class="copy-btn" data-text="${desc}">📋</button></td>
+      <td>${dt}</td>
+      <td class="status-cell">${r["حالة الطلب"]||""}</td>
+      <td>
+        <button class="btn-view" onclick="openViewModal('${phone}')">عرض</button>
+        <button class="btn-wa" onclick="sendWA('${phone}','${order}','${desc}')">واتساب</button>
+        <button class="btn-done" onclick="markDone(this,'${order}','${normalizeDate(r[state.dateCol])}')">تم</button>
+      </td>
+    `;
+
+    if (doneStore.includes(String(order))) {
+        tr.classList.add("done-row");
+        r["حالة الطلب"]="تم إنجازه";
+    }
+
+    table.appendChild(tr);
+  });
+
+  toggleModal("viewModal",true);
+}
+
+// زر تم — حفظ دائم
+function markDone(btn,order,dateStr){
+  const tr=btn.closest("tr");
+  tr.classList.add("done-row");
+  tr.querySelector(".status-cell").textContent="تم إنجازه";
+
+  // تخزين دائم
+  if(!doneStore.includes(order)){
+    doneStore.push(order);
+    localStorage.setItem("doneOrders", JSON.stringify(doneStore));
+  }
+
+  const row=state.rows.find(r =>
+    normalizeDate(r[state.dateCol])===dateStr &&
+    (r["رقم الطلب"]||"").toString()===order
+  );
+  if(row) row["حالة الطلب"]="تم إنجازه";
+
+  renderCalendar();
+}
+
+// تم للجميع
+function markAllDuplicatesDone(){
+  const list = state.rows.filter(r => String(r[state.mobileCol]) === String(currentMobile));
+
+  list.forEach(r=>{
+    r["حالة الطلب"]="تم إنجازه";
+    const id = String(r["رقم الطلب"]);
+    if(!doneStore.includes(id)){
+        doneStore.push(id);
+    }
+  });
+
+  localStorage.setItem("doneOrders", JSON.stringify(doneStore));
+
+  renderMainTable(state.rows);
+  renderCalendar();
+  toggleModal("viewModal",false);
+}
+
+// زر النسخ — يعمل 100% للجوال
+document.addEventListener("click", async e=>{
+  const btn = e.target.closest(".copy-btn");
+  if(!btn) return;
+
+  const text = btn.dataset.text || "";
+
+  if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(text).catch(()=>{
+          fallbackCopy(text);
+      });
+  } else {
+      fallbackCopy(text);
+  }
+});
+
+// fallback للنسخ
+function fallbackCopy(text){
+  const area=document.createElement("textarea");
+  area.value=text;
+  area.style.position="fixed";
+  area.style.opacity=0;
+  document.body.appendChild(area);
+  area.focus();
+  area.select();
+  document.execCommand("copy");
+  area.remove();
+}
+
+// واتساب
+function sendWA(phone,order,desc){
+  let p=String(phone).replace(/\D/g,"");
+
+  if(p.startsWith("0")) p="966"+p.slice(1);
+  else if(!p.startsWith("966")) p="966"+p;
+
+  const msg=`طلب ${order}: ${desc}`;
+  window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`,"_blank");
+}
+
+// أدوات
+function toggleModal(id,show){ $(id).style.display=show?"flex":"none"; }
+function pad(n){ return String(n).padStart(2,"0"); }
+
+function normalizeDate(raw){
+  const dt=new Date(raw);
+  return isNaN(dt) ? "" :
+    `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+}
+
+function normalizeDateTime(raw){
+  const dt=new Date(raw);
+  if(isNaN(dt)) return "";
+  return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())} `
+        +`${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+}
+
+</script>
+</body>
+</html>
