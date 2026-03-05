@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>بحث حي وشارع + خريطة أقمار صناعية</title>
+<title>خريطة الطائف</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -59,26 +59,11 @@ cursor:pointer;
 
 <button onclick="searchLocation()">بحث</button>
 
-<br><br>
-
-اسم الموقع
-<input id="name">
-
-<br><br>
-
-<button onclick="save()">حفظ</button>
-<button onclick="clearMap()">مسح</button>
-<button onclick="exportExcel()">تصدير Excel</button>
-
-<h3 id="area">المساحة: 0</h3>
-
 </div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
 
@@ -91,130 +76,32 @@ var satellite=L.tileLayer(
 {maxZoom:19}
 ).addTo(map);
 
-/* طبقة أسماء الشوارع */
+/* أسماء الشوارع والأحياء */
 
 var labels=L.tileLayer(
-'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png',
-{maxZoom:19}
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+maxZoom:19,
+opacity:0.6
+}
 ).addTo(map);
 
-var points=[];
-var polygon;
-var markers=[];
-var data=[];
-
-map.on('click',function(e){
-
-var lat=e.latlng.lat;
-var lng=e.latlng.lng;
-
-var marker=L.marker([lat,lng],{draggable:true}).addTo(map);
-
-marker.on('drag',update);
-
-markers.push(marker);
-
-update();
-
-});
-
-function update(){
-
-points=[];
-
-markers.forEach(m=>{
-
-var p=m.getLatLng();
-
-points.push([p.lng,p.lat]);
-
-});
-
-if(polygon){
-map.removeLayer(polygon);
-}
-
-if(points.length>2){
-
-polygon=L.polygon(points.map(p=>[p[1],p[0]]),{color:'red'}).addTo(map);
-
-var poly=turf.polygon([[...points,points[0]]]);
-
-var area=turf.area(poly);
-
-document.getElementById("area").innerHTML=
-"المساحة: "+area.toFixed(0)+" متر مربع";
-
-}
-
-}
-
-function clearMap(){
-
-markers.forEach(m=>map.removeLayer(m));
-
-markers=[];
-
-points=[];
-
-if(polygon){
-map.removeLayer(polygon);
-}
-
-document.getElementById("area").innerHTML="المساحة: 0";
-
-}
-
-function save(){
-
-var name=document.getElementById("name").value;
-
-if(!name){
-alert("اكتب اسم الموقع");
-return;
-}
-
-var poly=turf.polygon([[...points,points[0]]]);
-
-var area=turf.area(poly);
-
-data.push({
-"الموقع":name,
-"المساحة م2":area.toFixed(0)
-});
-
-alert("تم الحفظ");
-
-}
-
-function exportExcel(){
-
-var ws=XLSX.utils.json_to_sheet(data);
-
-var wb=XLSX.utils.book_new();
-
-XLSX.utils.book_append_sheet(wb,ws,"المساحات");
-
-XLSX.writeFile(wb,"المساحات.xlsx");
-
-}
+/* البحث */
 
 function searchLocation(){
 
 var district=document.getElementById("district").value;
 var street=document.getElementById("street").value;
 
-/* تحسين البحث */
-
 var query=street+" "+district+" الطائف السعودية";
 
 fetch("https://nominatim.openstreetmap.org/search?format=json&q="+encodeURIComponent(query))
 
-.then(r=>r.json())
+.then(res=>res.json())
 
-.then(res=>{
+.then(data=>{
 
-if(res.length==0){
+if(data.length==0){
 
 alert("لم يتم العثور على الموقع");
 
@@ -222,8 +109,8 @@ return;
 
 }
 
-var lat=res[0].lat;
-var lon=res[0].lon;
+var lat=data[0].lat;
+var lon=data[0].lon;
 
 map.setView([lat,lon],17);
 
