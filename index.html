@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>حساب مساحة الأحياء</title>
+<title>البحث عن حي أو شارع + حساب المساحة</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -16,7 +16,7 @@ padding:15px;
 }
 
 #map{
-height:500px;
+height:520px;
 border-radius:10px;
 margin-top:10px;
 }
@@ -26,6 +26,13 @@ background:white;
 padding:15px;
 border-radius:10px;
 margin-bottom:10px;
+}
+
+input{
+padding:8px;
+border-radius:6px;
+border:1px solid #ccc;
+width:180px;
 }
 
 button{
@@ -38,28 +45,23 @@ margin:5px;
 cursor:pointer;
 }
 
-input{
-padding:8px;
-border-radius:6px;
-border:1px solid #ccc;
-}
-
 </style>
-
 </head>
 
 <body>
 
 <div class="box">
 
-<h3>📐 حساب مساحة الأحياء</h3>
+<h3>البحث عن حي أو شارع</h3>
 
-<input id="search" placeholder="اكتب اسم الحي مثل الوسام الطائف">
-<button onclick="searchPlace()">بحث</button>
+<input id="district" placeholder="اسم الحي">
+<input id="street" placeholder="اسم الشارع">
+
+<button onclick="searchLocation()">بحث</button>
 
 <br><br>
 
-اسم الحي
+اسم الموقع
 <input id="name">
 
 <br><br>
@@ -82,14 +84,18 @@ border:1px solid #ccc;
 
 var map=L.map('map').setView([21.27,40.41],13);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
+/* خريطة تضاريس واضحة */
+
+L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{
+maxZoom:17
 }).addTo(map);
 
 var points=[];
 var polygon;
 var markers=[];
 var data=[];
+
+/* إضافة نقاط عند الضغط */
 
 map.on('click',function(e){
 
@@ -137,6 +143,8 @@ document.getElementById("area").innerHTML=
 
 }
 
+/* مسح */
+
 function clearMap(){
 
 markers.forEach(m=>map.removeLayer(m));
@@ -153,12 +161,14 @@ document.getElementById("area").innerHTML="المساحة: 0";
 
 }
 
+/* حفظ */
+
 function save(){
 
 var name=document.getElementById("name").value;
 
 if(!name){
-alert("اكتب اسم الحي");
+alert("اكتب اسم الموقع");
 return;
 }
 
@@ -167,7 +177,7 @@ var poly=turf.polygon([[...points,points[0]]]);
 var area=turf.area(poly);
 
 data.push({
-"اسم الحي":name,
+"الموقع":name,
 "المساحة م2":area.toFixed(0)
 });
 
@@ -175,37 +185,47 @@ alert("تم الحفظ");
 
 }
 
+/* تصدير Excel */
+
 function exportExcel(){
 
 var ws=XLSX.utils.json_to_sheet(data);
 
 var wb=XLSX.utils.book_new();
 
-XLSX.utils.book_append_sheet(wb,ws,"الأحياء");
+XLSX.utils.book_append_sheet(wb,ws,"المساحات");
 
-XLSX.writeFile(wb,"مساحات_الأحياء.xlsx");
+XLSX.writeFile(wb,"مساحات.xlsx");
 
 }
 
-function searchPlace(){
+/* البحث */
 
-var q=document.getElementById("search").value;
+function searchLocation(){
 
-fetch("https://nominatim.openstreetmap.org/search?format=json&q="+q)
+var district=document.getElementById("district").value;
+var street=document.getElementById("street").value;
+
+var query=street+" "+district+" الطائف";
+
+fetch("https://nominatim.openstreetmap.org/search?format=json&q="+query)
 
 .then(r=>r.json())
 
-.then(data=>{
+.then(res=>{
 
-if(data.length==0){
-alert("الموقع غير موجود");
+if(res.length==0){
+
+alert("لم يتم العثور على الموقع");
+
 return;
+
 }
 
-var lat=data[0].lat;
-var lon=data[0].lon;
+var lat=res[0].lat;
+var lon=res[0].lon;
 
-map.setView([lat,lon],15);
+map.setView([lat,lon],17);
 
 });
 
