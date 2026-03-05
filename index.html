@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>البحث عن حي أو شارع + حساب المساحة</title>
+<title>بحث حي + خريطة أقمار صناعية + حساب المساحة</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -32,7 +32,7 @@ input{
 padding:8px;
 border-radius:6px;
 border:1px solid #ccc;
-width:180px;
+width:170px;
 }
 
 button{
@@ -84,11 +84,15 @@ cursor:pointer;
 
 var map=L.map('map').setView([21.27,40.41],13);
 
-/* خريطة تضاريس واضحة */
+/* خريطة الأقمار الصناعية */
 
-L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{
-maxZoom:17
-}).addTo(map);
+L.tileLayer(
+'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+{
+maxZoom:19,
+attribution:'Tiles © Esri'
+}
+).addTo(map);
 
 var points=[];
 var polygon;
@@ -195,11 +199,11 @@ var wb=XLSX.utils.book_new();
 
 XLSX.utils.book_append_sheet(wb,ws,"المساحات");
 
-XLSX.writeFile(wb,"مساحات.xlsx");
+XLSX.writeFile(wb,"مساحات_المواقع.xlsx");
 
 }
 
-/* البحث */
+/* البحث عن حي أو شارع */
 
 function searchLocation(){
 
