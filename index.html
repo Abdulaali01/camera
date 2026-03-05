@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>حساب مساحة الحي</title>
+<title>حساب مساحة الأحياء</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -10,24 +10,15 @@
 
 body{
 font-family:tahoma;
-background:#f2f2f2;
+background:#f5f5f5;
 text-align:center;
-padding:20px;
+padding:15px;
 }
 
 #map{
 height:500px;
 border-radius:10px;
-}
-
-button{
-padding:10px 20px;
-margin:5px;
-border:none;
-border-radius:8px;
-background:#007bff;
-color:white;
-cursor:pointer;
+margin-top:10px;
 }
 
 .box{
@@ -37,29 +28,59 @@ border-radius:10px;
 margin-bottom:10px;
 }
 
+button{
+padding:10px 20px;
+border:none;
+border-radius:8px;
+background:#007bff;
+color:white;
+margin:5px;
+cursor:pointer;
+}
+
+input{
+padding:8px;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
 </style>
+
 </head>
 
 <body>
 
 <div class="box">
 
-<h3>📐 حساب مساحة الحي</h3>
+<h3>📐 حساب مساحة الأحياء</h3>
 
-<button onclick="calc()">حساب المساحة</button>
+<input id="search" placeholder="اكتب اسم الحي مثل الوسام الطائف">
+<button onclick="searchPlace()">بحث</button>
+
+<br><br>
+
+اسم الحي
+<input id="name">
+
+<br><br>
+
+<button onclick="save()">حفظ</button>
 <button onclick="clearMap()">مسح</button>
+<button onclick="exportExcel()">تصدير Excel</button>
 
-<h3 id="result"></h3>
+<h3 id="area">المساحة: 0</h3>
 
 </div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
 
-var map=L.map('map').setView([21.2700,40.4150],13);
+var map=L.map('map').setView([21.27,40.41],13);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 maxZoom:19
@@ -67,48 +88,60 @@ maxZoom:19
 
 var points=[];
 var polygon;
+var markers=[];
+var data=[];
 
 map.on('click',function(e){
 
-points.push([e.latlng.lat,e.latlng.lng]);
+var lat=e.latlng.lat;
+var lng=e.latlng.lng;
+
+var marker=L.marker([lat,lng],{draggable:true}).addTo(map);
+
+marker.on('drag',update);
+
+markers.push(marker);
+
+update();
+
+});
+
+function update(){
+
+points=[];
+
+markers.forEach(m=>{
+
+var p=m.getLatLng();
+
+points.push([p.lng,p.lat]);
+
+});
 
 if(polygon){
 map.removeLayer(polygon);
 }
 
-polygon=L.polygon(points,{color:'red'}).addTo(map);
+if(points.length>2){
 
-});
+polygon=L.polygon(points.map(p=>[p[1],p[0]]),{color:'red'}).addTo(map);
 
-function calc(){
+var poly=turf.polygon([[...points,points[0]]]);
 
-if(points.length<3){
-alert("حدد 3 نقاط على الأقل");
-return;
-}
+var area=turf.area(poly);
 
-var area=0;
-
-for(var i=0;i<points.length;i++){
-
-var j=(i+1)%points.length;
-
-area+=points[i][1]*points[j][0];
-area-=points[j][1]*points[i][0];
+document.getElementById("area").innerHTML=
+"المساحة: "+area.toFixed(0)+" متر مربع";
 
 }
-
-area=Math.abs(area/2)*12300000000;
-
-var km=area/1000000;
-
-document.getElementById("result").innerHTML=
-"المساحة: "+area.toFixed(0)+" متر مربع<br>"+
-"المساحة: "+km.toFixed(2)+" كم²";
 
 }
 
 function clearMap(){
+
+markers.forEach(m=>map.removeLayer(m));
+
+markers=[];
 
 points=[];
 
@@ -116,7 +149,65 @@ if(polygon){
 map.removeLayer(polygon);
 }
 
-document.getElementById("result").innerHTML="";
+document.getElementById("area").innerHTML="المساحة: 0";
+
+}
+
+function save(){
+
+var name=document.getElementById("name").value;
+
+if(!name){
+alert("اكتب اسم الحي");
+return;
+}
+
+var poly=turf.polygon([[...points,points[0]]]);
+
+var area=turf.area(poly);
+
+data.push({
+"اسم الحي":name,
+"المساحة م2":area.toFixed(0)
+});
+
+alert("تم الحفظ");
+
+}
+
+function exportExcel(){
+
+var ws=XLSX.utils.json_to_sheet(data);
+
+var wb=XLSX.utils.book_new();
+
+XLSX.utils.book_append_sheet(wb,ws,"الأحياء");
+
+XLSX.writeFile(wb,"مساحات_الأحياء.xlsx");
+
+}
+
+function searchPlace(){
+
+var q=document.getElementById("search").value;
+
+fetch("https://nominatim.openstreetmap.org/search?format=json&q="+q)
+
+.then(r=>r.json())
+
+.then(data=>{
+
+if(data.length==0){
+alert("الموقع غير موجود");
+return;
+}
+
+var lat=data[0].lat;
+var lon=data[0].lon;
+
+map.setView([lat,lon],15);
+
+});
 
 }
 
