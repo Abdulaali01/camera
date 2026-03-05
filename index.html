@@ -4,121 +4,120 @@
 <meta charset="UTF-8">
 <title>خريطة الطائف</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
 <style>
 
 body{
 font-family:tahoma;
 background:#f5f5f5;
 text-align:center;
-padding:15px;
+padding:20px;
 }
 
 #map{
-height:520px;
-border-radius:10px;
+height:550px;
+border-radius:12px;
 margin-top:10px;
 }
 
-.box{
-background:white;
-padding:15px;
-border-radius:10px;
-margin-bottom:10px;
-}
-
 input{
-padding:8px;
-border-radius:6px;
-border:1px solid #ccc;
-width:170px;
-}
-
-button{
-padding:10px 20px;
-border:none;
+padding:10px;
+width:260px;
 border-radius:8px;
-background:#007bff;
-color:white;
-margin:5px;
-cursor:pointer;
+border:1px solid #ccc;
 }
 
 </style>
+
 </head>
 
 <body>
 
-<div class="box">
-
 <h3>البحث عن حي أو شارع</h3>
 
-<input id="district" placeholder="اسم الحي">
-<input id="street" placeholder="اسم الشارع">
-
-<button onclick="searchLocation()">بحث</button>
-
-</div>
+<input id="searchBox" placeholder="اكتب اسم الحي أو الشارع">
 
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
 
-var map=L.map('map').setView([21.27,40.41],13);
+let map;
+let marker;
+let geocoder;
 
-/* صور الأقمار الصناعية */
+function initMap(){
 
-var satellite=L.tileLayer(
-'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-{maxZoom:19}
-).addTo(map);
+map = new google.maps.Map(document.getElementById("map"),{
 
-/* أسماء الشوارع والأحياء */
+center:{lat:21.2703,lng:40.4158},
+zoom:14,
+mapTypeId:"satellite"
 
-var labels=L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{
-maxZoom:19,
-opacity:0.6
+});
+
+geocoder = new google.maps.Geocoder();
+
+const input = document.getElementById("searchBox");
+
+const autocomplete = new google.maps.places.Autocomplete(input,{
+componentRestrictions:{country:"sa"}
+});
+
+autocomplete.bindTo("bounds",map);
+
+autocomplete.addListener("place_changed",()=>{
+
+const place = autocomplete.getPlace();
+
+if(!place.geometry)return;
+
+map.setCenter(place.geometry.location);
+map.setZoom(17);
+
+});
+
+map.addListener("click",(e)=>{
+
+const lat=e.latLng.lat();
+const lng=e.latLng.lng();
+
+if(marker)marker.setMap(null);
+
+marker=new google.maps.Marker({
+position:e.latLng,
+map:map
+});
+
+geocoder.geocode({
+location:{lat:lat,lng:lng}
+}).then((response)=>{
+
+if(response.results[0]){
+
+const address=response.results[0].formatted_address;
+
+const info=new google.maps.InfoWindow({
+content:
+"📍 الموقع:<br>"+
+address+
+"<br><br>"+
+"Lat: "+lat+
+"<br>"+
+"Lng: "+lng
+});
+
+info.open(map,marker);
+
 }
-).addTo(map);
 
-/* البحث */
-
-function searchLocation(){
-
-var district=document.getElementById("district").value;
-var street=document.getElementById("street").value;
-
-var query=street+" "+district+" الطائف السعودية";
-
-fetch("https://nominatim.openstreetmap.org/search?format=json&q="+encodeURIComponent(query))
-
-.then(res=>res.json())
-
-.then(data=>{
-
-if(data.length==0){
-
-alert("لم يتم العثور على الموقع");
-
-return;
-
-}
-
-var lat=data[0].lat;
-var lon=data[0].lon;
-
-map.setView([lat,lon],17);
+});
 
 });
 
 }
 
 </script>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places&callback=initMap" async defer></script>
 
 </body>
 </html>
