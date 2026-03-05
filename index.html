@@ -2,114 +2,119 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>خريطة الطائف</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>بحث + حساب المساحة</title>
 
 <style>
-
-body{
-font-family:tahoma;
-background:#f5f5f5;
-text-align:center;
-padding:20px;
-}
+body{font-family:Tahoma;margin:0}
 
 #map{
-height:550px;
-border-radius:12px;
-margin-top:10px;
+height:100vh;
+width:100%;
 }
 
-input{
+.box{
+position:absolute;
+top:10px;
+right:10px;
+background:#fff;
 padding:10px;
-width:260px;
 border-radius:8px;
-border:1px solid #ccc;
+box-shadow:0 0 5px rgba(0,0,0,0.3);
+font-size:16px
 }
 
-</style>
+.search{
+position:absolute;
+top:10px;
+left:10px;
+background:#fff;
+padding:8px;
+border-radius:8px;
+box-shadow:0 0 5px rgba(0,0,0,0.3)
+}
 
+.search input{
+width:220px;
+padding:6px;
+border:1px solid #ccc;
+border-radius:5px
+}
+</style>
 </head>
 
 <body>
 
-<h3>البحث عن حي أو شارع</h3>
+<div class="box">
+المساحة: <span id="area">0</span> متر²
+</div>
 
-<input id="searchBox" placeholder="اكتب اسم الحي أو الشارع">
+<div class="search">
+<input id="searchBox" placeholder="ابحث عن حي أو شارع">
+</div>
 
 <div id="map"></div>
 
 <script>
 
 let map;
-let marker;
-let geocoder;
+let polygon;
 
 function initMap(){
 
-map = new google.maps.Map(document.getElementById("map"),{
-
-center:{lat:21.2703,lng:40.4158},
-zoom:14,
+map=new google.maps.Map(document.getElementById("map"),{
+center:{lat:21.4373,lng:40.5127},
+zoom:13,
 mapTypeId:"satellite"
-
 });
 
-geocoder = new google.maps.Geocoder();
 
-const input = document.getElementById("searchBox");
+/* البحث */
 
-const autocomplete = new google.maps.places.Autocomplete(input,{
+const input=document.getElementById("searchBox");
+
+const autocomplete=new google.maps.places.Autocomplete(input,{
 componentRestrictions:{country:"sa"}
 });
 
 autocomplete.bindTo("bounds",map);
 
-autocomplete.addListener("place_changed",()=>{
+autocomplete.addListener("place_changed",function(){
 
-const place = autocomplete.getPlace();
+const place=autocomplete.getPlace();
 
-if(!place.geometry)return;
+if(!place.geometry) return;
 
-map.setCenter(place.geometry.location);
-map.setZoom(17);
+map.panTo(place.geometry.location);
+map.setZoom(16);
 
 });
 
-map.addListener("click",(e)=>{
 
-const lat=e.latLng.lat();
-const lng=e.latLng.lng();
+/* رسم المساحة */
 
-if(marker)marker.setMap(null);
-
-marker=new google.maps.Marker({
-position:e.latLng,
-map:map
-});
-
-geocoder.geocode({
-location:{lat:lat,lng:lng}
-}).then((response)=>{
-
-if(response.results[0]){
-
-const address=response.results[0].formatted_address;
-
-const info=new google.maps.InfoWindow({
-content:
-"📍 الموقع:<br>"+
-address+
-"<br><br>"+
-"Lat: "+lat+
-"<br>"+
-"Lng: "+lng
-});
-
-info.open(map,marker);
-
+const drawingManager=new google.maps.drawing.DrawingManager({
+drawingMode:google.maps.drawing.OverlayType.POLYGON,
+drawingControl:true,
+drawingControlOptions:{
+position:google.maps.ControlPosition.TOP_CENTER,
+drawingModes:["polygon"]
 }
-
 });
+
+drawingManager.setMap(map);
+
+google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
+
+if(polygon) polygon.setMap(null);
+
+polygon=e.overlay;
+
+let area=google.maps.geometry.spherical.computeArea(
+polygon.getPath()
+);
+
+document.getElementById("area").innerHTML=area.toFixed(2);
 
 });
 
@@ -117,7 +122,7 @@ info.open(map,marker);
 
 </script>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places&callback=initMap" async defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing,geometry&callback=initMap" async defer></script>
 
 </body>
 </html>
