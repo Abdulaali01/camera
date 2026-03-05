@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>بحث حي + خريطة أقمار صناعية + حساب المساحة</title>
+<title>بحث حي وشارع + خريطة أقمار صناعية</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -84,22 +84,24 @@ cursor:pointer;
 
 var map=L.map('map').setView([21.27,40.41],13);
 
-/* خريطة الأقمار الصناعية */
+/* صور الأقمار الصناعية */
 
-L.tileLayer(
+var satellite=L.tileLayer(
 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-{
-maxZoom:19,
-attribution:'Tiles © Esri'
-}
+{maxZoom:19}
+).addTo(map);
+
+/* طبقة أسماء الشوارع */
+
+var labels=L.tileLayer(
+'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png',
+{maxZoom:19}
 ).addTo(map);
 
 var points=[];
 var polygon;
 var markers=[];
 var data=[];
-
-/* إضافة نقاط عند الضغط */
 
 map.on('click',function(e){
 
@@ -147,8 +149,6 @@ document.getElementById("area").innerHTML=
 
 }
 
-/* مسح */
-
 function clearMap(){
 
 markers.forEach(m=>map.removeLayer(m));
@@ -164,8 +164,6 @@ map.removeLayer(polygon);
 document.getElementById("area").innerHTML="المساحة: 0";
 
 }
-
-/* حفظ */
 
 function save(){
 
@@ -189,8 +187,6 @@ alert("تم الحفظ");
 
 }
 
-/* تصدير Excel */
-
 function exportExcel(){
 
 var ws=XLSX.utils.json_to_sheet(data);
@@ -199,20 +195,20 @@ var wb=XLSX.utils.book_new();
 
 XLSX.utils.book_append_sheet(wb,ws,"المساحات");
 
-XLSX.writeFile(wb,"مساحات_المواقع.xlsx");
+XLSX.writeFile(wb,"المساحات.xlsx");
 
 }
-
-/* البحث عن حي أو شارع */
 
 function searchLocation(){
 
 var district=document.getElementById("district").value;
 var street=document.getElementById("street").value;
 
-var query=street+" "+district+" الطائف";
+/* تحسين البحث */
 
-fetch("https://nominatim.openstreetmap.org/search?format=json&q="+query)
+var query=street+" "+district+" الطائف السعودية";
+
+fetch("https://nominatim.openstreetmap.org/search?format=json&q="+encodeURIComponent(query))
 
 .then(r=>r.json())
 
