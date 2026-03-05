@@ -1,79 +1,106 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>حساب مساحة حي</title>
+<title>حساب مساحة الحي</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-body{font-family:tahoma;background:#f2f2f2;padding:20px;text-align:center}
-#map{height:500px;width:100%;border-radius:10px;margin-top:10px}
-button{padding:10px 20px;border:none;border-radius:8px;background:#007bff;color:#fff;font-size:15px;cursor:pointer}
-.box{background:#fff;padding:15px;border-radius:10px;margin-bottom:10px}
+
+body{
+font-family:tahoma;
+background:#f2f2f2;
+text-align:center;
+padding:20px;
+}
+
+#map{
+height:500px;
+border-radius:10px;
+}
+
+button{
+padding:10px 20px;
+margin:5px;
+border:none;
+border-radius:8px;
+background:#007bff;
+color:white;
+cursor:pointer;
+}
+
+.box{
+background:white;
+padding:15px;
+border-radius:10px;
+margin-bottom:10px;
+}
+
 </style>
-
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=geometry"></script>
-
 </head>
 
 <body>
 
 <div class="box">
-<h3>📐 حساب مساحة الحي</h3>
-<p>اضغط على الخريطة لرسم حدود الحي</p>
 
-<button onclick="calculateArea()">حساب المساحة</button>
+<h3>📐 حساب مساحة الحي</h3>
+
+<button onclick="calc()">حساب المساحة</button>
 <button onclick="clearMap()">مسح</button>
 
 <h3 id="result"></h3>
+
 </div>
 
 <div id="map"></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
 
-let map;
-let points=[];
-let polygon;
+var map=L.map('map').setView([21.2700,40.4150],13);
 
-function initMap(){
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map);
 
-map=new google.maps.Map(document.getElementById("map"),{
-center:{lat:21.2700,lng:40.4150},
-zoom:13
-});
+var points=[];
+var polygon;
 
-map.addListener("click",(e)=>{
+map.on('click',function(e){
 
-points.push(e.latLng);
+points.push([e.latlng.lat,e.latlng.lng]);
 
 if(polygon){
-polygon.setMap(null);
+map.removeLayer(polygon);
 }
 
-polygon=new google.maps.Polygon({
-paths:points,
-strokeColor:"#FF0000",
-fillColor:"#FF0000",
-fillOpacity:0.3
-});
-
-polygon.setMap(map);
+polygon=L.polygon(points,{color:'red'}).addTo(map);
 
 });
 
-}
-
-function calculateArea(){
+function calc(){
 
 if(points.length<3){
-alert("حدد على الأقل 3 نقاط");
+alert("حدد 3 نقاط على الأقل");
 return;
 }
 
-let area=google.maps.geometry.spherical.computeArea(points);
+var area=0;
 
-let km=area/1000000;
+for(var i=0;i<points.length;i++){
+
+var j=(i+1)%points.length;
+
+area+=points[i][1]*points[j][0];
+area-=points[j][1]*points[i][0];
+
+}
+
+area=Math.abs(area/2)*12300000000;
+
+var km=area/1000000;
 
 document.getElementById("result").innerHTML=
 "المساحة: "+area.toFixed(0)+" متر مربع<br>"+
@@ -84,15 +111,14 @@ document.getElementById("result").innerHTML=
 function clearMap(){
 
 points=[];
+
 if(polygon){
-polygon.setMap(null);
+map.removeLayer(polygon);
 }
 
 document.getElementById("result").innerHTML="";
 
 }
-
-window.onload=initMap;
 
 </script>
 
