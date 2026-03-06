@@ -3,54 +3,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>بحث + حساب المساحة</title>
+<title>حساب المساحة + تصدير Excel</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
-body{font-family:Tahoma;margin:0}
+
+body{font-family:tahoma;margin:0}
 
 #map{
 height:100vh;
 width:100%;
 }
 
+#searchBox{
+position:absolute;
+top:15px;
+left:50%;
+transform:translateX(-50%);
+width:320px;
+padding:10px;
+font-size:16px;
+border-radius:8px;
+border:1px solid #ccc;
+z-index:5;
+background:white;
+}
+
 .box{
 position:absolute;
-top:10px;
+top:60px;
 right:10px;
-background:#fff;
+background:white;
 padding:10px;
 border-radius:8px;
-box-shadow:0 0 5px rgba(0,0,0,0.3);
-font-size:16px
+box-shadow:0 0 5px rgba(0,0,0,.3);
+z-index:5;
+font-size:16px;
 }
 
-.search{
-position:absolute;
-top:10px;
-left:10px;
-background:#fff;
-padding:8px;
-border-radius:8px;
-box-shadow:0 0 5px rgba(0,0,0,0.3)
+button{
+margin-top:8px;
+padding:6px 12px;
+border:none;
+background:#2b7cff;
+color:white;
+border-radius:6px;
+cursor:pointer;
 }
 
-.search input{
-width:220px;
-padding:6px;
-border:1px solid #ccc;
-border-radius:5px
-}
 </style>
 </head>
 
 <body>
 
-<div class="box">
-المساحة: <span id="area">0</span> متر²
-</div>
-
-<div class="search">
 <input id="searchBox" placeholder="ابحث عن حي أو شارع">
+
+<div class="box">
+
+المساحة: <span id="area">0</span> متر²
+<br>
+المساحة: <span id="areaKm">0</span> كم²
+<br>
+
+<button onclick="exportExcel()">تصدير Excel</button>
+
 </div>
 
 <div id="map"></div>
@@ -58,14 +75,16 @@ border-radius:5px
 <script>
 
 let map;
-let polygon;
+let polygon=null;
 
 function initMap(){
 
 map=new google.maps.Map(document.getElementById("map"),{
+
 center:{lat:21.4373,lng:40.5127},
 zoom:13,
 mapTypeId:"satellite"
+
 });
 
 
@@ -86,23 +105,26 @@ const place=autocomplete.getPlace();
 if(!place.geometry) return;
 
 map.panTo(place.geometry.location);
-map.setZoom(16);
+map.setZoom(17);
 
 });
 
 
-/* رسم المساحة */
+/* الرسم */
 
 const drawingManager=new google.maps.drawing.DrawingManager({
-drawingMode:google.maps.drawing.OverlayType.POLYGON,
+
+drawingMode:null,
 drawingControl:true,
 drawingControlOptions:{
 position:google.maps.ControlPosition.TOP_CENTER,
 drawingModes:["polygon"]
 }
+
 });
 
 drawingManager.setMap(map);
+
 
 google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
 
@@ -110,13 +132,71 @@ if(polygon) polygon.setMap(null);
 
 polygon=e.overlay;
 
+updateArea();
+
+polygon.getPath().addListener("set_at",updateArea);
+polygon.getPath().addListener("insert_at",updateArea);
+
+});
+
+
+}
+
+
+function updateArea(){
+
+if(!polygon) return;
+
 let area=google.maps.geometry.spherical.computeArea(
 polygon.getPath()
 );
 
-document.getElementById("area").innerHTML=area.toFixed(2);
+document.getElementById("area").innerHTML=
+area.toLocaleString();
+
+document.getElementById("areaKm").innerHTML=
+(area/1000000).toFixed(4);
+
+}
+
+
+/* تصدير Excel */
+
+function exportExcel(){
+
+if(!polygon) return alert("ارسم المساحة أولاً");
+
+let path=polygon.getPath();
+
+let data=[];
+
+for(let i=0;i<path.getLength();i++){
+
+let point=path.getAt(i);
+
+data.push({
+
+Latitude:point.lat(),
+Longitude:point.lng()
 
 });
+
+}
+
+let area=document.getElementById("area").innerText;
+let areaKm=document.getElementById("areaKm").innerText;
+
+data.push({});
+data.push({Latitude:"المساحة متر²",Longitude:area});
+data.push({Latitude:"المساحة كم²",Longitude:areaKm});
+
+
+let ws=XLSX.utils.json_to_sheet(data);
+let wb=XLSX.utils.book_new();
+
+XLSX.utils.book_append_sheet(wb,ws,"Area");
+
+XLSX.writeFile(wb,"area_result.xlsx");
 
 }
 
