@@ -4,45 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>حساب المساحة + Excel</title>
+<title>حساب المساحة</title>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
 
-body{
-margin:0;
-font-family:tahoma
-}
+body{margin:0;font-family:tahoma}
 
-#map{
-height:100vh;
-width:100%
-}
-
-#searchBox{
-position:absolute;
-top:10px;
-left:50%;
-transform:translateX(-50%);
-width:320px;
-padding:10px;
-border-radius:8px;
-border:1px solid #ccc;
-z-index:5;
-background:#fff;
-font-size:16px
-}
+#map{height:100vh}
 
 .box{
 position:absolute;
-top:60px;
-right:10px;
+top:20px;
+right:20px;
 background:#fff;
 padding:12px;
 border-radius:10px;
 box-shadow:0 0 6px rgba(0,0,0,.3);
-z-index:5
+z-index:999;
 }
 
 button{
@@ -52,16 +37,13 @@ border:none;
 border-radius:6px;
 background:#2d6cff;
 color:#fff;
-font-size:14px;
-cursor:pointer
+cursor:pointer;
 }
 
 </style>
 </head>
 
 <body>
-
-<input id="searchBox" placeholder="ابحث عن حي أو شارع">
 
 <div class="box">
 
@@ -78,126 +60,76 @@ cursor:pointer
 
 <script>
 
-let map;
-let polygon=null;
+var map=L.map('map').setView([21.4373,40.5127],13);
 
-function initMap(){
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map);
 
-map=new google.maps.Map(document.getElementById("map"),{
+var drawnItems=new L.FeatureGroup();
+map.addLayer(drawnItems);
 
-center:{lat:21.4373,lng:40.5127},
-zoom:13,
-mapTypeId:"satellite"
-
-});
-
-
-/* البحث */
-
-const input=document.getElementById("searchBox");
-
-const autocomplete=new google.maps.places.Autocomplete(input,{
-componentRestrictions:{country:"sa"}
-});
-
-autocomplete.bindTo("bounds",map);
-
-autocomplete.addListener("place_changed",function(){
-
-const place=autocomplete.getPlace();
-
-if(!place.geometry) return;
-
-map.panTo(place.geometry.location);
-map.setZoom(17);
-
-});
-
-
-/* الرسم */
-
-const drawingManager=new google.maps.drawing.DrawingManager({
-
-drawingMode:null,
-
-drawingControl:true,
-
-drawingControlOptions:{
-position:google.maps.ControlPosition.TOP_CENTER,
-drawingModes:["polygon"]
+var drawControl=new L.Control.Draw({
+draw:{
+polygon:true,
+rectangle:false,
+circle:false,
+marker:false,
+polyline:false
+},
+edit:{
+featureGroup:drawnItems
 }
-
 });
 
-drawingManager.setMap(map);
+map.addControl(drawControl);
 
+var coords=[];
 
-google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
+map.on(L.Draw.Event.CREATED,function(e){
 
-if(polygon) polygon.setMap(null);
+drawnItems.clearLayers();
 
-polygon=e.overlay;
+var layer=e.layer;
+drawnItems.addLayer(layer);
+
+coords=layer.getLatLngs()[0];
 
 updateArea();
 
-polygon.getPath().addListener("set_at",updateArea);
-polygon.getPath().addListener("insert_at",updateArea);
-
 });
-
-
-}
-
-
-/* حساب المساحة */
 
 function updateArea(){
 
-if(!polygon) return;
+var area=L.GeometryUtil.geodesicArea(coords);
 
-let area=google.maps.geometry.spherical.computeArea(
-polygon.getPath()
-);
-
-document.getElementById("area").innerHTML=
-area.toLocaleString();
-
-document.getElementById("areaKm").innerHTML=
-(area/1000000).toFixed(4);
+document.getElementById("area").innerHTML=Math.round(area);
+document.getElementById("areaKm").innerHTML=(area/1000000).toFixed(4);
 
 }
-
-
-/* تصدير Excel */
 
 function exportExcel(){
 
-if(!polygon) return alert("ارسم المساحة أولاً");
-
-let path=polygon.getPath();
-
-let data=[];
-
-for(let i=0;i<path.getLength();i++){
-
-let point=path.getAt(i);
-
-data.push({
-Latitude:point.lat(),
-Longitude:point.lng()
-});
-
+if(coords.length==0){
+alert("ارسم المساحة أولاً");
+return;
 }
 
-let area=document.getElementById("area").innerText;
-let areaKm=document.getElementById("areaKm").innerText;
+var data=[];
+
+coords.forEach(function(p){
+data.push({
+Latitude:p.lat,
+Longitude:p.lng
+});
+});
 
 data.push({});
-data.push({Latitude:"المساحة متر²",Longitude:area});
-data.push({Latitude:"المساحة كم²",Longitude:areaKm});
+data.push({Latitude:"المساحة متر²",Longitude:document.getElementById("area").innerText});
+data.push({Latitude:"المساحة كم²",Longitude:document.getElementById("areaKm").innerText});
 
-let ws=XLSX.utils.json_to_sheet(data);
-let wb=XLSX.utils.book_new();
+var ws=XLSX.utils.json_to_sheet(data);
+var wb=XLSX.utils.book_new();
 
 XLSX.utils.book_append_sheet(wb,ws,"Area");
 
@@ -205,11 +137,6 @@ XLSX.writeFile(wb,"area_result.xlsx");
 
 }
 
-</script>
-
-
-<script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing,geometry&callback=initMap">
 </script>
 
 </body>
