@@ -81,20 +81,17 @@ cursor:pointer
 <br>
 
 المساحة: <span id="areaKm">0</span> كم²
-<br>
+<br><br>
 
 <input type="file" id="excelFile" accept=".xlsx,.xls">
 
 <button onclick="importExcel()">استيراد Excel</button>
-
-<button onclick="exportExcel()">تصدير Excel</button>
 
 <button onclick="exportPDF()">تصدير PDF</button>
 
 </div>
 
 <div id="map"></div>
-
 
 <script>
 
@@ -195,38 +192,6 @@ document.getElementById("areaKm").innerHTML=(area/1000000).toFixed(4);
 
 
 
-/* تصدير Excel */
-
-function exportExcel(){
-
-if(!polygon) return alert("ارسم المساحة أولاً");
-
-let path=polygon.getPath();
-
-let data=[];
-
-for(let i=0;i<path.getLength();i++){
-
-let point=path.getAt(i);
-
-data.push({
-Latitude:point.lat(),
-Longitude:point.lng()
-});
-
-}
-
-let ws=XLSX.utils.json_to_sheet(data);
-let wb=XLSX.utils.book_new();
-
-XLSX.utils.book_append_sheet(wb,ws,"Area");
-
-XLSX.writeFile(wb,"area_result.xlsx");
-
-}
-
-
-
 /* استيراد Excel */
 
 function importExcel(){
@@ -248,14 +213,14 @@ let workbook=XLSX.read(data,{type:"array"});
 
 let sheet=workbook.Sheets[workbook.SheetNames[0]];
 
-let rows=XLSX.utils.sheet_to_json(sheet);
+let rows=XLSX.utils.sheet_to_json(sheet,{header:1});
 
 let points=[];
 
 rows.forEach(r=>{
 
-let lat=parseFloat(r.Latitude);
-let lng=parseFloat(r.Longitude);
+let lat=parseFloat(r[0]);
+let lng=parseFloat(r[1]);
 
 if(!isNaN(lat) && !isNaN(lng)){
 
