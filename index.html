@@ -8,17 +8,6 @@
 
 <title>حساب المساحة</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.geometryutil/0.10.2/leaflet.geometryutil.min.js"></script>
-
-<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"/>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
@@ -29,42 +18,48 @@ font-family:tahoma
 }
 
 #map{
-height:100vh
+height:100vh;
+width:100%;
+}
+
+#searchBox{
+
+position:absolute;
+top:10px;
+left:50%;
+transform:translateX(-50%);
+width:320px;
+padding:10px;
+border-radius:8px;
+border:1px solid #ccc;
+z-index:5;
+background:#fff;
+font-size:16px
+
 }
 
 .box{
 
 position:absolute;
-top:20px;
-right:20px;
-
+top:60px;
+right:10px;
 background:#fff;
-
 padding:12px;
-
 border-radius:10px;
-
 box-shadow:0 0 6px rgba(0,0,0,.3);
-
-z-index:999;
+z-index:5
 
 }
 
 button{
 
 margin-top:8px;
-
 padding:8px 12px;
-
 border:none;
-
 border-radius:6px;
-
 background:#2d6cff;
-
 color:#fff;
-
-cursor:pointer;
+cursor:pointer
 
 }
 
@@ -73,6 +68,8 @@ cursor:pointer;
 </head>
 
 <body>
+
+<input id="searchBox" placeholder="ابحث عن حي أو شارع">
 
 <div class="box">
 
@@ -88,109 +85,88 @@ cursor:pointer;
 
 <div id="map"></div>
 
+
 <script>
 
+let map;
+let polygon=null;
 
-var map=L.map('map').setView([21.4373,40.5127],13);
+function initMap(){
 
+map=new google.maps.Map(document.getElementById("map"),{
 
-/* صور الأقمار الصناعية */
+center:{lat:21.4373,lng:40.5127},
+zoom:13,
+mapTypeId:"satellite"
 
-L.tileLayer(
-'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-{
-maxZoom:19,
-attribution:'© Esri'
-}).addTo(map);
-
-
-/* طبقة أسماء الأحياء والطرق */
-
-L.tileLayer(
-'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-{
-maxZoom:19
-}).addTo(map);
+});
 
 
+/* البحث */
 
-/* مربع البحث */
+const input=document.getElementById("searchBox");
 
-L.Control.geocoder({
+const autocomplete=new google.maps.places.Autocomplete(input,{
+componentRestrictions:{country:"sa"}
+});
 
-defaultMarkGeocode:true,
+autocomplete.bindTo("bounds",map);
 
-collapsed:false
+autocomplete.addListener("place_changed",function(){
 
-}).addTo(map);
+const place=autocomplete.getPlace();
 
+if(!place.geometry) return;
 
+map.panTo(place.geometry.location);
+map.setZoom(17);
 
-/* طبقة الرسم */
-
-var drawnItems=new L.FeatureGroup();
-
-map.addLayer(drawnItems);
-
+});
 
 
-/* أدوات الرسم */
+/* الرسم */
 
-var drawControl=new L.Control.Draw({
+const drawingManager=new google.maps.drawing.DrawingManager({
 
-draw:{
+drawingMode:null,
 
-polygon:true,
+drawingControl:true,
 
-rectangle:true,
-
-circle:false,
-
-marker:false,
-
-polyline:false
-
-},
-
-edit:{
-
-featureGroup:drawnItems
-
+drawingControlOptions:{
+position:google.maps.ControlPosition.LEFT_CENTER,
+drawingModes:["polygon"]
 }
 
 });
 
-map.addControl(drawControl);
+drawingManager.setMap(map);
 
 
+google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
 
-var coords=[];
+if(polygon) polygon.setMap(null);
 
-
-
-/* عند رسم الشكل */
-
-map.on(L.Draw.Event.CREATED,function(e){
-
-drawnItems.clearLayers();
-
-var layer=e.layer;
-
-drawnItems.addLayer(layer);
-
-coords=layer.getLatLngs()[0];
+polygon=e.overlay;
 
 updateArea();
 
+polygon.getPath().addListener("set_at",updateArea);
+polygon.getPath().addListener("insert_at",updateArea);
+
 });
 
+}
 
 
 /* حساب المساحة */
 
 function updateArea(){
 
-var area=L.GeometryUtil.geodesicArea(coords);
+if(!polygon) return;
+
+let area=google.maps.geometry.spherical.computeArea(
+polygon.getPath()
+);
 
 document.getElementById("area").innerHTML=Math.round(area);
 
@@ -199,54 +175,36 @@ document.getElementById("areaKm").innerHTML=(area/1000000).toFixed(4);
 }
 
 
-
 /* تصدير Excel */
 
 function exportExcel(){
 
-if(coords.length==0){
+if(!polygon) return alert("ارسم المساحة أولاً");
 
-alert("ارسم المساحة أولاً");
+let path=polygon.getPath();
 
-return;
+let data=[];
+
+for(let i=0;i<path.getLength();i++){
+
+let point=path.getAt(i);
+
+data.push({
+Latitude:point.lat(),
+Longitude:point.lng()
+});
 
 }
 
-var data=[];
-
-coords.forEach(function(p){
-
-data.push({
-
-Latitude:p.lat,
-
-Longitude:p.lng
-
-});
-
-});
+let area=document.getElementById("area").innerText;
+let areaKm=document.getElementById("areaKm").innerText;
 
 data.push({});
+data.push({Latitude:"المساحة متر²",Longitude:area});
+data.push({Latitude:"المساحة كم²",Longitude:areaKm});
 
-data.push({
-
-Latitude:"المساحة متر²",
-
-Longitude:document.getElementById("area").innerText
-
-});
-
-data.push({
-
-Latitude:"المساحة كم²",
-
-Longitude:document.getElementById("areaKm").innerText
-
-});
-
-var ws=XLSX.utils.json_to_sheet(data);
-
-var wb=XLSX.utils.book_new();
+let ws=XLSX.utils.json_to_sheet(data);
+let wb=XLSX.utils.book_new();
 
 XLSX.utils.book_append_sheet(wb,ws,"Area");
 
@@ -256,6 +214,11 @@ XLSX.writeFile(wb,"area_result.xlsx");
 
 </script>
 
-</body>
 
+<script async defer
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing,geometry&callback=initMap">
+</script>
+
+
+</body>
 </html>
