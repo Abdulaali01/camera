@@ -13,6 +13,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.geometryutil/0.10.2/leaflet.geometryutil.min.js"></script>
 
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
@@ -93,13 +94,22 @@ cursor:pointer;
 var map=L.map('map').setView([21.4373,40.5127],13);
 
 
-/* خريطة اقمار صناعية */
+/* صور الأقمار الصناعية */
 
 L.tileLayer(
 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
 {
 maxZoom:19,
 attribution:'© Esri'
+}).addTo(map);
+
+
+/* طبقة أسماء الأحياء والطرق */
+
+L.tileLayer(
+'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+{
+maxZoom:19
 }).addTo(map);
 
 
