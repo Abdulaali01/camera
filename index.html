@@ -3,53 +3,57 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>حساب المساحة + تصدير Excel</title>
+
+<title>حساب المساحة + Excel</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
 
-body{font-family:tahoma;margin:0}
+body{
+margin:0;
+font-family:tahoma
+}
 
 #map{
 height:100vh;
-width:100%;
+width:100%
 }
 
 #searchBox{
 position:absolute;
-top:15px;
+top:10px;
 left:50%;
 transform:translateX(-50%);
 width:320px;
 padding:10px;
-font-size:16px;
 border-radius:8px;
 border:1px solid #ccc;
 z-index:5;
-background:white;
+background:#fff;
+font-size:16px
 }
 
 .box{
 position:absolute;
 top:60px;
 right:10px;
-background:white;
-padding:10px;
-border-radius:8px;
-box-shadow:0 0 5px rgba(0,0,0,.3);
-z-index:5;
-font-size:16px;
+background:#fff;
+padding:12px;
+border-radius:10px;
+box-shadow:0 0 6px rgba(0,0,0,.3);
+z-index:5
 }
 
 button{
 margin-top:8px;
-padding:6px 12px;
+padding:8px 12px;
 border:none;
-background:#2b7cff;
-color:white;
 border-radius:6px;
-cursor:pointer;
+background:#2d6cff;
+color:#fff;
+font-size:14px;
+cursor:pointer
 }
 
 </style>
@@ -115,7 +119,9 @@ map.setZoom(17);
 const drawingManager=new google.maps.drawing.DrawingManager({
 
 drawingMode:null,
+
 drawingControl:true,
+
 drawingControlOptions:{
 position:google.maps.ControlPosition.TOP_CENTER,
 drawingModes:["polygon"]
@@ -142,6 +148,8 @@ polygon.getPath().addListener("insert_at",updateArea);
 
 }
 
+
+/* حساب المساحة */
 
 function updateArea(){
 
@@ -175,10 +183,8 @@ for(let i=0;i<path.getLength();i++){
 let point=path.getAt(i);
 
 data.push({
-
 Latitude:point.lat(),
 Longitude:point.lng()
-
 });
 
 }
@@ -189,7 +195,6 @@ let areaKm=document.getElementById("areaKm").innerText;
 data.push({});
 data.push({Latitude:"المساحة متر²",Longitude:area});
 data.push({Latitude:"المساحة كم²",Longitude:areaKm});
-
 
 let ws=XLSX.utils.json_to_sheet(data);
 let wb=XLSX.utils.book_new();
@@ -202,7 +207,10 @@ XLSX.writeFile(wb,"area_result.xlsx");
 
 </script>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing,geometry&callback=initMap" async defer></script>
+
+<script async defer
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing,geometry&callback=initMap">
+</script>
 
 </body>
 </html>
