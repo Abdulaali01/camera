@@ -6,9 +6,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>حساب المساحة</title>
+<title>تحليل المواقع</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
 
@@ -23,7 +27,6 @@ width:100%;
 }
 
 #searchBox{
-
 position:absolute;
 top:10px;
 left:50%;
@@ -35,11 +38,9 @@ border:1px solid #ccc;
 z-index:5;
 background:#fff;
 font-size:16px
-
 }
 
 .box{
-
 position:absolute;
 top:60px;
 right:10px;
@@ -48,19 +49,16 @@ padding:12px;
 border-radius:10px;
 box-shadow:0 0 6px rgba(0,0,0,.3);
 z-index:5
-
 }
 
 button{
-
-margin-top:8px;
+margin-top:6px;
 padding:8px 12px;
 border:none;
 border-radius:6px;
 background:#2d6cff;
 color:#fff;
 cursor:pointer
-
 }
 
 </style>
@@ -73,23 +71,20 @@ cursor:pointer
 
 <div class="box">
 
-المساحة: <span id="area">0</span> متر²
-<br>
+<input type="file" id="excelFile">
 
-المساحة: <span id="areaKm">0</span> كم²
-<br>
+<button onclick="importExcel()">استيراد Excel</button>
 
-<button onclick="exportExcel()">تصدير Excel</button>
+<button onclick="exportPDF()">تصدير PDF</button>
 
 </div>
 
 <div id="map"></div>
 
-
 <script>
 
 let map;
-let polygon=null;
+let groups=[];
 
 function initMap(){
 
@@ -97,8 +92,6 @@ map=new google.maps.Map(document.getElementById("map"),{
 
 center:{lat:21.4373,lng:40.5127},
 zoom:13,
-
-mapTypeControl:true,
 mapTypeId:"hybrid"
 
 });
@@ -125,103 +118,168 @@ map.setZoom(17);
 
 });
 
+}
 
-/* أدوات الرسم */
 
-const drawingManager=new google.maps.drawing.DrawingManager({
 
-drawingMode:null,
+/* استيراد Excel */
 
-drawingControl:true,
+function importExcel(){
 
-drawingControlOptions:{
-position:google.maps.ControlPosition.LEFT_CENTER,
-drawingModes:["polygon"]
+let file=document.getElementById("excelFile").files[0];
+
+let reader=new FileReader();
+
+reader.onload=function(e){
+
+let data=new Uint8Array(e.target.result);
+
+let workbook=XLSX.read(data,{type:"array"});
+
+let sheet=workbook.Sheets[workbook.SheetNames[0]];
+
+let json=XLSX.utils.sheet_to_json(sheet);
+
+let points=[];
+
+json.forEach(r=>{
+
+points.push({
+
+lat:parseFloat(r.Latitude),
+lng:parseFloat(r.Longitude)
+
+});
+
+});
+
+groups=groupPoints(points);
+
+drawGroups(groups);
+
+};
+
+reader.readAsArrayBuffer(file);
+
+}
+
+
+
+/* حساب المسافة */
+
+function distance(a,b){
+
+let R=6371000;
+
+let dLat=(b.lat-a.lat)*Math.PI/180;
+
+let dLng=(b.lng-a.lng)*Math.PI/180;
+
+let lat1=a.lat*Math.PI/180;
+
+let lat2=b.lat*Math.PI/180;
+
+let x=Math.sin(dLat/2)*Math.sin(dLat/2)+
+Math.sin(dLng/2)*Math.sin(dLng/2)*Math.cos(lat1)*Math.cos(lat2);
+
+let d=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+
+return R*d;
+
+}
+
+
+
+/* تجميع النقاط 100 متر */
+
+function groupPoints(points){
+
+let groups=[];
+
+points.forEach(p=>{
+
+let added=false;
+
+groups.forEach(g=>{
+
+if(distance(p,g[0])<=100){
+
+g.push(p);
+
+added=true;
+
 }
 
 });
 
-drawingManager.setMap(map);
+if(!added) groups.push([p]);
+
+});
+
+return groups;
+
+}
 
 
-google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
 
-if(polygon) polygon.setMap(null);
+/* رسم المجموعات */
 
-polygon=e.overlay;
+function drawGroups(groups){
 
-/* لون التظليل */
+let colors=[
 
-polygon.setOptions({
+"#00ff00",
+"#ff0000",
+"#0000ff",
+"#ff9900",
+"#ff00ff",
+"#00ffff",
+"#9900ff",
+"#009933"
 
-fillColor:"#00ff00",
+];
+
+groups.forEach((g,i)=>{
+
+let path=g.map(p=>({lat:p.lat,lng:p.lng}));
+
+let color=colors[i % colors.length];
+
+new google.maps.Polygon({
+
+paths:path,
+
+fillColor:color,
 fillOpacity:0.35,
-strokeColor:"#008000",
-strokeWeight:2
+
+strokeColor:color,
+strokeWeight:2,
+
+map:map
 
 });
 
-updateArea();
-
-polygon.getPath().addListener("set_at",updateArea);
-polygon.getPath().addListener("insert_at",updateArea);
-
-});
-
-}
-
-
-/* حساب المساحة */
-
-function updateArea(){
-
-if(!polygon) return;
-
-let area=google.maps.geometry.spherical.computeArea(
-polygon.getPath()
-);
-
-document.getElementById("area").innerHTML=Math.round(area);
-
-document.getElementById("areaKm").innerHTML=(area/1000000).toFixed(4);
-
-}
-
-
-/* تصدير Excel */
-
-function exportExcel(){
-
-if(!polygon) return alert("ارسم المساحة أولاً");
-
-let path=polygon.getPath();
-
-let data=[];
-
-for(let i=0;i<path.getLength();i++){
-
-let point=path.getAt(i);
-
-data.push({
-Latitude:point.lat(),
-Longitude:point.lng()
 });
 
 }
 
-let area=document.getElementById("area").innerText;
-let areaKm=document.getElementById("areaKm").innerText;
 
-data.push({});
-data.push({Latitude:"المساحة متر²",Longitude:area});
-data.push({Latitude:"المساحة كم²",Longitude:areaKm});
 
-let ws=XLSX.utils.json_to_sheet(data);
-let wb=XLSX.utils.book_new();
+/* تصدير PDF */
 
-XLSX.utils.book_append_sheet(wb,ws,"Area");
+async function exportPDF(){
 
-XLSX.writeFile(wb,"area_result.xlsx");
+const {jsPDF}=window.jspdf;
+
+let pdf=new jsPDF('p','mm','a4');
+
+let canvas=await html2canvas(document.getElementById("map"));
+
+let img=canvas.toDataURL("image/png");
+
+pdf.addImage(img,'PNG',0,0,210,297);
+
+pdf.save("map_report.pdf");
 
 }
 
@@ -229,9 +287,8 @@ XLSX.writeFile(wb,"area_result.xlsx");
 
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing,geometry&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places&callback=initMap">
 </script>
-
 
 </body>
 </html>
