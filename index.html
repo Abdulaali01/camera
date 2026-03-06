@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -30,27 +32,43 @@ height:100vh
 }
 
 .box{
+
 position:absolute;
 top:20px;
 right:20px;
+
 background:#fff;
+
 padding:12px;
+
 border-radius:10px;
+
 box-shadow:0 0 6px rgba(0,0,0,.3);
+
 z-index:999;
+
 }
 
 button{
+
 margin-top:8px;
+
 padding:8px 12px;
+
 border:none;
+
 border-radius:6px;
+
 background:#2d6cff;
+
 color:#fff;
+
 cursor:pointer;
+
 }
 
 </style>
+
 </head>
 
 <body>
@@ -71,20 +89,29 @@ cursor:pointer;
 
 <script>
 
+
 var map=L.map('map').setView([21.4373,40.5127],13);
 
 
-/* الخريطة */
+/* خريطة اقمار صناعية */
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
+L.tileLayer(
+'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+{
+maxZoom:19,
+attribution:'© Esri'
 }).addTo(map);
+
 
 
 /* مربع البحث */
 
 L.Control.geocoder({
-defaultMarkGeocode:true
+
+defaultMarkGeocode:true,
+
+collapsed:false
+
 }).addTo(map);
 
 
@@ -92,23 +119,33 @@ defaultMarkGeocode:true
 /* طبقة الرسم */
 
 var drawnItems=new L.FeatureGroup();
+
 map.addLayer(drawnItems);
 
 
-/* ادوات الرسم */
+
+/* أدوات الرسم */
 
 var drawControl=new L.Control.Draw({
 
 draw:{
+
 polygon:true,
+
 rectangle:true,
+
 circle:false,
+
 marker:false,
+
 polyline:false
+
 },
 
 edit:{
+
 featureGroup:drawnItems
+
 }
 
 });
@@ -116,10 +153,12 @@ featureGroup:drawnItems
 map.addControl(drawControl);
 
 
+
 var coords=[];
 
 
-/* عند رسم المضلع */
+
+/* عند رسم الشكل */
 
 map.on(L.Draw.Event.CREATED,function(e){
 
@@ -134,6 +173,7 @@ coords=layer.getLatLngs()[0];
 updateArea();
 
 });
+
 
 
 /* حساب المساحة */
@@ -176,7 +216,6 @@ Longitude:p.lng
 
 });
 
-
 data.push({});
 
 data.push({
@@ -195,7 +234,6 @@ Longitude:document.getElementById("areaKm").innerText
 
 });
 
-
 var ws=XLSX.utils.json_to_sheet(data);
 
 var wb=XLSX.utils.book_new();
@@ -209,4 +247,5 @@ XLSX.writeFile(wb,"area_result.xlsx");
 </script>
 
 </body>
+
 </html>
