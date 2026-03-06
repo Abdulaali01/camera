@@ -11,13 +11,23 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.geometryutil/0.10.2/leaflet.geometryutil.min.js"></script>
+
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"/>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
 
-body{margin:0;font-family:tahoma}
+body{
+margin:0;
+font-family:tahoma
+}
 
-#map{height:100vh}
+#map{
+height:100vh
+}
 
 .box{
 position:absolute;
@@ -49,6 +59,7 @@ cursor:pointer;
 
 المساحة: <span id="area">0</span> متر²
 <br>
+
 المساحة: <span id="areaKm">0</span> كم²
 <br>
 
@@ -62,35 +73,60 @@ cursor:pointer;
 
 var map=L.map('map').setView([21.4373,40.5127],13);
 
+
+/* الخريطة */
+
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 maxZoom:19
 }).addTo(map);
 
+
+/* مربع البحث */
+
+L.Control.geocoder({
+defaultMarkGeocode:true
+}).addTo(map);
+
+
+
+/* طبقة الرسم */
+
 var drawnItems=new L.FeatureGroup();
 map.addLayer(drawnItems);
 
+
+/* ادوات الرسم */
+
 var drawControl=new L.Control.Draw({
+
 draw:{
 polygon:true,
-rectangle:false,
+rectangle:true,
 circle:false,
 marker:false,
 polyline:false
 },
+
 edit:{
 featureGroup:drawnItems
 }
+
 });
 
 map.addControl(drawControl);
 
+
 var coords=[];
+
+
+/* عند رسم المضلع */
 
 map.on(L.Draw.Event.CREATED,function(e){
 
 drawnItems.clearLayers();
 
 var layer=e.layer;
+
 drawnItems.addLayer(layer);
 
 coords=layer.getLatLngs()[0];
@@ -99,36 +135,69 @@ updateArea();
 
 });
 
+
+/* حساب المساحة */
+
 function updateArea(){
 
 var area=L.GeometryUtil.geodesicArea(coords);
 
 document.getElementById("area").innerHTML=Math.round(area);
+
 document.getElementById("areaKm").innerHTML=(area/1000000).toFixed(4);
 
 }
 
+
+
+/* تصدير Excel */
+
 function exportExcel(){
 
 if(coords.length==0){
+
 alert("ارسم المساحة أولاً");
+
 return;
+
 }
 
 var data=[];
 
 coords.forEach(function(p){
+
 data.push({
+
 Latitude:p.lat,
+
 Longitude:p.lng
+
 });
+
 });
+
 
 data.push({});
-data.push({Latitude:"المساحة متر²",Longitude:document.getElementById("area").innerText});
-data.push({Latitude:"المساحة كم²",Longitude:document.getElementById("areaKm").innerText});
+
+data.push({
+
+Latitude:"المساحة متر²",
+
+Longitude:document.getElementById("area").innerText
+
+});
+
+data.push({
+
+Latitude:"المساحة كم²",
+
+Longitude:document.getElementById("areaKm").innerText
+
+});
+
 
 var ws=XLSX.utils.json_to_sheet(data);
+
 var wb=XLSX.utils.book_new();
 
 XLSX.utils.book_append_sheet(wb,ws,"Area");
