@@ -7,8 +7,7 @@
 
 <title>تحليل المواقع</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
 
@@ -80,6 +79,9 @@ let markers=[]
 let circles=[]
 let drawnPoints=[]
 
+let selectedStreet=""
+let selectedDistrict=""
+
 const COLORS=[
 "#ff5722","#4caf50","#2196f3","#9c27b0",
 "#ffc107","#00bcd4","#8bc34a","#e91e63"
@@ -111,6 +113,16 @@ const place=autocomplete.getPlace()
 
 if(!place.geometry) return
 
+selectedStreet=place.name
+
+place.address_components.forEach(c=>{
+
+if(c.types.includes("sublocality") || c.types.includes("neighborhood")){
+selectedDistrict=c.long_name
+}
+
+})
+
 if(place.geometry.viewport){
 map.fitBounds(place.geometry.viewport)
 }else{
@@ -141,14 +153,14 @@ google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
 
 let polygon=e.overlay
 
-drawnPoints=[]
-
 polygon.setOptions({
 fillColor:"#00ff00",
 fillOpacity:0.35,
 strokeColor:"#008000",
 strokeWeight:3
 })
+
+drawnPoints=[]
 
 let path=polygon.getPath()
 
@@ -172,11 +184,7 @@ lng:p.lng()
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
-
-if(!file){
-alert("اختر ملف Excel")
-return
-}
+if(!file) return
 
 let reader=new FileReader()
 
@@ -306,118 +314,49 @@ circles.push(c)
 
 }
 
-/* جلب اسم الشارع والحي */
-
-async function getAddress(lat,lng){
-
-let url =
-"https://maps.googleapis.com/maps/api/geocode/json"+
-"?latlng="+lat+","+lng+
-"&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y"
-
-let r = await fetch(url)
-let data = await r.json()
-
-let street=""
-let district=""
-
-if(data.results.length){
-
-data.results[0].address_components.forEach(c=>{
-
-if(c.types.includes("route")) street=c.long_name
-if(c.types.includes("sublocality") || c.types.includes("neighborhood"))
-district=c.long_name
-
-})
-
-}
-
-return {street,district}
-
-}
-
 /* تصدير Excel */
 
-async function exportExcel(){
+function exportExcel(){
 
-let workbook = new ExcelJS.Workbook()
+let data=[]
 
-let sheet = workbook.addWorksheet("Map")
+data.push(["Group","Latitude","Longitude","Street","District"])
 
-sheet.columns=[
+groups.forEach((g,i)=>{
 
-{header:"Group",key:"group",width:12},
-{header:"Latitude",key:"lat",width:18},
-{header:"Longitude",key:"lng",width:18},
-{header:"Street",key:"street",width:30},
-{header:"District",key:"district",width:30}
+g.points.forEach(p=>{
 
-]
-
-/* بيانات الدوائر */
-
-for(let i=0;i<groups.length;i++){
-
-let g=groups[i]
-
-let color=COLORS[i%COLORS.length].replace("#","")
-
-for(let p of g.points){
-
-let addr=await getAddress(p.lat,p.lng)
-
-let row=sheet.addRow({
-
-group:i+1,
-lat:p.lat,
-lng:p.lng,
-street:addr.street,
-district:addr.district
+data.push([
+i+1,
+p.lat,
+p.lng,
+selectedStreet,
+selectedDistrict
+])
 
 })
 
-row.eachCell(cell=>{
+})
 
-cell.fill={
-type:'pattern',
-pattern:'solid',
-fgColor:{argb:"55"+color}
-}
+drawnPoints.forEach(p=>{
+
+data.push([
+"Drawing",
+p.lat,
+p.lng,
+selectedStreet,
+selectedDistrict
+])
 
 })
 
-}
+let ws=XLSX.utils.aoa_to_sheet(data)
 
-}
+let wb=XLSX.utils.book_new()
 
-/* بيانات الرسم اليدوي */
+XLSX.utils.book_append_sheet(wb,ws,"Map")
 
-for(let p of drawnPoints){
-
-let addr=await getAddress(p.lat,p.lng)
-
-sheet.addRow({
-
-group:"Drawing",
-lat:p.lat,
-lng:p.lng,
-street:addr.street,
-district:addr.district
-
-})
-
-}
-
-const buffer = await workbook.xlsx.writeBuffer()
-
-let link=document.createElement("a")
-
-link.href=URL.createObjectURL(new Blob([buffer]))
-
-link.download="map_report.xlsx"
-
-link.click()
+XLSX.writeFile(wb,"map_report.xlsx")
 
 }
 
