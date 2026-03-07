@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -74,18 +75,11 @@ cursor:pointer
 <script>
 
 let map
-let groups=[]
-let markers=[]
-let circles=[]
 let drawnPoints=[]
-
 let selectedStreet=""
 let selectedDistrict=""
 
-const COLORS=[
-"#ff5722","#4caf50","#2196f3","#9c27b0",
-"#ffc107","#00bcd4","#8bc34a","#e91e63"
-]
+/* الخريطة */
 
 function initMap(){
 
@@ -175,6 +169,12 @@ lng:p.lng()
 
 }
 
+/* حساب المساحة بالمتر المربع */
+
+let area=google.maps.geometry.spherical.computeArea(path)
+
+alert("المساحة: "+Math.round(area)+" متر مربع")
+
 })
 
 }
@@ -184,6 +184,7 @@ lng:p.lng()
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
+
 if(!file) return
 
 let reader=new FileReader()
@@ -198,119 +199,25 @@ let sheet=workbook.Sheets[workbook.SheetNames[0]]
 
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
-let points=[]
-
 for(let i=1;i<rows.length;i++){
 
 let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
 
 if(!isNaN(lat)&&!isNaN(lng)){
-points.push({lat:lat,lng:lng})
-}
+
+new google.maps.Marker({
+position:{lat:lat,lng:lng},
+map:map
+})
 
 }
 
-groupPoints(points)
+}
 
 }
 
 reader.readAsArrayBuffer(file)
-
-}
-
-/* حساب المسافة */
-
-function distance(a,b){
-
-const R=6371000
-
-const dLat=(b.lat-a.lat)*Math.PI/180
-const dLng=(b.lng-a.lng)*Math.PI/180
-
-const lat1=a.lat*Math.PI/180
-const lat2=b.lat*Math.PI/180
-
-const x=Math.sin(dLat/2)**2+
-Math.sin(dLng/2)**2*Math.cos(lat1)*Math.cos(lat2)
-
-const c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))
-
-return R*c
-
-}
-
-/* تجميع النقاط */
-
-function groupPoints(points){
-
-groups=[]
-
-markers.forEach(m=>m.setMap(null))
-circles.forEach(c=>c.setMap(null))
-
-markers=[]
-circles=[]
-
-points.forEach(p=>{
-
-let added=false
-
-for(let g of groups){
-
-if(distance(p,g.center)<=100){
-g.points.push(p)
-added=true
-break
-}
-
-}
-
-if(!added){
-groups.push({center:p,points:[p]})
-}
-
-})
-
-drawGroups()
-
-}
-
-/* رسم الدوائر */
-
-function drawGroups(){
-
-groups.forEach((g,i)=>{
-
-let color=COLORS[i%COLORS.length]
-
-g.points.forEach(p=>{
-
-let m=new google.maps.Marker({
-position:p,
-map:map
-})
-
-markers.push(m)
-
-})
-
-let c=new google.maps.Circle({
-
-strokeColor:color,
-strokeOpacity:0.9,
-strokeWeight:2,
-fillColor:color,
-fillOpacity:0.25,
-map:map,
-center:g.center,
-radius:100
-
-})
-
-circles.push(c)
-
-})
 
 }
 
@@ -320,28 +227,11 @@ function exportExcel(){
 
 let data=[]
 
-data.push(["Group","Latitude","Longitude","Street","District"])
-
-groups.forEach((g,i)=>{
-
-g.points.forEach(p=>{
-
-data.push([
-i+1,
-p.lat,
-p.lng,
-selectedStreet,
-selectedDistrict
-])
-
-})
-
-})
+data.push(["Latitude","Longitude","Street","District"])
 
 drawnPoints.forEach(p=>{
 
 data.push([
-"Drawing",
 p.lat,
 p.lng,
 selectedStreet,
