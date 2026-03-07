@@ -2,14 +2,12 @@
 <html lang="ar" dir="rtl">
 
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>تحليل المواقع</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
 <style>
@@ -68,8 +66,10 @@ cursor:pointer
 <br>
 
 <button onclick="importExcel()">استيراد Excel</button>
-
 <button onclick="exportExcel()">تصدير Excel</button>
+<button onclick="startPointMode()">تحديد نقاط</button>
+<button onclick="exportImage()">تصدير صورة</button>
+<button onclick="exportHTML()">تصدير HTML</button>
 
 </div>
 
@@ -81,8 +81,8 @@ let map
 let groups=[]
 let markers=[]
 let circles=[]
-let labels=[]
-let polygons=[]
+let manualPoints=[]
+let pointMode=false
 
 const COLORS=[
 "#ff5722","#4caf50","#2196f3","#9c27b0",
@@ -148,11 +148,35 @@ strokeColor:"#008000",
 strokeWeight:2
 })
 
-polygons.push(polygon)
-
 let area=google.maps.geometry.spherical.computeArea(polygon.getPath())
 
 alert("المساحة: "+Math.round(area)+" متر مربع")
+
+})
+
+}
+
+/* تحديد نقاط بالضغط */
+
+function startPointMode(){
+
+pointMode=true
+
+alert("اضغط على الخريطة لإضافة نقاط")
+
+map.addListener("click",function(e){
+
+if(!pointMode) return
+
+let lat=e.latLng.lat()
+let lng=e.latLng.lng()
+
+manualPoints.push({lat,lng})
+
+new google.maps.Marker({
+position:{lat,lng},
+map:map
+})
 
 })
 
@@ -192,7 +216,6 @@ points.push({lat:lat,lng:lng})
 }
 
 groupPoints(points)
-zoomToPoints(points)
 
 }
 
@@ -200,15 +223,7 @@ reader.readAsArrayBuffer(file)
 
 }
 
-function zoomToPoints(points){
-
-let bounds=new google.maps.LatLngBounds()
-
-points.forEach(p=>bounds.extend(p))
-
-map.fitBounds(bounds)
-
-}
+/* حساب المسافة */
 
 function distance(a,b){
 
@@ -229,17 +244,17 @@ return R*c
 
 }
 
+/* تجميع النقاط */
+
 function groupPoints(points){
 
 groups=[]
 
 markers.forEach(m=>m.setMap(null))
 circles.forEach(c=>c.setMap(null))
-labels.forEach(l=>l.close())
 
 markers=[]
 circles=[]
-labels=[]
 
 points.forEach(p=>{
 
@@ -264,6 +279,8 @@ groups.push({center:p,points:[p]})
 drawGroups()
 
 }
+
+/* رسم المجموعات */
 
 function drawGroups(){
 
@@ -297,54 +314,42 @@ radius:100
 
 circles.push(c)
 
-/* معلومات المجموعة */
-
-let label=new google.maps.InfoWindow({
-content:"المجموعة "+(i+1)+"<br>عدد النقاط "+g.points.length,
-position:g.center
-})
-
-label.open(map)
-
-labels.push(label)
-
 })
 
 }
 
 /* تصدير Excel */
 
-async function exportExcel(){
+function exportExcel(){
 
-let canvas = await html2canvas(document.getElementById("map"))
-let img = canvas.toDataURL("image/png")
+let data=[["Group","Latitude","Longitude"]]
 
-let workbook = new ExcelJS.Workbook()
-let sheet = workbook.addWorksheet("Report")
+groups.forEach((g,i)=>{
 
-sheet.columns=[
-{header:"Group",key:"group",width:10},
-{header:"Latitude",key:"lat",width:18},
-{header:"Longitude",key:"lng",width:18}
-]
+g.points.forEach(p=>{
+data.push([i+1,p.lat,p.lng])
+})
+
+})
+
+let ws=XLSX.utils.aoa_to_sheet(data)
 
 groups.forEach((g,i)=>{
 
 let color = COLORS[i % COLORS.length].replace("#","")
 
-g.points.forEach(p=>{
+g.points.forEach((p,j)=>{
 
-let row=sheet.addRow({
-group:i+1,
-lat:p.lat,
-lng:p.lng
-})
+let row=j+2
 
-row.eachCell(cell=>{
-cell.fill={
-type:'pattern',
-pattern:'solid',
-fgColor:{argb:"FF"+color}
+["A","B","C"].forEach(col=>{
+if(ws[col+row]){
+ws[col+row].s={
+fill:{
+patternType:"solid",
+fgColor:{rgb:color}
+}
+}
 }
 })
 
@@ -352,26 +357,54 @@ fgColor:{argb:"FF"+color}
 
 })
 
-/* صورة الخريطة */
+let wb=XLSX.utils.book_new()
 
-const imageId = workbook.addImage({
-base64: img,
-extension: 'png'
-})
+XLSX.utils.book_append_sheet(wb,ws,"Groups")
 
-sheet.addImage(imageId,{
-tl:{col:4,row:0},
-ext:{width:900,height:650}
-})
+XLSX.writeFile(wb,"groups_result.xlsx")
 
-const buffer = await workbook.xlsx.writeBuffer()
+}
 
-let blob = new Blob([buffer])
+/* تصدير صورة */
+
+async function exportImage(){
+
+let canvas = await html2canvas(document.getElementById("map"))
+
+let link=document.createElement("a")
+
+link.href=canvas.toDataURL("image/png")
+
+link.download="map.png"
+
+link.click()
+
+}
+
+/* تصدير HTML */
+
+async function exportHTML(){
+
+let canvas = await html2canvas(document.getElementById("map"))
+
+let img=canvas.toDataURL("image/png")
+
+let html=`
+<html>
+<head><title>الخريطة</title></head>
+<body style="margin:0">
+<img src="${img}" style="width:100%">
+</body>
+</html>
+`
+
+let blob=new Blob([html],{type:"text/html"})
 
 let link=document.createElement("a")
 
 link.href=URL.createObjectURL(blob)
-link.download="map_report.xlsx"
+
+link.download="map.html"
 
 link.click()
 
