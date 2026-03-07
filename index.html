@@ -12,7 +12,6 @@
 
 <style>
 body{margin:0;font-family:tahoma}
-
 #map{height:100vh;width:100%}
 
 #searchBox{
@@ -156,8 +155,6 @@ let rows=XLSX.utils.sheet_to_json(sheet,{header:1});
 
 let points=[];
 
-/* Latitude ثم Longitude */
-
 for(let i=1;i<rows.length;i++){
 
 let lat=parseFloat(rows[i][0]);
@@ -288,59 +285,43 @@ circles.push(c);
 
 }
 
-/* تصدير PDF */
+/* تصدير PDF (الطريقة الصحيحة) */
 
-function exportPDF(){
+async function exportPDF(){
 
 const { jsPDF } = window.jspdf;
 
-let pdf=new jsPDF("p","mm","a4");
+let center = map.getCenter();
+let zoom = map.getZoom();
 
-let center=map.getCenter();
-let zoom=map.getZoom();
-
-/* رسم النقاط والدوائر */
-
-let markersParam="";
-markers.forEach(m=>{
-let p=m.getPosition();
-markersParam+="&markers=color:red%7C"+p.lat()+","+p.lng();
-});
-
-let circlesParam="";
-circles.forEach(c=>{
-let center=c.getCenter();
-circlesParam+="&path=fillcolor:0x5500ff55%7Ccolor:0x0000ff%7Cweight:2";
-for(let a=0;a<=360;a+=20){
-let lat=center.lat()+0.0009*Math.cos(a*Math.PI/180);
-let lng=center.lng()+0.0009*Math.sin(a*Math.PI/180);
-circlesParam+="%7C"+lat+","+lng;
-}
-});
-
-/* صورة الخريطة */
-
-let url=
+let url =
 "https://maps.googleapis.com/maps/api/staticmap"+
 "?center="+center.lat()+","+center.lng()+
 "&zoom="+zoom+
 "&size=1000x1000"+
 "&maptype=hybrid"+
-markersParam+
-circlesParam+
 "&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y";
 
-let img=new Image();
-img.crossOrigin="anonymous";
+/* تحميل الصورة */
 
-img.onload=function(){
+let response = await fetch(url);
+let blob = await response.blob();
 
-pdf.addImage(img,"PNG",0,0,210,210);
+/* تحويلها base64 */
+
+let reader = new FileReader();
+
+reader.onload = function(){
+
+let pdf = new jsPDF("p","mm","a4");
+
+pdf.addImage(reader.result,"PNG",0,0,210,210);
+
 pdf.save("map_report.pdf");
 
 };
 
-img.src=url;
+reader.readAsDataURL(blob);
 
 }
 
