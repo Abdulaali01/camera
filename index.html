@@ -77,7 +77,6 @@ cursor:pointer
 <script>
 
 let map;
-
 let groups=[];
 
 const COLORS=[
@@ -157,7 +156,6 @@ strokeWeight:2
 }
 
 
-
 /* استيراد Excel */
 
 function importExcel(){
@@ -180,8 +178,8 @@ let points=[];
 
 for(let i=1;i<rows.length;i++){
 
-let lat=parseFloat(rows[i][1]);
-let lng=parseFloat(rows[i][0]);
+let lat=parseFloat(rows[i][0]);
+let lng=parseFloat(rows[i][1]);
 
 if(!isNaN(lat)&&!isNaN(lng)){
 
@@ -201,7 +199,6 @@ reader.readAsArrayBuffer(file);
 }
 
 
-
 /* تقريب الخريطة */
 
 function zoomToPoints(points){
@@ -213,7 +210,6 @@ points.forEach(p=>bounds.extend(p));
 map.fitBounds(bounds);
 
 }
-
 
 
 /* حساب المسافة */
@@ -236,7 +232,6 @@ const c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 return R*c;
 
 }
-
 
 
 /* التجميع */
@@ -273,7 +268,6 @@ groups.push({center:p,points:[p]});
 drawGroups();
 
 }
-
 
 
 /* رسم الدوائر */
@@ -319,7 +313,6 @@ radius:100
 });
 
 }
-
 
 
 /* تصدير PDF */
