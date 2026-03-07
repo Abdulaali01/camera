@@ -133,7 +133,6 @@ drawingModes:["polygon"]
 
 drawingManager.setMap(map);
 
-
 google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
 
 if(polygon) polygon.setMap(null);
@@ -183,7 +182,7 @@ function importExcel(){
 let file=document.getElementById("excelFile").files[0];
 
 if(!file){
-alert("اختر ملف Excel أولاً");
+alert("اختر ملف Excel");
 return;
 }
 
@@ -206,7 +205,7 @@ rows.forEach(r=>{
 let lat=parseFloat(r[1]);
 let lng=parseFloat(r[0]);
 
-if(!isNaN(lat) && !isNaN(lng)){
+if(!isNaN(lat)&&!isNaN(lng)){
 points.push({lat:lat,lng:lng});
 }
 
@@ -223,7 +222,7 @@ reader.readAsArrayBuffer(file);
 
 
 
-/* تقريب الخريطة للنقاط */
+/* تقريب الخريطة */
 
 function zoomToPoints(points){
 
@@ -300,22 +299,18 @@ drawGroups(groups);
 function drawGroups(groups){
 
 let colors=[
-"#00ff00",
-"#ff0000",
-"#0000ff",
-"#ff9900",
-"#ff00ff",
-"#00ffff",
-"#9900ff"
+"#f4a261",
+"#2a9d8f",
+"#e76f51",
+"#9b5de5",
+"#3a86ff"
 ];
 
 groups.forEach((g,i)=>{
 
-let color=colors[i % colors.length];
+let color=colors[i%colors.length];
 
 let center=g[0];
-
-/* رسم دائرة 100 متر */
 
 new google.maps.Circle({
 
@@ -324,16 +319,13 @@ strokeOpacity:0.8,
 strokeWeight:2,
 
 fillColor:color,
-fillOpacity:0.2,
+fillOpacity:0.25,
 
 map:map,
 center:center,
 radius:100
 
 });
-
-
-/* رسم النقاط */
 
 g.forEach(p=>{
 
@@ -366,20 +358,24 @@ async function exportPDF(){
 
 const {jsPDF}=window.jspdf;
 
-let pdf=new jsPDF('p','mm','a4');
+let pdf=new jsPDF("p","mm","a4");
 
-let canvas=await html2canvas(document.getElementById("map"));
+let canvas=await html2canvas(document.getElementById("map"),{
+scale:2
+});
 
 let img=canvas.toDataURL("image/png");
 
-pdf.addImage(img,'PNG',0,0,210,297);
+let width=210;
+let height=(canvas.height*width)/canvas.width;
 
-pdf.save("map_report.pdf");
+pdf.addImage(img,"PNG",0,0,width,height);
+
+pdf.save("map_groups.pdf");
 
 }
 
 </script>
-
 
 <script async defer
 src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing,geometry&callback=initMap">
