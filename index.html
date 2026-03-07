@@ -8,6 +8,7 @@
 <title>تحليل المواقع</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
 <style>
@@ -67,9 +68,6 @@ cursor:pointer
 
 <button onclick="importExcel()">استيراد Excel</button>
 <button onclick="exportExcel()">تصدير Excel</button>
-<button onclick="startPointMode()">تحديد نقاط</button>
-<button onclick="exportImage()">تصدير صورة</button>
-<button onclick="exportHTML()">تصدير HTML</button>
 
 </div>
 
@@ -81,8 +79,6 @@ let map
 let groups=[]
 let markers=[]
 let circles=[]
-let manualPoints=[]
-let pointMode=false
 
 const COLORS=[
 "#ff5722","#4caf50","#2196f3","#9c27b0",
@@ -94,7 +90,7 @@ function initMap(){
 map=new google.maps.Map(document.getElementById("map"),{
 
 center:{lat:21.4373,lng:40.5127},
-zoom:13,
+zoom:14,
 mapTypeId:"hybrid"
 
 })
@@ -156,39 +152,16 @@ alert("المساحة: "+Math.round(area)+" متر مربع")
 
 }
 
-/* تحديد نقاط بالضغط */
-
-function startPointMode(){
-
-pointMode=true
-
-alert("اضغط على الخريطة لإضافة نقاط")
-
-map.addListener("click",function(e){
-
-if(!pointMode) return
-
-let lat=e.latLng.lat()
-let lng=e.latLng.lng()
-
-manualPoints.push({lat,lng})
-
-new google.maps.Marker({
-position:{lat,lng},
-map:map
-})
-
-})
-
-}
-
 /* استيراد Excel */
 
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
 
-if(!file) return
+if(!file){
+alert("اختر ملف Excel")
+return
+}
 
 let reader=new FileReader()
 
@@ -280,7 +253,7 @@ drawGroups()
 
 }
 
-/* رسم المجموعات */
+/* رسم الدوائر */
 
 function drawGroups(){
 
@@ -320,91 +293,57 @@ circles.push(c)
 
 /* تصدير Excel */
 
-function exportExcel(){
+async function exportExcel(){
 
-let data=[["Group","Latitude","Longitude"]]
+map.setMapTypeId("roadmap")
 
-groups.forEach((g,i)=>{
+await new Promise(r=>setTimeout(r,800))
+
+let canvas = await html2canvas(document.getElementById("map"))
+
+let img = canvas.toDataURL("image/png")
+
+let workbook = new ExcelJS.Workbook()
+
+let sheet = workbook.addWorksheet("Map")
+
+sheet.columns=[
+{header:"Latitude",key:"lat",width:18},
+{header:"Longitude",key:"lng",width:18}
+]
+
+groups.forEach(g=>{
 
 g.points.forEach(p=>{
-data.push([i+1,p.lat,p.lng])
-})
 
-})
-
-let ws=XLSX.utils.aoa_to_sheet(data)
-
-groups.forEach((g,i)=>{
-
-let color = COLORS[i % COLORS.length].replace("#","")
-
-g.points.forEach((p,j)=>{
-
-let row=j+2
-
-["A","B","C"].forEach(col=>{
-if(ws[col+row]){
-ws[col+row].s={
-fill:{
-patternType:"solid",
-fgColor:{rgb:color}
-}
-}
-}
+sheet.addRow({
+lat:p.lat,
+lng:p.lng
 })
 
 })
 
 })
 
-let wb=XLSX.utils.book_new()
+const imageId = workbook.addImage({
+base64:img,
+extension:'png'
+})
 
-XLSX.utils.book_append_sheet(wb,ws,"Groups")
+sheet.addImage(imageId,{
+tl:{col:3,row:1},
+ext:{width:900,height:650}
+})
 
-XLSX.writeFile(wb,"groups_result.xlsx")
+const buffer = await workbook.xlsx.writeBuffer()
 
-}
-
-/* تصدير صورة */
-
-async function exportImage(){
-
-let canvas = await html2canvas(document.getElementById("map"))
-
-let link=document.createElement("a")
-
-link.href=canvas.toDataURL("image/png")
-
-link.download="map.png"
-
-link.click()
-
-}
-
-/* تصدير HTML */
-
-async function exportHTML(){
-
-let canvas = await html2canvas(document.getElementById("map"))
-
-let img=canvas.toDataURL("image/png")
-
-let html=`
-<html>
-<head><title>الخريطة</title></head>
-<body style="margin:0">
-<img src="${img}" style="width:100%">
-</body>
-</html>
-`
-
-let blob=new Blob([html],{type:"text/html"})
+let blob=new Blob([buffer])
 
 let link=document.createElement("a")
 
 link.href=URL.createObjectURL(blob)
 
-link.download="map.html"
+link.download="map_report.xlsx"
 
 link.click()
 
