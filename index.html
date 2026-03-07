@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>تحليل المواقع</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
 <style>
+
 body{margin:0;font-family:tahoma}
+
 #map{height:100vh;width:100%}
 
 #searchBox{
@@ -46,7 +50,9 @@ background:#2d6cff;
 color:#fff;
 cursor:pointer
 }
+
 </style>
+
 </head>
 
 <body>
@@ -54,10 +60,14 @@ cursor:pointer
 <input id="searchBox" placeholder="ابحث عن حي أو شارع">
 
 <div class="box">
+
 <input type="file" id="excelFile" accept=".xlsx,.xls">
+
 <br>
+
 <button onclick="importExcel()">استيراد Excel</button>
 <button onclick="exportExcel()">تصدير Excel</button>
+
 </div>
 
 <div id="map"></div>
@@ -78,9 +88,11 @@ const COLORS=[
 function initMap(){
 
 map=new google.maps.Map(document.getElementById("map"),{
+
 center:{lat:21.4373,lng:40.5127},
 zoom:14,
-mapTypeId:"roadmap"
+mapTypeId:"hybrid"
+
 })
 
 /* البحث */
@@ -96,22 +108,31 @@ autocomplete.bindTo("bounds",map)
 autocomplete.addListener("place_changed",function(){
 
 const place=autocomplete.getPlace()
+
 if(!place.geometry) return
 
-map.panTo(place.geometry.location)
-map.setZoom(17)
+if(place.geometry.viewport){
+map.fitBounds(place.geometry.viewport)
+}else{
+map.setCenter(place.geometry.location)
+map.setZoom(16)
+}
 
 })
 
 /* الرسم اليدوي */
 
 const drawingManager=new google.maps.drawing.DrawingManager({
+
 drawingMode:null,
+
 drawingControl:true,
+
 drawingControlOptions:{
 position:google.maps.ControlPosition.LEFT_CENTER,
 drawingModes:["polygon"]
 }
+
 })
 
 drawingManager.setMap(map)
@@ -119,7 +140,15 @@ drawingManager.setMap(map)
 google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
 
 let polygon=e.overlay
+
 drawnPoints=[]
+
+polygon.setOptions({
+fillColor:"#00ff00",
+fillOpacity:0.35,
+strokeColor:"#008000",
+strokeWeight:3
+})
 
 let path=polygon.getPath()
 
@@ -259,6 +288,7 @@ markers.push(m)
 })
 
 let c=new google.maps.Circle({
+
 strokeColor:color,
 strokeOpacity:0.9,
 strokeWeight:2,
@@ -267,6 +297,7 @@ fillOpacity:0.25,
 map:map,
 center:g.center,
 radius:100
+
 })
 
 circles.push(c)
@@ -311,14 +342,17 @@ return {street,district}
 async function exportExcel(){
 
 let workbook = new ExcelJS.Workbook()
+
 let sheet = workbook.addWorksheet("Map")
 
 sheet.columns=[
+
 {header:"Group",key:"group",width:12},
 {header:"Latitude",key:"lat",width:18},
 {header:"Longitude",key:"lng",width:18},
 {header:"Street",key:"street",width:30},
 {header:"District",key:"district",width:30}
+
 ]
 
 /* بيانات الدوائر */
@@ -326,6 +360,7 @@ sheet.columns=[
 for(let i=0;i<groups.length;i++){
 
 let g=groups[i]
+
 let color=COLORS[i%COLORS.length].replace("#","")
 
 for(let p of g.points){
@@ -333,19 +368,23 @@ for(let p of g.points){
 let addr=await getAddress(p.lat,p.lng)
 
 let row=sheet.addRow({
+
 group:i+1,
 lat:p.lat,
 lng:p.lng,
 street:addr.street,
 district:addr.district
+
 })
 
 row.eachCell(cell=>{
+
 cell.fill={
 type:'pattern',
 pattern:'solid',
 fgColor:{argb:"55"+color}
 }
+
 })
 
 }
@@ -359,11 +398,13 @@ for(let p of drawnPoints){
 let addr=await getAddress(p.lat,p.lng)
 
 sheet.addRow({
+
 group:"Drawing",
 lat:p.lat,
 lng:p.lng,
 street:addr.street,
 district:addr.district
+
 })
 
 }
@@ -371,8 +412,11 @@ district:addr.district
 const buffer = await workbook.xlsx.writeBuffer()
 
 let link=document.createElement("a")
+
 link.href=URL.createObjectURL(new Blob([buffer]))
+
 link.download="map_report.xlsx"
+
 link.click()
 
 }
