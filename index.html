@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>تحليل البلاغات الجغرافية</title>
+<title>تحليل المواقع</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -100,7 +100,6 @@ mapTypeId:"hybrid"
 
 });
 
-
 /* البحث */
 
 const input=document.getElementById("searchBox");
@@ -122,7 +121,41 @@ map.setZoom(17);
 
 });
 
+
+/* الرسم اليدوي */
+
+const drawingManager=new google.maps.drawing.DrawingManager({
+
+drawingMode:null,
+
+drawingControl:true,
+
+drawingControlOptions:{
+position:google.maps.ControlPosition.LEFT_CENTER,
+drawingModes:["polygon"]
 }
+
+});
+
+drawingManager.setMap(map);
+
+google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
+
+let polygon=e.overlay;
+
+polygon.setOptions({
+
+fillColor:"#00ff00",
+fillOpacity:0.35,
+strokeColor:"#008000",
+strokeWeight:2
+
+});
+
+});
+
+}
+
 
 
 /* استيراد Excel */
@@ -147,8 +180,8 @@ let points=[];
 
 for(let i=1;i<rows.length;i++){
 
-let lat=parseFloat(rows[i][0]);
-let lng=parseFloat(rows[i][1]);
+let lat=parseFloat(rows[i][1]);
+let lng=parseFloat(rows[i][0]);
 
 if(!isNaN(lat)&&!isNaN(lng)){
 
@@ -159,12 +192,28 @@ points.push({lat:lat,lng:lng});
 }
 
 groupPoints(points);
+zoomToPoints(points);
 
 };
 
 reader.readAsArrayBuffer(file);
 
 }
+
+
+
+/* تقريب الخريطة */
+
+function zoomToPoints(points){
+
+let bounds=new google.maps.LatLngBounds();
+
+points.forEach(p=>bounds.extend(p));
+
+map.fitBounds(bounds);
+
+}
+
 
 
 /* حساب المسافة */
@@ -187,6 +236,7 @@ const c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 return R*c;
 
 }
+
 
 
 /* التجميع */
@@ -225,7 +275,8 @@ drawGroups();
 }
 
 
-/* رسم المجموعات */
+
+/* رسم الدوائر */
 
 function drawGroups(){
 
@@ -236,6 +287,7 @@ let color=COLORS[i%COLORS.length];
 g.points.forEach(p=>{
 
 new google.maps.Marker({
+
 position:p,
 map:map,
 icon:{
@@ -245,6 +297,7 @@ fillColor:color,
 fillOpacity:1,
 strokeWeight:1
 }
+
 });
 
 });
@@ -263,57 +316,25 @@ radius:100
 
 });
 
-
-/* رقم المجموعة */
-
-new google.maps.Marker({
-
-position:g.center,
-map:map,
-label:{
-text:String(i+1),
-color:"#fff",
-fontSize:"14px",
-fontWeight:"bold"
-}
-
-});
-
-
-/* اسم الحي */
-
-let geocoder=new google.maps.Geocoder();
-
-geocoder.geocode({location:g.center},function(res){
-
-if(res[0]){
-
-new google.maps.InfoWindow({
-content:"المجموعة "+(i+1)+"<br>"+res[0].formatted_address,
-position:g.center
-}).open(map);
-
-}
-
-});
-
 });
 
 }
+
 
 
 /* تصدير PDF */
 
-async function exportPDF(){
+function exportPDF(){
 
 const {jsPDF}=window.jspdf;
 
+let pdf=new jsPDF("p","mm","a4");
+
 let center=map.getCenter();
-let zoom=map.getZoom();
 
 let url="https://maps.googleapis.com/maps/api/staticmap"+
 "?center="+center.lat()+","+center.lng()+
-"&zoom="+zoom+
+"&zoom="+map.getZoom()+
 "&size=1000x1000"+
 "&maptype=hybrid"+
 "&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y";
@@ -322,47 +343,9 @@ let img=new Image();
 
 img.onload=function(){
 
-let canvas=document.createElement("canvas");
+pdf.addImage(img,"PNG",0,0,210,210);
 
-canvas.width=img.width;
-canvas.height=img.height;
-
-let ctx=canvas.getContext("2d");
-
-ctx.drawImage(img,0,0);
-
-let pdf=new jsPDF("p","mm","a4");
-
-let width=210;
-let height=(canvas.height*width)/canvas.width;
-
-pdf.addImage(canvas.toDataURL("image/png"),"PNG",0,0,width,height);
-
-
-/* جدول المجموعات */
-
-pdf.addPage();
-
-let y=20;
-
-groups.forEach((g,i)=>{
-
-pdf.text("المجموعة "+(i+1),10,y);
-y+=8;
-
-g.points.forEach(p=>{
-
-pdf.text(p.lat.toFixed(6)+" , "+p.lng.toFixed(6),10,y);
-
-y+=6;
-
-});
-
-y+=6;
-
-});
-
-pdf.save("map_groups.pdf");
+pdf.save("map_report.pdf");
 
 };
 
@@ -373,7 +356,7 @@ img.src=url;
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,geometry&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing,geometry&callback=initMap">
 </script>
 
 </body>
