@@ -53,14 +53,6 @@ color:#fff;
 cursor:pointer
 }
 
-.groupLabel{
-background:#000;
-color:#fff;
-padding:2px 6px;
-border-radius:6px;
-font-size:12px
-}
-
 </style>
 
 </head>
@@ -90,6 +82,7 @@ let groups=[]
 let markers=[]
 let circles=[]
 let labels=[]
+let polygons=[]
 
 const COLORS=[
 "#ff5722","#4caf50","#2196f3","#9c27b0",
@@ -123,7 +116,6 @@ const place=autocomplete.getPlace()
 if(!place.geometry) return
 
 map.panTo(place.geometry.location)
-
 map.setZoom(17)
 
 })
@@ -150,13 +142,13 @@ google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
 let polygon=e.overlay
 
 polygon.setOptions({
-
 fillColor:"#00ff00",
 fillOpacity:0.35,
 strokeColor:"#008000",
 strokeWeight:2
-
 })
+
+polygons.push(polygon)
 
 let area=google.maps.geometry.spherical.computeArea(polygon.getPath())
 
@@ -243,7 +235,7 @@ groups=[]
 
 markers.forEach(m=>m.setMap(null))
 circles.forEach(c=>c.setMap(null))
-labels.forEach(l=>l.setMap(null))
+labels.forEach(l=>l.close())
 
 markers=[]
 circles=[]
@@ -256,13 +248,9 @@ let added=false
 for(let g of groups){
 
 if(distance(p,g.center)<=100){
-
 g.points.push(p)
-
 added=true
-
 break
-
 }
 
 }
@@ -309,10 +297,10 @@ radius:100
 
 circles.push(c)
 
-/* رقم المجموعة وعدد النقاط */
+/* معلومات المجموعة */
 
 let label=new google.maps.InfoWindow({
-content:"المجموعة "+(i+1)+"<br>"+g.points.length+" نقطة",
+content:"المجموعة "+(i+1)+"<br>عدد النقاط "+g.points.length,
 position:g.center
 })
 
@@ -392,7 +380,7 @@ link.click()
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing,geometry&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,geometry,drawing&callback=initMap">
 </script>
 
 </body>
