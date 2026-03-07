@@ -7,8 +7,8 @@
 
 <title>تحليل المواقع</title>
 
-<!-- مكتبة Excel مع دعم الألوان -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
 body{margin:0;font-family:tahoma}
@@ -56,10 +56,17 @@ cursor:pointer
 <input id="searchBox" placeholder="ابحث عن حي أو شارع">
 
 <div class="box">
+
 <input type="file" id="excelFile" accept=".xlsx,.xls">
+
 <br>
+
 <button onclick="importExcel()">استيراد Excel</button>
+
 <button onclick="exportExcel()">تصدير Excel</button>
+
+<button onclick="exportMapExcel()">تصدير الخريطة Excel</button>
+
 </div>
 
 <div id="map"></div>
@@ -67,6 +74,7 @@ cursor:pointer
 <script>
 
 let map;
+
 let groups=[];
 let markers=[];
 let circles=[];
@@ -79,9 +87,11 @@ const COLORS=[
 function initMap(){
 
 map=new google.maps.Map(document.getElementById("map"),{
+
 center:{lat:21.4373,lng:40.5127},
 zoom:13,
 mapTypeId:"hybrid"
+
 });
 
 /* البحث */
@@ -97,6 +107,7 @@ autocomplete.bindTo("bounds",map);
 autocomplete.addListener("place_changed",function(){
 
 const place=autocomplete.getPlace();
+
 if(!place.geometry) return;
 
 map.panTo(place.geometry.location);
@@ -104,15 +115,20 @@ map.setZoom(17);
 
 });
 
+
 /* الرسم اليدوي */
 
 const drawingManager=new google.maps.drawing.DrawingManager({
+
 drawingMode:null,
+
 drawingControl:true,
+
 drawingControlOptions:{
 position:google.maps.ControlPosition.LEFT_CENTER,
 drawingModes:["polygon"]
 }
+
 });
 
 drawingManager.setMap(map);
@@ -122,24 +138,29 @@ google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
 let polygon=e.overlay;
 
 polygon.setOptions({
+
 fillColor:"#00ff00",
 fillOpacity:0.35,
 strokeColor:"#008000",
 strokeWeight:2
+
 });
 
 let area=google.maps.geometry.spherical.computeArea(polygon.getPath());
+
 alert("المساحة: "+Math.round(area)+" متر مربع");
 
 });
 
 }
 
+
 /* استيراد Excel */
 
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0];
+
 if(!file) return;
 
 let reader=new FileReader();
@@ -147,8 +168,11 @@ let reader=new FileReader();
 reader.onload=function(e){
 
 let data=new Uint8Array(e.target.result);
+
 let workbook=XLSX.read(data,{type:"array"});
+
 let sheet=workbook.Sheets[workbook.SheetNames[0]];
+
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1});
 
 let points=[];
@@ -156,15 +180,19 @@ let points=[];
 for(let i=1;i<rows.length;i++){
 
 let lat=parseFloat(rows[i][0]);
+
 let lng=parseFloat(rows[i][1]);
 
 if(!isNaN(lat)&&!isNaN(lng)){
+
 points.push({lat:lat,lng:lng});
+
 }
 
 }
 
 groupPoints(points);
+
 zoomToPoints(points);
 
 };
@@ -173,15 +201,19 @@ reader.readAsArrayBuffer(file);
 
 }
 
+
 /* تقريب الخريطة */
 
 function zoomToPoints(points){
 
 let bounds=new google.maps.LatLngBounds();
+
 points.forEach(p=>bounds.extend(p));
+
 map.fitBounds(bounds);
 
 }
+
 
 /* حساب المسافة */
 
@@ -190,9 +222,11 @@ function distance(a,b){
 const R=6371000;
 
 const dLat=(b.lat-a.lat)*Math.PI/180;
+
 const dLng=(b.lng-a.lng)*Math.PI/180;
 
 const lat1=a.lat*Math.PI/180;
+
 const lat2=b.lat*Math.PI/180;
 
 const x=Math.sin(dLat/2)**2+
@@ -204,14 +238,19 @@ return R*c;
 
 }
 
+
 /* تجميع النقاط */
 
 function groupPoints(points){
 
 groups=[];
+
 markers.forEach(m=>m.setMap(null));
+
 circles.forEach(c=>c.setMap(null));
+
 markers=[];
+
 circles=[];
 
 points.forEach(p=>{
@@ -221,15 +260,21 @@ let added=false;
 for(let g of groups){
 
 if(distance(p,g.center)<=100){
+
 g.points.push(p);
+
 added=true;
+
 break;
+
 }
 
 }
 
 if(!added){
+
 groups.push({center:p,points:[p]});
+
 }
 
 });
@@ -237,6 +282,7 @@ groups.push({center:p,points:[p]});
 drawGroups();
 
 }
+
 
 /* رسم المجموعات */
 
@@ -249,8 +295,11 @@ let color=COLORS[i%COLORS.length];
 g.points.forEach(p=>{
 
 let m=new google.maps.Marker({
+
 position:p,
+
 map:map,
+
 icon:{
 path:google.maps.SymbolPath.CIRCLE,
 scale:6,
@@ -258,6 +307,7 @@ fillColor:color,
 fillOpacity:1,
 strokeWeight:1
 }
+
 });
 
 markers.push(m);
@@ -265,14 +315,23 @@ markers.push(m);
 });
 
 let c=new google.maps.Circle({
+
 strokeColor:color,
+
 strokeOpacity:0.9,
+
 strokeWeight:2,
+
 fillColor:color,
+
 fillOpacity:0.25,
+
 map:map,
+
 center:g.center,
+
 radius:100
+
 });
 
 circles.push(c);
@@ -281,13 +340,12 @@ circles.push(c);
 
 }
 
-/* تصدير Excel مع نفس لون المجموعة */
+
+/* تصدير Excel للمجموعات */
 
 function exportExcel(){
 
-let ws = XLSX.utils.aoa_to_sheet([
-["Group","Latitude","Longitude"]
-]);
+let ws = XLSX.utils.aoa_to_sheet([["Group","Latitude","Longitude"]]);
 
 let row=2;
 
@@ -303,9 +361,7 @@ let r=row;
 
 ["A","B","C"].forEach(col=>{
 
-ws[col+r]={v:ws[col+r]?.v,s:{
-fill:{fgColor:{rgb:color}}
-}};
+ws[col+r]={v:ws[col+r]?.v,s:{fill:{fgColor:{rgb:color}}}};
 
 });
 
@@ -316,9 +372,42 @@ row++;
 });
 
 let wb = XLSX.utils.book_new();
+
 XLSX.utils.book_append_sheet(wb, ws, "Groups");
 
 XLSX.writeFile(wb,"groups_result.xlsx");
+
+}
+
+
+/* تصدير صورة الخريطة إلى Excel */
+
+function exportMapExcel(){
+
+html2canvas(document.getElementById("map")).then(function(canvas){
+
+let img = canvas.toDataURL("image/png");
+
+let ws = XLSX.utils.aoa_to_sheet([["الخريطة"]]);
+
+ws["!images"]=[{
+name:"map",
+data:img,
+opts:{base64:true},
+position:{
+type:'twoCellAnchor',
+from:{col:0,row:1},
+to:{col:10,row:30}
+}
+}];
+
+let wb = XLSX.utils.book_new();
+
+XLSX.utils.book_append_sheet(wb,ws,"Map");
+
+XLSX.writeFile(wb,"map_view.xlsx");
+
+});
 
 }
 
