@@ -7,8 +7,8 @@
 
 <title>تحليل المواقع</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- مكتبة Excel مع دعم الألوان -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
 <style>
 body{margin:0;font-family:tahoma}
@@ -59,7 +59,7 @@ cursor:pointer
 <input type="file" id="excelFile" accept=".xlsx,.xls">
 <br>
 <button onclick="importExcel()">استيراد Excel</button>
-<button onclick="exportPDF()">تصدير PDF</button>
+<button onclick="exportExcel()">تصدير Excel</button>
 </div>
 
 <div id="map"></div>
@@ -128,8 +128,6 @@ strokeColor:"#008000",
 strokeWeight:2
 });
 
-/* حساب المساحة */
-
 let area=google.maps.geometry.spherical.computeArea(polygon.getPath());
 alert("المساحة: "+Math.round(area)+" متر مربع");
 
@@ -180,9 +178,7 @@ reader.readAsArrayBuffer(file);
 function zoomToPoints(points){
 
 let bounds=new google.maps.LatLngBounds();
-
 points.forEach(p=>bounds.extend(p));
-
 map.fitBounds(bounds);
 
 }
@@ -285,43 +281,44 @@ circles.push(c);
 
 }
 
-/* تصدير PDF (الطريقة الصحيحة) */
+/* تصدير Excel مع نفس لون المجموعة */
 
-async function exportPDF(){
+function exportExcel(){
 
-const { jsPDF } = window.jspdf;
+let ws = XLSX.utils.aoa_to_sheet([
+["Group","Latitude","Longitude"]
+]);
 
-let center = map.getCenter();
-let zoom = map.getZoom();
+let row=2;
 
-let url =
-"https://maps.googleapis.com/maps/api/staticmap"+
-"?center="+center.lat()+","+center.lng()+
-"&zoom="+zoom+
-"&size=1000x1000"+
-"&maptype=hybrid"+
-"&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y";
+groups.forEach((g,i)=>{
 
-/* تحميل الصورة */
+let color = COLORS[i % COLORS.length].replace("#","");
 
-let response = await fetch(url);
-let blob = await response.blob();
+g.points.forEach(p=>{
 
-/* تحويلها base64 */
+XLSX.utils.sheet_add_aoa(ws, [[i+1,p.lat,p.lng]], {origin:-1});
 
-let reader = new FileReader();
+let r=row;
 
-reader.onload = function(){
+["A","B","C"].forEach(col=>{
 
-let pdf = new jsPDF("p","mm","a4");
+ws[col+r]={v:ws[col+r]?.v,s:{
+fill:{fgColor:{rgb:color}}
+}};
 
-pdf.addImage(reader.result,"PNG",0,0,210,210);
+});
 
-pdf.save("map_report.pdf");
+row++;
 
-};
+});
 
-reader.readAsDataURL(blob);
+});
+
+let wb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb, ws, "Groups");
+
+XLSX.writeFile(wb,"groups_result.xlsx");
 
 }
 
