@@ -2,7 +2,6 @@
 <html lang="ar" dir="rtl">
 
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -12,7 +11,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-
 body{margin:0;font-family:tahoma}
 
 #map{height:100vh;width:100%}
@@ -51,9 +49,7 @@ background:#2d6cff;
 color:#fff;
 cursor:pointer
 }
-
 </style>
-
 </head>
 
 <body>
@@ -61,15 +57,10 @@ cursor:pointer
 <input id="searchBox" placeholder="ابحث عن حي أو شارع">
 
 <div class="box">
-
 <input type="file" id="excelFile" accept=".xlsx,.xls">
-
 <br>
-
 <button onclick="importExcel()">استيراد Excel</button>
-
 <button onclick="exportPDF()">تصدير PDF</button>
-
 </div>
 
 <div id="map"></div>
@@ -78,25 +69,20 @@ cursor:pointer
 
 let map;
 let groups=[];
+let markers=[];
+let circles=[];
 
 const COLORS=[
-"#ff5722",
-"#4caf50",
-"#2196f3",
-"#9c27b0",
-"#ffc107",
-"#00bcd4",
-"#8bc34a"
+"#ff5722","#4caf50","#2196f3","#9c27b0",
+"#ffc107","#00bcd4","#8bc34a","#e91e63"
 ];
 
 function initMap(){
 
 map=new google.maps.Map(document.getElementById("map"),{
-
 center:{lat:21.4373,lng:40.5127},
 zoom:13,
 mapTypeId:"hybrid"
-
 });
 
 /* البحث */
@@ -112,7 +98,6 @@ autocomplete.bindTo("bounds",map);
 autocomplete.addListener("place_changed",function(){
 
 const place=autocomplete.getPlace();
-
 if(!place.geometry) return;
 
 map.panTo(place.geometry.location);
@@ -120,20 +105,15 @@ map.setZoom(17);
 
 });
 
-
 /* الرسم اليدوي */
 
 const drawingManager=new google.maps.drawing.DrawingManager({
-
 drawingMode:null,
-
 drawingControl:true,
-
 drawingControlOptions:{
 position:google.maps.ControlPosition.LEFT_CENTER,
 drawingModes:["polygon"]
 }
-
 });
 
 drawingManager.setMap(map);
@@ -143,38 +123,40 @@ google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
 let polygon=e.overlay;
 
 polygon.setOptions({
-
 fillColor:"#00ff00",
 fillOpacity:0.35,
 strokeColor:"#008000",
 strokeWeight:2
-
 });
+
+/* حساب المساحة */
+
+let area=google.maps.geometry.spherical.computeArea(polygon.getPath());
+alert("المساحة: "+Math.round(area)+" متر مربع");
 
 });
 
 }
-
 
 /* استيراد Excel */
 
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0];
+if(!file) return;
 
 let reader=new FileReader();
 
 reader.onload=function(e){
 
 let data=new Uint8Array(e.target.result);
-
 let workbook=XLSX.read(data,{type:"array"});
-
 let sheet=workbook.Sheets[workbook.SheetNames[0]];
-
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1});
 
 let points=[];
+
+/* Latitude ثم Longitude */
 
 for(let i=1;i<rows.length;i++){
 
@@ -182,9 +164,7 @@ let lat=parseFloat(rows[i][0]);
 let lng=parseFloat(rows[i][1]);
 
 if(!isNaN(lat)&&!isNaN(lng)){
-
 points.push({lat:lat,lng:lng});
-
 }
 
 }
@@ -198,7 +178,6 @@ reader.readAsArrayBuffer(file);
 
 }
 
-
 /* تقريب الخريطة */
 
 function zoomToPoints(points){
@@ -210,7 +189,6 @@ points.forEach(p=>bounds.extend(p));
 map.fitBounds(bounds);
 
 }
-
 
 /* حساب المسافة */
 
@@ -224,8 +202,8 @@ const dLng=(b.lng-a.lng)*Math.PI/180;
 const lat1=a.lat*Math.PI/180;
 const lat2=b.lat*Math.PI/180;
 
-const x=Math.sin(dLat/2)*Math.sin(dLat/2)+
-Math.sin(dLng/2)*Math.sin(dLng/2)*Math.cos(lat1)*Math.cos(lat2);
+const x=Math.sin(dLat/2)**2+
+Math.sin(dLng/2)**2*Math.cos(lat1)*Math.cos(lat2);
 
 const c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 
@@ -233,12 +211,15 @@ return R*c;
 
 }
 
-
-/* التجميع */
+/* تجميع النقاط */
 
 function groupPoints(points){
 
 groups=[];
+markers.forEach(m=>m.setMap(null));
+circles.forEach(c=>c.setMap(null));
+markers=[];
+circles=[];
 
 points.forEach(p=>{
 
@@ -247,30 +228,24 @@ let added=false;
 for(let g of groups){
 
 if(distance(p,g.center)<=100){
-
 g.points.push(p);
 added=true;
 break;
-
 }
 
 }
 
 if(!added){
-
 groups.push({center:p,points:[p]});
-
 }
 
 });
-
 
 drawGroups();
 
 }
 
-
-/* رسم الدوائر */
+/* رسم المجموعات */
 
 function drawGroups(){
 
@@ -280,8 +255,7 @@ let color=COLORS[i%COLORS.length];
 
 g.points.forEach(p=>{
 
-new google.maps.Marker({
-
+let m=new google.maps.Marker({
 position:p,
 map:map,
 icon:{
@@ -291,14 +265,13 @@ fillColor:color,
 fillOpacity:1,
 strokeWeight:1
 }
+});
+
+markers.push(m);
 
 });
 
-});
-
-
-new google.maps.Circle({
-
+let c=new google.maps.Circle({
 strokeColor:color,
 strokeOpacity:0.9,
 strokeWeight:2,
@@ -307,37 +280,62 @@ fillOpacity:0.25,
 map:map,
 center:g.center,
 radius:100
-
 });
+
+circles.push(c);
 
 });
 
 }
 
-
 /* تصدير PDF */
 
 function exportPDF(){
 
-const {jsPDF}=window.jspdf;
+const { jsPDF } = window.jspdf;
 
 let pdf=new jsPDF("p","mm","a4");
 
 let center=map.getCenter();
+let zoom=map.getZoom();
 
-let url="https://maps.googleapis.com/maps/api/staticmap"+
+/* رسم النقاط والدوائر */
+
+let markersParam="";
+markers.forEach(m=>{
+let p=m.getPosition();
+markersParam+="&markers=color:red%7C"+p.lat()+","+p.lng();
+});
+
+let circlesParam="";
+circles.forEach(c=>{
+let center=c.getCenter();
+circlesParam+="&path=fillcolor:0x5500ff55%7Ccolor:0x0000ff%7Cweight:2";
+for(let a=0;a<=360;a+=20){
+let lat=center.lat()+0.0009*Math.cos(a*Math.PI/180);
+let lng=center.lng()+0.0009*Math.sin(a*Math.PI/180);
+circlesParam+="%7C"+lat+","+lng;
+}
+});
+
+/* صورة الخريطة */
+
+let url=
+"https://maps.googleapis.com/maps/api/staticmap"+
 "?center="+center.lat()+","+center.lng()+
-"&zoom="+map.getZoom()+
+"&zoom="+zoom+
 "&size=1000x1000"+
 "&maptype=hybrid"+
+markersParam+
+circlesParam+
 "&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y";
 
 let img=new Image();
+img.crossOrigin="anonymous";
 
 img.onload=function(){
 
 pdf.addImage(img,"PNG",0,0,210,210);
-
 pdf.save("map_report.pdf");
 
 };
@@ -353,5 +351,4 @@ src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB
 </script>
 
 </body>
-
 </html>
