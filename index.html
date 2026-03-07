@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -52,7 +53,16 @@ color:#fff;
 cursor:pointer
 }
 
+.groupLabel{
+background:#000;
+color:#fff;
+padding:2px 6px;
+border-radius:6px;
+font-size:12px
+}
+
 </style>
+
 </head>
 
 <body>
@@ -79,6 +89,7 @@ let map
 let groups=[]
 let markers=[]
 let circles=[]
+let labels=[]
 
 const COLORS=[
 "#ff5722","#4caf50","#2196f3","#9c27b0",
@@ -114,6 +125,42 @@ if(!place.geometry) return
 map.panTo(place.geometry.location)
 
 map.setZoom(17)
+
+})
+
+/* الرسم اليدوي */
+
+const drawingManager=new google.maps.drawing.DrawingManager({
+
+drawingMode:null,
+
+drawingControl:true,
+
+drawingControlOptions:{
+position:google.maps.ControlPosition.LEFT_CENTER,
+drawingModes:["polygon"]
+}
+
+})
+
+drawingManager.setMap(map)
+
+google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
+
+let polygon=e.overlay
+
+polygon.setOptions({
+
+fillColor:"#00ff00",
+fillOpacity:0.35,
+strokeColor:"#008000",
+strokeWeight:2
+
+})
+
+let area=google.maps.geometry.spherical.computeArea(polygon.getPath())
+
+alert("المساحة: "+Math.round(area)+" متر مربع")
 
 })
 
@@ -161,8 +208,6 @@ reader.readAsArrayBuffer(file)
 
 }
 
-/* تقريب الخريطة */
-
 function zoomToPoints(points){
 
 let bounds=new google.maps.LatLngBounds()
@@ -172,8 +217,6 @@ points.forEach(p=>bounds.extend(p))
 map.fitBounds(bounds)
 
 }
-
-/* حساب المسافة */
 
 function distance(a,b){
 
@@ -194,17 +237,17 @@ return R*c
 
 }
 
-/* تجميع النقاط */
-
 function groupPoints(points){
 
 groups=[]
 
 markers.forEach(m=>m.setMap(null))
 circles.forEach(c=>c.setMap(null))
+labels.forEach(l=>l.setMap(null))
 
 markers=[]
 circles=[]
+labels=[]
 
 points.forEach(p=>{
 
@@ -234,8 +277,6 @@ drawGroups()
 
 }
 
-/* رسم المجموعات */
-
 function drawGroups(){
 
 groups.forEach((g,i)=>{
@@ -245,18 +286,8 @@ let color=COLORS[i%COLORS.length]
 g.points.forEach(p=>{
 
 let m=new google.maps.Marker({
-
 position:p,
-map:map,
-
-icon:{
-path:google.maps.SymbolPath.CIRCLE,
-scale:6,
-fillColor:color,
-fillOpacity:1,
-strokeWeight:1
-}
-
+map:map
 })
 
 markers.push(m)
@@ -278,16 +309,30 @@ radius:100
 
 circles.push(c)
 
+/* رقم المجموعة وعدد النقاط */
+
+let label=new google.maps.InfoWindow({
+content:"المجموعة "+(i+1)+"<br>"+g.points.length+" نقطة",
+position:g.center
+})
+
+label.open(map)
+
+labels.push(label)
+
 })
 
 }
 
-/* تصدير Excel مع صورة لكل مجموعة */
+/* تصدير Excel */
 
 async function exportExcel(){
 
+let canvas = await html2canvas(document.getElementById("map"))
+let img = canvas.toDataURL("image/png")
+
 let workbook = new ExcelJS.Workbook()
-let sheet = workbook.addWorksheet("Groups")
+let sheet = workbook.addWorksheet("Report")
 
 sheet.columns=[
 {header:"Group",key:"group",width:10},
@@ -295,21 +340,31 @@ sheet.columns=[
 {header:"Longitude",key:"lng",width:18}
 ]
 
-for(let i=0;i<groups.length;i++){
+groups.forEach((g,i)=>{
 
-let g=groups[i]
+let color = COLORS[i % COLORS.length].replace("#","")
 
-let bounds=new google.maps.LatLngBounds()
+g.points.forEach(p=>{
 
-g.points.forEach(p=>bounds.extend(p))
+let row=sheet.addRow({
+group:i+1,
+lat:p.lat,
+lng:p.lng
+})
 
-map.fitBounds(bounds)
+row.eachCell(cell=>{
+cell.fill={
+type:'pattern',
+pattern:'solid',
+fgColor:{argb:"FF"+color}
+}
+})
 
-await new Promise(r=>setTimeout(r,800))
+})
 
-let canvas=await html2canvas(document.getElementById("map"))
+})
 
-let img=canvas.toDataURL("image/png")
+/* صورة الخريطة */
 
 const imageId = workbook.addImage({
 base64: img,
@@ -317,22 +372,9 @@ extension: 'png'
 })
 
 sheet.addImage(imageId,{
-tl:{col:4,row:(i*20)},
-ext:{width:500,height:350}
+tl:{col:4,row:0},
+ext:{width:900,height:650}
 })
-
-g.points.forEach(p=>{
-sheet.addRow({
-group:i+1,
-lat:p.lat,
-lng:p.lng
-})
-})
-
-sheet.addRow({})
-sheet.addRow({})
-
-}
 
 const buffer = await workbook.xlsx.writeBuffer()
 
@@ -341,8 +383,7 @@ let blob = new Blob([buffer])
 let link=document.createElement("a")
 
 link.href=URL.createObjectURL(blob)
-
-link.download="groups_map.xlsx"
+link.download="map_report.xlsx"
 
 link.click()
 
