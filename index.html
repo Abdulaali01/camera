@@ -7,8 +7,9 @@
 
 <title>تحليل المواقع</title>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
 <style>
 
@@ -113,42 +114,6 @@ if(!place.geometry) return
 map.panTo(place.geometry.location)
 
 map.setZoom(17)
-
-})
-
-/* الرسم اليدوي */
-
-const drawingManager=new google.maps.drawing.DrawingManager({
-
-drawingMode:null,
-
-drawingControl:true,
-
-drawingControlOptions:{
-position:google.maps.ControlPosition.LEFT_CENTER,
-drawingModes:["polygon"]
-}
-
-})
-
-drawingManager.setMap(map)
-
-google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
-
-let polygon=e.overlay
-
-polygon.setOptions({
-
-fillColor:"#00ff00",
-fillOpacity:0.35,
-strokeColor:"#008000",
-strokeWeight:2
-
-})
-
-let area=google.maps.geometry.spherical.computeArea(polygon.getPath())
-
-alert("المساحة: "+Math.round(area)+" متر مربع")
 
 })
 
@@ -317,65 +282,69 @@ circles.push(c)
 
 }
 
-/* تصدير Excel مع صورة الخريطة */
+/* تصدير Excel مع صورة لكل مجموعة */
 
 async function exportExcel(){
 
-let canvas = await html2canvas(document.getElementById("map"))
+let workbook = new ExcelJS.Workbook()
+let sheet = workbook.addWorksheet("Groups")
 
-let img = canvas.toDataURL("image/png")
+sheet.columns=[
+{header:"Group",key:"group",width:10},
+{header:"Latitude",key:"lat",width:18},
+{header:"Longitude",key:"lng",width:18}
+]
 
-let ws = XLSX.utils.aoa_to_sheet([
-["Group","Map","Latitude","Longitude"]
-])
+for(let i=0;i<groups.length;i++){
 
-let row=2
+let g=groups[i]
 
-groups.forEach((g,i)=>{
+let bounds=new google.maps.LatLngBounds()
 
-let color = COLORS[i % COLORS.length].replace("#","")
+g.points.forEach(p=>bounds.extend(p))
+
+map.fitBounds(bounds)
+
+await new Promise(r=>setTimeout(r,800))
+
+let canvas=await html2canvas(document.getElementById("map"))
+
+let img=canvas.toDataURL("image/png")
+
+const imageId = workbook.addImage({
+base64: img,
+extension: 'png'
+})
+
+sheet.addImage(imageId,{
+tl:{col:4,row:(i*20)},
+ext:{width:500,height:350}
+})
 
 g.points.forEach(p=>{
-
-XLSX.utils.sheet_add_aoa(ws, [[i+1,"",p.lat,p.lng]], {origin:-1})
-
-let r=row
-
-["A","B","C","D"].forEach(col=>{
-
-ws[col+r]={v:ws[col+r]?.v,s:{fill:{fgColor:{rgb:color}}}}
-
+sheet.addRow({
+group:i+1,
+lat:p.lat,
+lng:p.lng
+})
 })
 
-if(!ws["!images"]) ws["!images"]=[]
+sheet.addRow({})
+sheet.addRow({})
 
-ws["!images"].push({
-
-name:"map",
-
-data:img,
-
-opts:{base64:true},
-
-position:{
-type:'twoCellAnchor',
-from:{col:1,row:r-1},
-to:{col:2,row:r+1}
 }
 
-})
+const buffer = await workbook.xlsx.writeBuffer()
 
-row++
+let blob = new Blob([buffer])
 
-})
+let link=document.createElement("a")
 
-})
+link.href=URL.createObjectURL(blob)
 
-let wb = XLSX.utils.book_new()
+link.download="groups_map.xlsx"
 
-XLSX.utils.book_append_sheet(wb, ws, "Groups")
-
-XLSX.writeFile(wb,"groups_result.xlsx")
+link.click()
 
 }
 
