@@ -6,11 +6,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>تحليل المواقع</title>
+<title>تحليل البلاغات الجغرافية</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
 
@@ -63,12 +62,9 @@ cursor:pointer
 
 <div class="box">
 
-المساحة: <span id="area">0</span> متر²
-<br>
-المساحة: <span id="areaKm">0</span> كم²
-<br><br>
-
 <input type="file" id="excelFile" accept=".xlsx,.xls">
+
+<br>
 
 <button onclick="importExcel()">استيراد Excel</button>
 
@@ -81,7 +77,18 @@ cursor:pointer
 <script>
 
 let map;
-let polygon=null;
+
+let groups=[];
+
+const COLORS=[
+"#ff5722",
+"#4caf50",
+"#2196f3",
+"#9c27b0",
+"#ffc107",
+"#00bcd4",
+"#8bc34a"
+];
 
 function initMap(){
 
@@ -115,64 +122,7 @@ map.setZoom(17);
 
 });
 
-
-/* الرسم اليدوي */
-
-const drawingManager=new google.maps.drawing.DrawingManager({
-
-drawingMode:null,
-
-drawingControl:true,
-
-drawingControlOptions:{
-position:google.maps.ControlPosition.LEFT_CENTER,
-drawingModes:["polygon"]
 }
-
-});
-
-drawingManager.setMap(map);
-
-google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
-
-if(polygon) polygon.setMap(null);
-
-polygon=e.overlay;
-
-polygon.setOptions({
-
-fillColor:"#00ff00",
-fillOpacity:0.35,
-strokeColor:"#008000",
-strokeWeight:2
-
-});
-
-updateArea();
-
-polygon.getPath().addListener("set_at",updateArea);
-polygon.getPath().addListener("insert_at",updateArea);
-
-});
-
-}
-
-
-/* حساب المساحة */
-
-function updateArea(){
-
-if(!polygon) return;
-
-let area=google.maps.geometry.spherical.computeArea(
-polygon.getPath()
-);
-
-document.getElementById("area").innerHTML=Math.round(area);
-document.getElementById("areaKm").innerHTML=(area/1000000).toFixed(4);
-
-}
-
 
 
 /* استيراد Excel */
@@ -180,11 +130,6 @@ document.getElementById("areaKm").innerHTML=(area/1000000).toFixed(4);
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0];
-
-if(!file){
-alert("اختر ملف Excel");
-return;
-}
 
 let reader=new FileReader();
 
@@ -200,19 +145,20 @@ let rows=XLSX.utils.sheet_to_json(sheet,{header:1});
 
 let points=[];
 
-rows.forEach(r=>{
+for(let i=1;i<rows.length;i++){
 
-let lat=parseFloat(r[1]);
-let lng=parseFloat(r[0]);
+let lat=parseFloat(rows[i][0]);
+let lng=parseFloat(rows[i][1]);
 
 if(!isNaN(lat)&&!isNaN(lng)){
+
 points.push({lat:lat,lng:lng});
+
 }
 
-});
+}
 
 groupPoints(points);
-zoomToPoints(points);
 
 };
 
@@ -221,116 +167,75 @@ reader.readAsArrayBuffer(file);
 }
 
 
-
-/* تقريب الخريطة */
-
-function zoomToPoints(points){
-
-let bounds=new google.maps.LatLngBounds();
-
-points.forEach(p=>{
-bounds.extend(new google.maps.LatLng(p.lat,p.lng));
-});
-
-map.fitBounds(bounds);
-
-setTimeout(()=>{
-if(map.getZoom()>19) map.setZoom(19);
-},500);
-
-}
-
-
-
 /* حساب المسافة */
 
-function getDistance(a,b){
+function distance(a,b){
 
-let R=6371000;
+const R=6371000;
 
-let dLat=(b.lat-a.lat)*Math.PI/180;
-let dLng=(b.lng-a.lng)*Math.PI/180;
+const dLat=(b.lat-a.lat)*Math.PI/180;
+const dLng=(b.lng-a.lng)*Math.PI/180;
 
-let lat1=a.lat*Math.PI/180;
-let lat2=b.lat*Math.PI/180;
+const lat1=a.lat*Math.PI/180;
+const lat2=b.lat*Math.PI/180;
 
-let x=Math.sin(dLat/2)*Math.sin(dLat/2)+
+const x=Math.sin(dLat/2)*Math.sin(dLat/2)+
 Math.sin(dLng/2)*Math.sin(dLng/2)*Math.cos(lat1)*Math.cos(lat2);
 
-let d=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+const c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 
-return R*d;
+return R*c;
 
 }
 
 
-
-/* تجميع النقاط */
+/* التجميع */
 
 function groupPoints(points){
 
-let groups=[];
+groups=[];
 
 points.forEach(p=>{
 
 let added=false;
 
-groups.forEach(g=>{
+for(let g of groups){
 
-if(getDistance(p,g[0])<=100){
-g.push(p);
+if(distance(p,g.center)<=100){
+
+g.points.push(p);
 added=true;
+break;
+
+}
+
+}
+
+if(!added){
+
+groups.push({center:p,points:[p]});
+
 }
 
 });
 
-if(!added) groups.push([p]);
 
-});
-
-drawGroups(groups);
+drawGroups();
 
 }
-
 
 
 /* رسم المجموعات */
 
-function drawGroups(groups){
-
-let colors=[
-"#f4a261",
-"#2a9d8f",
-"#e76f51",
-"#9b5de5",
-"#3a86ff"
-];
+function drawGroups(){
 
 groups.forEach((g,i)=>{
 
-let color=colors[i%colors.length];
+let color=COLORS[i%COLORS.length];
 
-let center=g[0];
-
-new google.maps.Circle({
-
-strokeColor:color,
-strokeOpacity:0.8,
-strokeWeight:2,
-
-fillColor:color,
-fillOpacity:0.25,
-
-map:map,
-center:center,
-radius:100
-
-});
-
-g.forEach(p=>{
+g.points.forEach(p=>{
 
 new google.maps.Marker({
-
 position:p,
 map:map,
 icon:{
@@ -338,18 +243,63 @@ path:google.maps.SymbolPath.CIRCLE,
 scale:6,
 fillColor:color,
 fillOpacity:1,
-strokeColor:"#000",
 strokeWeight:1
 }
+});
 
 });
+
+
+new google.maps.Circle({
+
+strokeColor:color,
+strokeOpacity:0.9,
+strokeWeight:2,
+fillColor:color,
+fillOpacity:0.25,
+map:map,
+center:g.center,
+radius:100
+
+});
+
+
+/* رقم المجموعة */
+
+new google.maps.Marker({
+
+position:g.center,
+map:map,
+label:{
+text:String(i+1),
+color:"#fff",
+fontSize:"14px",
+fontWeight:"bold"
+}
+
+});
+
+
+/* اسم الحي */
+
+let geocoder=new google.maps.Geocoder();
+
+geocoder.geocode({location:g.center},function(res){
+
+if(res[0]){
+
+new google.maps.InfoWindow({
+content:"المجموعة "+(i+1)+"<br>"+res[0].formatted_address,
+position:g.center
+}).open(map);
+
+}
 
 });
 
 });
 
 }
-
 
 
 /* تصدير PDF */
@@ -358,28 +308,74 @@ async function exportPDF(){
 
 const {jsPDF}=window.jspdf;
 
+let center=map.getCenter();
+let zoom=map.getZoom();
+
+let url="https://maps.googleapis.com/maps/api/staticmap"+
+"?center="+center.lat()+","+center.lng()+
+"&zoom="+zoom+
+"&size=1000x1000"+
+"&maptype=hybrid"+
+"&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y";
+
+let img=new Image();
+
+img.onload=function(){
+
+let canvas=document.createElement("canvas");
+
+canvas.width=img.width;
+canvas.height=img.height;
+
+let ctx=canvas.getContext("2d");
+
+ctx.drawImage(img,0,0);
+
 let pdf=new jsPDF("p","mm","a4");
-
-let canvas=await html2canvas(document.getElementById("map"),{
-scale:2
-});
-
-let img=canvas.toDataURL("image/png");
 
 let width=210;
 let height=(canvas.height*width)/canvas.width;
 
-pdf.addImage(img,"PNG",0,0,width,height);
+pdf.addImage(canvas.toDataURL("image/png"),"PNG",0,0,width,height);
+
+
+/* جدول المجموعات */
+
+pdf.addPage();
+
+let y=20;
+
+groups.forEach((g,i)=>{
+
+pdf.text("المجموعة "+(i+1),10,y);
+y+=8;
+
+g.points.forEach(p=>{
+
+pdf.text(p.lat.toFixed(6)+" , "+p.lng.toFixed(6),10,y);
+
+y+=6;
+
+});
+
+y+=6;
+
+});
 
 pdf.save("map_groups.pdf");
+
+};
+
+img.src=url;
 
 }
 
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing,geometry&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,geometry&callback=initMap">
 </script>
 
 </body>
+
 </html>
