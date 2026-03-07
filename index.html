@@ -1,19 +1,15 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>تحليل المواقع</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
 <style>
-
 body{margin:0;font-family:tahoma}
-
 #map{height:100vh;width:100%}
 
 #searchBox{
@@ -50,9 +46,7 @@ background:#2d6cff;
 color:#fff;
 cursor:pointer
 }
-
 </style>
-
 </head>
 
 <body>
@@ -60,14 +54,10 @@ cursor:pointer
 <input id="searchBox" placeholder="ابحث عن حي أو شارع">
 
 <div class="box">
-
 <input type="file" id="excelFile" accept=".xlsx,.xls">
-
 <br>
-
 <button onclick="importExcel()">استيراد Excel</button>
 <button onclick="exportExcel()">تصدير Excel</button>
-
 </div>
 
 <div id="map"></div>
@@ -75,20 +65,22 @@ cursor:pointer
 <script>
 
 let map
+let groups=[]
+let markers=[]
+let circles=[]
 let drawnPoints=[]
-let selectedStreet=""
-let selectedDistrict=""
 
-/* الخريطة */
+const COLORS=[
+"#ff5722","#4caf50","#2196f3","#9c27b0",
+"#ffc107","#00bcd4","#8bc34a","#e91e63"
+]
 
 function initMap(){
 
 map=new google.maps.Map(document.getElementById("map"),{
-
 center:{lat:21.4373,lng:40.5127},
 zoom:14,
 mapTypeId:"hybrid"
-
 })
 
 /* البحث */
@@ -107,16 +99,6 @@ const place=autocomplete.getPlace()
 
 if(!place.geometry) return
 
-selectedStreet=place.name
-
-place.address_components.forEach(c=>{
-
-if(c.types.includes("sublocality") || c.types.includes("neighborhood")){
-selectedDistrict=c.long_name
-}
-
-})
-
 if(place.geometry.viewport){
 map.fitBounds(place.geometry.viewport)
 }else{
@@ -129,16 +111,12 @@ map.setZoom(16)
 /* الرسم اليدوي */
 
 const drawingManager=new google.maps.drawing.DrawingManager({
-
 drawingMode:null,
-
 drawingControl:true,
-
 drawingControlOptions:{
 position:google.maps.ControlPosition.LEFT_CENTER,
 drawingModes:["polygon"]
 }
-
 })
 
 drawingManager.setMap(map)
@@ -169,7 +147,7 @@ lng:p.lng()
 
 }
 
-/* حساب المساحة بالمتر المربع */
+/* حساب المساحة */
 
 let area=google.maps.geometry.spherical.computeArea(path)
 
@@ -185,7 +163,10 @@ function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
 
-if(!file) return
+if(!file){
+alert("اختر ملف Excel")
+return
+}
 
 let reader=new FileReader()
 
@@ -199,21 +180,20 @@ let sheet=workbook.Sheets[workbook.SheetNames[0]]
 
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
+let points=[]
+
 for(let i=1;i<rows.length;i++){
 
 let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
 
 if(!isNaN(lat)&&!isNaN(lng)){
-
-new google.maps.Marker({
-position:{lat:lat,lng:lng},
-map:map
-})
-
+points.push({lat:lat,lng:lng})
 }
 
 }
+
+groupPoints(points)
 
 }
 
@@ -221,32 +201,204 @@ reader.readAsArrayBuffer(file)
 
 }
 
-/* تصدير Excel */
+/* حساب المسافة */
 
-function exportExcel(){
+function distance(a,b){
 
-let data=[]
+const R=6371000
 
-data.push(["Latitude","Longitude","Street","District"])
+const dLat=(b.lat-a.lat)*Math.PI/180
+const dLng=(b.lng-a.lng)*Math.PI/180
 
-drawnPoints.forEach(p=>{
+const lat1=a.lat*Math.PI/180
+const lat2=b.lat*Math.PI/180
 
-data.push([
-p.lat,
-p.lng,
-selectedStreet,
-selectedDistrict
-])
+const x=Math.sin(dLat/2)**2+
+Math.sin(dLng/2)**2*Math.cos(lat1)*Math.cos(lat2)
+
+const c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))
+
+return R*c
+
+}
+
+/* تجميع النقاط */
+
+function groupPoints(points){
+
+groups=[]
+
+markers.forEach(m=>m.setMap(null))
+circles.forEach(c=>c.setMap(null))
+
+markers=[]
+circles=[]
+
+points.forEach(p=>{
+
+let added=false
+
+for(let g of groups){
+
+if(distance(p,g.center)<=100){
+g.points.push(p)
+added=true
+break
+}
+
+}
+
+if(!added){
+groups.push({center:p,points:[p]})
+}
 
 })
 
-let ws=XLSX.utils.aoa_to_sheet(data)
+drawGroups()
 
-let wb=XLSX.utils.book_new()
+}
 
-XLSX.utils.book_append_sheet(wb,ws,"Map")
+/* رسم الدوائر */
 
-XLSX.writeFile(wb,"map_report.xlsx")
+function drawGroups(){
+
+groups.forEach((g,i)=>{
+
+let color=COLORS[i%COLORS.length]
+
+g.points.forEach(p=>{
+
+let m=new google.maps.Marker({
+position:p,
+map:map
+})
+
+markers.push(m)
+
+})
+
+let c=new google.maps.Circle({
+strokeColor:color,
+strokeOpacity:0.9,
+strokeWeight:2,
+fillColor:color,
+fillOpacity:0.25,
+map:map,
+center:g.center,
+radius:100
+})
+
+circles.push(c)
+
+})
+
+}
+
+/* استخراج اسم الشارع والحي */
+
+async function getAddress(lat,lng){
+
+let url=
+"https://maps.googleapis.com/maps/api/geocode/json"+
+"?latlng="+lat+","+lng+
+"&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y"
+
+let r=await fetch(url)
+let data=await r.json()
+
+let street=""
+let district=""
+
+if(data.results.length){
+
+data.results.forEach(res=>{
+
+res.address_components.forEach(c=>{
+
+if(c.types.includes("route") && street==""){
+street=c.long_name
+}
+
+if((c.types.includes("sublocality") || c.types.includes("neighborhood")) && district==""){
+district=c.long_name
+}
+
+})
+
+})
+
+}
+
+if(street=="") street=district
+
+return {street,district}
+
+}
+
+/* تصدير Excel */
+
+async function exportExcel(){
+
+let workbook = new ExcelJS.Workbook()
+let sheet = workbook.addWorksheet("Map")
+
+sheet.columns=[
+{header:"Group",key:"group",width:10},
+{header:"Latitude",key:"lat",width:18},
+{header:"Longitude",key:"lng",width:18},
+{header:"Street",key:"street",width:30},
+{header:"District",key:"district",width:30}
+]
+
+for(let i=0;i<groups.length;i++){
+
+let g=groups[i]
+let color=COLORS[i%COLORS.length].replace("#","")
+
+for(let p of g.points){
+
+let addr=await getAddress(p.lat,p.lng)
+
+let row=sheet.addRow({
+group:i+1,
+lat:p.lat,
+lng:p.lng,
+street:addr.street,
+district:addr.district
+})
+
+row.eachCell(cell=>{
+cell.fill={
+type:'pattern',
+pattern:'solid',
+fgColor:{argb:"55"+color}
+}
+})
+
+}
+
+}
+
+for(let p of drawnPoints){
+
+let addr=await getAddress(p.lat,p.lng)
+
+sheet.addRow({
+group:"Drawing",
+lat:p.lat,
+lng:p.lng,
+street:addr.street,
+district:addr.district
+})
+
+}
+
+const buffer = await workbook.xlsx.writeBuffer()
+
+let link=document.createElement("a")
+link.href=URL.createObjectURL(new Blob([buffer]))
+link.download="map_report.xlsx"
+link.click()
 
 }
 
