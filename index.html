@@ -11,7 +11,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
+
 body{margin:0;font-family:tahoma}
+
 #map{height:100vh;width:100%}
 
 #searchBox{
@@ -48,6 +50,7 @@ background:#2d6cff;
 color:#fff;
 cursor:pointer
 }
+
 </style>
 </head>
 
@@ -65,24 +68,21 @@ cursor:pointer
 
 <button onclick="exportExcel()">تصدير Excel</button>
 
-<button onclick="exportMapExcel()">تصدير الخريطة Excel</button>
-
 </div>
 
 <div id="map"></div>
 
 <script>
 
-let map;
-
-let groups=[];
-let markers=[];
-let circles=[];
+let map
+let groups=[]
+let markers=[]
+let circles=[]
 
 const COLORS=[
 "#ff5722","#4caf50","#2196f3","#9c27b0",
 "#ffc107","#00bcd4","#8bc34a","#e91e63"
-];
+]
 
 function initMap(){
 
@@ -92,29 +92,29 @@ center:{lat:21.4373,lng:40.5127},
 zoom:13,
 mapTypeId:"hybrid"
 
-});
+})
 
 /* البحث */
 
-const input=document.getElementById("searchBox");
+const input=document.getElementById("searchBox")
 
 const autocomplete=new google.maps.places.Autocomplete(input,{
 componentRestrictions:{country:"sa"}
-});
+})
 
-autocomplete.bindTo("bounds",map);
+autocomplete.bindTo("bounds",map)
 
 autocomplete.addListener("place_changed",function(){
 
-const place=autocomplete.getPlace();
+const place=autocomplete.getPlace()
 
-if(!place.geometry) return;
+if(!place.geometry) return
 
-map.panTo(place.geometry.location);
-map.setZoom(17);
+map.panTo(place.geometry.location)
 
-});
+map.setZoom(17)
 
+})
 
 /* الرسم اليدوي */
 
@@ -129,13 +129,13 @@ position:google.maps.ControlPosition.LEFT_CENTER,
 drawingModes:["polygon"]
 }
 
-});
+})
 
-drawingManager.setMap(map);
+drawingManager.setMap(map)
 
 google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
 
-let polygon=e.overlay;
+let polygon=e.overlay
 
 polygon.setOptions({
 
@@ -144,145 +144,130 @@ fillOpacity:0.35,
 strokeColor:"#008000",
 strokeWeight:2
 
-});
+})
 
-let area=google.maps.geometry.spherical.computeArea(polygon.getPath());
+let area=google.maps.geometry.spherical.computeArea(polygon.getPath())
 
-alert("المساحة: "+Math.round(area)+" متر مربع");
+alert("المساحة: "+Math.round(area)+" متر مربع")
 
-});
+})
 
 }
-
 
 /* استيراد Excel */
 
 function importExcel(){
 
-let file=document.getElementById("excelFile").files[0];
+let file=document.getElementById("excelFile").files[0]
 
-if(!file) return;
+if(!file) return
 
-let reader=new FileReader();
+let reader=new FileReader()
 
 reader.onload=function(e){
 
-let data=new Uint8Array(e.target.result);
+let data=new Uint8Array(e.target.result)
 
-let workbook=XLSX.read(data,{type:"array"});
+let workbook=XLSX.read(data,{type:"array"})
 
-let sheet=workbook.Sheets[workbook.SheetNames[0]];
+let sheet=workbook.Sheets[workbook.SheetNames[0]]
 
-let rows=XLSX.utils.sheet_to_json(sheet,{header:1});
+let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
-let points=[];
+let points=[]
 
 for(let i=1;i<rows.length;i++){
 
-let lat=parseFloat(rows[i][0]);
-
-let lng=parseFloat(rows[i][1]);
+let lat=parseFloat(rows[i][0])
+let lng=parseFloat(rows[i][1])
 
 if(!isNaN(lat)&&!isNaN(lng)){
-
-points.push({lat:lat,lng:lng});
-
+points.push({lat:lat,lng:lng})
 }
 
 }
 
-groupPoints(points);
-
-zoomToPoints(points);
-
-};
-
-reader.readAsArrayBuffer(file);
+groupPoints(points)
+zoomToPoints(points)
 
 }
 
+reader.readAsArrayBuffer(file)
+
+}
 
 /* تقريب الخريطة */
 
 function zoomToPoints(points){
 
-let bounds=new google.maps.LatLngBounds();
+let bounds=new google.maps.LatLngBounds()
 
-points.forEach(p=>bounds.extend(p));
+points.forEach(p=>bounds.extend(p))
 
-map.fitBounds(bounds);
+map.fitBounds(bounds)
 
 }
-
 
 /* حساب المسافة */
 
 function distance(a,b){
 
-const R=6371000;
+const R=6371000
 
-const dLat=(b.lat-a.lat)*Math.PI/180;
+const dLat=(b.lat-a.lat)*Math.PI/180
+const dLng=(b.lng-a.lng)*Math.PI/180
 
-const dLng=(b.lng-a.lng)*Math.PI/180;
-
-const lat1=a.lat*Math.PI/180;
-
-const lat2=b.lat*Math.PI/180;
+const lat1=a.lat*Math.PI/180
+const lat2=b.lat*Math.PI/180
 
 const x=Math.sin(dLat/2)**2+
-Math.sin(dLng/2)**2*Math.cos(lat1)*Math.cos(lat2);
+Math.sin(dLng/2)**2*Math.cos(lat1)*Math.cos(lat2)
 
-const c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+const c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))
 
-return R*c;
+return R*c
 
 }
-
 
 /* تجميع النقاط */
 
 function groupPoints(points){
 
-groups=[];
+groups=[]
 
-markers.forEach(m=>m.setMap(null));
+markers.forEach(m=>m.setMap(null))
+circles.forEach(c=>c.setMap(null))
 
-circles.forEach(c=>c.setMap(null));
-
-markers=[];
-
-circles=[];
+markers=[]
+circles=[]
 
 points.forEach(p=>{
 
-let added=false;
+let added=false
 
 for(let g of groups){
 
 if(distance(p,g.center)<=100){
 
-g.points.push(p);
+g.points.push(p)
 
-added=true;
+added=true
 
-break;
+break
 
 }
 
 }
 
 if(!added){
-
-groups.push({center:p,points:[p]});
-
+groups.push({center:p,points:[p]})
 }
 
-});
+})
 
-drawGroups();
+drawGroups()
 
 }
-
 
 /* رسم المجموعات */
 
@@ -290,14 +275,13 @@ function drawGroups(){
 
 groups.forEach((g,i)=>{
 
-let color=COLORS[i%COLORS.length];
+let color=COLORS[i%COLORS.length]
 
 g.points.forEach(p=>{
 
 let m=new google.maps.Marker({
 
 position:p,
-
 map:map,
 
 icon:{
@@ -308,106 +292,90 @@ fillOpacity:1,
 strokeWeight:1
 }
 
-});
+})
 
-markers.push(m);
+markers.push(m)
 
-});
+})
 
 let c=new google.maps.Circle({
 
 strokeColor:color,
-
 strokeOpacity:0.9,
-
 strokeWeight:2,
-
 fillColor:color,
-
 fillOpacity:0.25,
-
 map:map,
-
 center:g.center,
-
 radius:100
 
-});
+})
 
-circles.push(c);
+circles.push(c)
 
-});
+})
 
 }
 
+/* تصدير Excel مع صورة الخريطة */
 
-/* تصدير Excel للمجموعات */
+async function exportExcel(){
 
-function exportExcel(){
+let canvas = await html2canvas(document.getElementById("map"))
 
-let ws = XLSX.utils.aoa_to_sheet([["Group","Latitude","Longitude"]]);
+let img = canvas.toDataURL("image/png")
 
-let row=2;
+let ws = XLSX.utils.aoa_to_sheet([
+["Group","Map","Latitude","Longitude"]
+])
+
+let row=2
 
 groups.forEach((g,i)=>{
 
-let color = COLORS[i % COLORS.length].replace("#","");
+let color = COLORS[i % COLORS.length].replace("#","")
 
 g.points.forEach(p=>{
 
-XLSX.utils.sheet_add_aoa(ws, [[i+1,p.lat,p.lng]], {origin:-1});
+XLSX.utils.sheet_add_aoa(ws, [[i+1,"",p.lat,p.lng]], {origin:-1})
 
-let r=row;
+let r=row
 
-["A","B","C"].forEach(col=>{
+["A","B","C","D"].forEach(col=>{
 
-ws[col+r]={v:ws[col+r]?.v,s:{fill:{fgColor:{rgb:color}}}};
+ws[col+r]={v:ws[col+r]?.v,s:{fill:{fgColor:{rgb:color}}}}
 
-});
+})
 
-row++;
+if(!ws["!images"]) ws["!images"]=[]
 
-});
+ws["!images"].push({
 
-});
-
-let wb = XLSX.utils.book_new();
-
-XLSX.utils.book_append_sheet(wb, ws, "Groups");
-
-XLSX.writeFile(wb,"groups_result.xlsx");
-
-}
-
-
-/* تصدير صورة الخريطة إلى Excel */
-
-function exportMapExcel(){
-
-html2canvas(document.getElementById("map")).then(function(canvas){
-
-let img = canvas.toDataURL("image/png");
-
-let ws = XLSX.utils.aoa_to_sheet([["الخريطة"]]);
-
-ws["!images"]=[{
 name:"map",
+
 data:img,
+
 opts:{base64:true},
+
 position:{
 type:'twoCellAnchor',
-from:{col:0,row:1},
-to:{col:10,row:30}
+from:{col:1,row:r-1},
+to:{col:2,row:r+1}
 }
-}];
 
-let wb = XLSX.utils.book_new();
+})
 
-XLSX.utils.book_append_sheet(wb,ws,"Map");
+row++
 
-XLSX.writeFile(wb,"map_view.xlsx");
+})
 
-});
+})
+
+let wb = XLSX.utils.book_new()
+
+XLSX.utils.book_append_sheet(wb, ws, "Groups")
+
+XLSX.writeFile(wb,"groups_result.xlsx")
 
 }
 
