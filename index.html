@@ -84,7 +84,7 @@ cursor:pointer
 let map
 let groups=[]
 let markers=[]
-let charts=[]
+let circles=[]
 let drawnPoints=[]
 
 const COLORS=[
@@ -278,10 +278,10 @@ function groupPoints(points){
 groups=[]
 
 markers.forEach(m=>m.setMap(null))
-charts.forEach(c=>c.setMap(null))
+circles.forEach(c=>c.setMap(null))
 
 markers=[]
-charts=[]
+circles=[]
 
 points.forEach(p=>{
 
@@ -316,7 +316,7 @@ drawGroups()
 
 }
 
-/* رسم النقاط + الرسم البياني */
+/* رسم الدوائر الكبيرة */
 
 function drawGroups(){
 
@@ -326,11 +326,10 @@ let color=COLORS[i%COLORS.length]
 let count=g.points.length
 let center=g.center
 
-/* النقاط */
-
 g.points.forEach(p=>{
 
-let m=new google.maps.Marker({
+let m=
+new google.maps.Marker({
 position:p,
 map:map
 })
@@ -339,25 +338,23 @@ markers.push(m)
 
 })
 
-/* رسم بياني دائري */
-
 let svg=`
-<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">
-<circle cx="40" cy="40" r="30"
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140">
+<circle cx="70" cy="70" r="55"
 fill="${color}"
 fill-opacity="0.25"
 stroke="${color}"
-stroke-width="4"/>
-<circle cx="40" cy="40" r="20" fill="white"/>
-<text x="40" y="45"
-font-size="18"
+stroke-width="5"/>
+<circle cx="70" cy="70" r="38" fill="white"/>
+<text x="70" y="80"
+font-size="32"
 text-anchor="middle"
 fill="${color}"
 font-weight="bold">${count}</text>
 </svg>
 `
 
-let chartMarker=new google.maps.Marker({
+let marker=new google.maps.Marker({
 
 position:center,
 
@@ -366,18 +363,18 @@ map:map,
 icon:{
 url:"data:image/svg+xml;charset=UTF-8,"+
 encodeURIComponent(svg),
-scaledSize:new google.maps.Size(80,80)
+scaledSize:new google.maps.Size(140,140)
 }
 
 })
 
-charts.push(chartMarker)
+circles.push(marker)
 
 })
 
 }
 
-/* استخراج العنوان */
+/* استخراج اسم الشارع والحي */
 
 async function getAddress(lat,lng){
 
