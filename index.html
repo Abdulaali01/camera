@@ -9,34 +9,64 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
 <style>
-body{margin:0;font-family:tahoma}
-#map{height:100vh;width:100%}
 
-#searchBox{
-position:absolute;top:10px;left:50%;
-transform:translateX(-50%);
-width:320px;padding:10px;border-radius:8px;
-border:1px solid #ccc;background:#fff;
-font-size:16px;z-index:5
+body{
+margin:0;
+font-family:tahoma
 }
 
-.box{
-position:absolute;top:60px;right:10px;
-background:#fff;padding:12px;border-radius:10px;
-box-shadow:0 0 6px rgba(0,0,0,.3);z-index:5
+#map{
+height:100vh;
+width:100%
+}
+
+#searchBox{
+position:absolute;
+top:10px;
+left:50%;
+transform:translateX(-50%);
+width:320px;
+padding:10px;
+border-radius:8px;
+border:1px solid #ccc;
+background:#fff;
+font-size:16px;
+z-index:5
+}
+
+.panel{
+position:absolute;
+top:60px;
+right:10px;
+background:#fff;
+padding:12px;
+border-radius:10px;
+box-shadow:0 0 6px rgba(0,0,0,.3);
+z-index:5
 }
 
 .stats{
-position:absolute;bottom:10px;right:10px;
-background:#fff;padding:10px;border-radius:10px;
-box-shadow:0 0 6px rgba(0,0,0,.3);font-size:13px;z-index:999
+position:absolute;
+bottom:10px;
+right:10px;
+background:#fff;
+padding:10px;
+border-radius:10px;
+box-shadow:0 0 6px rgba(0,0,0,.3);
+font-size:13px;
+z-index:5
 }
 
 button{
-margin-top:6px;padding:8px 12px;border:none;
-border-radius:6px;background:#2d6cff;
-color:#fff;cursor:pointer
+margin-top:6px;
+padding:8px 12px;
+border:none;
+border-radius:6px;
+background:#2d6cff;
+color:#fff;
+cursor:pointer
 }
+
 </style>
 </head>
 
@@ -44,150 +74,259 @@ color:#fff;cursor:pointer
 
 <input id="searchBox" placeholder="ابحث عن حي أو شارع">
 
-<div class="box">
+<div class="panel">
+
 <input type="file" id="excelFile" accept=".xlsx,.xls">
+
 <br>
+
 <button onclick="importExcel()">استيراد Excel</button>
+
 <button onclick="exportExcel()">تصدير Excel</button>
+
 </div>
 
 <div class="stats">
+
 📊 إحصائيات الاستخدام
-<br>تحميل الخريطة: <span id="mapLoad">0</span>
-<br>عمليات البحث: <span id="searchCount">0</span>
-<br>تحويل الإحداثيات: <span id="geoCount">0</span>
-<br><br>التكلفة التقريبية: <span id="cost">$0</span>
+
+<br>
+
+تحميل الخريطة:
+<span id="mapLoad">0</span>
+
+<br>
+
+عمليات البحث:
+<span id="searchCount">0</span>
+
+<br>
+
+تحويل الإحداثيات:
+<span id="geoCount">0</span>
+
+<br><br>
+
+التكلفة التقريبية:
+<span id="cost">$0</span>
+
 </div>
 
 <div id="map"></div>
 
 <script>
 
+/* حدود الحماية */
+
+const LIMITS={
+mapLoad:50,
+search:100,
+geocode:200
+}
+
+function today(){
+return new Date().toISOString().slice(0,10)
+}
+
+function getUsage(){
+
+let data=JSON.parse(localStorage.getItem("usageData")||"{}")
+
+if(data.date!==today()){
+
+data={
+date:today(),
+mapLoad:0,
+search:0,
+geocode:0
+}
+
+}
+
+return data
+}
+
+function saveUsage(d){
+localStorage.setItem("usageData",JSON.stringify(d))
+}
+
+function checkLimit(type){
+
+let u=getUsage()
+
+if(u[type]>=LIMITS[type]){
+
+alert("تم الوصول للحد اليومي")
+
+throw new Error("LIMIT")
+
+}
+
+u[type]++
+
+saveUsage(u)
+
+updateStats(u)
+
+}
+
+function updateStats(u){
+
+document.getElementById("mapLoad").innerText=u.mapLoad
+document.getElementById("searchCount").innerText=u.search
+document.getElementById("geoCount").innerText=u.geocode
+
+let cost=
+(u.mapLoad*0.007)+
+(u.search*0.017)+
+(u.geocode*0.005)
+
+document.getElementById("cost").innerText="$"+cost.toFixed(2)
+
+}
+
+window.onload=()=>{
+updateStats(getUsage())
+}
+
 let map
+
 let groups=[]
 let markers=[]
 let circles=[]
 let drawnPoints=[]
 
-/* عدادات الاستخدام */
-
-let mapLoad = localStorage.getItem("mapLoad") || 0
-let searchCount = localStorage.getItem("searchCount") || 0
-let geoCount = localStorage.getItem("geoCount") || 0
-
-mapLoad++
-localStorage.setItem("mapLoad", mapLoad)
-
-document.getElementById("mapLoad").innerText = mapLoad
-document.getElementById("searchCount").innerText = searchCount
-document.getElementById("geoCount").innerText = geoCount
-
-function updateCost(){
-let cost = (mapLoad * 0.007) + (searchCount * 0.017) + (geoCount * 0.005)
-document.getElementById("cost").innerText = "$" + cost.toFixed(2)
-}
-updateCost()
-
 const COLORS=[
-"#ff5722","#4caf50","#2196f3","#9c27b0",
-"#ffc107","#00bcd4","#8bc34a","#e91e63"
+"#ff5722",
+"#4caf50",
+"#2196f3",
+"#9c27b0",
+"#ffc107",
+"#00bcd4",
+"#8bc34a"
 ]
 
 function initMap(){
 
-map=new google.maps.Map(document.getElementById("map"),{
+checkLimit("mapLoad")
+
+map=new google.maps.Map(
+document.getElementById("map"),
+{
 center:{lat:21.4373,lng:40.5127},
 zoom:14,
 mapTypeId:"hybrid"
 })
 
-/* البحث */
-
 const input=document.getElementById("searchBox")
 
-const autocomplete=new google.maps.places.Autocomplete(input,{
-componentRestrictions:{country:"sa"}
-})
+const autocomplete=
+new google.maps.places.Autocomplete(
+input,
+{componentRestrictions:{country:"sa"}}
+)
 
 autocomplete.bindTo("bounds",map)
 
-autocomplete.addListener("place_changed",function(){
+autocomplete.addListener(
+"place_changed",
+function(){
 
-searchCount++
-localStorage.setItem("searchCount", searchCount)
-document.getElementById("searchCount").innerText = searchCount
-updateCost()
+checkLimit("search")
 
 const place=autocomplete.getPlace()
 
-if(!place.geometry) return
+if(!place.geometry)return
 
-if(place.geometry.viewport){
 map.fitBounds(place.geometry.viewport)
-}else{
-map.setCenter(place.geometry.location)
-map.setZoom(16)
-}
 
 })
 
-/* الرسم اليدوي */
+const drawingManager=
+new google.maps.drawing.DrawingManager({
 
-const drawingManager=new google.maps.drawing.DrawingManager({
 drawingMode:null,
+
 drawingControl:true,
+
 drawingControlOptions:{
-position:google.maps.ControlPosition.LEFT_CENTER,
+position:
+google.maps.ControlPosition.LEFT_CENTER,
 drawingModes:["polygon"]
 }
+
 })
 
 drawingManager.setMap(map)
 
-google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
+google.maps.event.addListener(
+drawingManager,
+'overlaycomplete',
+function(e){
 
-let polygon=e.overlay
+let poly=e.overlay
 
-polygon.setOptions({
+poly.setOptions({
 fillColor:"#00ff00",
-fillOpacity:0.35,
 strokeColor:"#008000",
 strokeWeight:3
 })
 
 drawnPoints=[]
 
-let path=polygon.getPath()
+let path=poly.getPath()
 
 for(let i=0;i<path.getLength();i++){
+
 let p=path.getAt(i)
-drawnPoints.push({lat:p.lat(),lng:p.lng()})
+
+drawnPoints.push({
+lat:p.lat(),
+lng:p.lng()
+})
+
 }
 
-/* حساب المساحة */
+let area=
+google.maps.geometry.spherical.computeArea(path)
 
-let area=google.maps.geometry.spherical.computeArea(path)
-alert("المساحة: "+Math.round(area)+" متر مربع")
+alert(
+"المساحة: "+
+Math.round(area)+
+" متر مربع"
+)
 
 })
 
 }
 
-/* استيراد Excel */
+/* استيراد الاكسل */
 
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
-if(!file) return
+
+if(!file)return
 
 let reader=new FileReader()
 
 reader.onload=function(e){
 
 let data=new Uint8Array(e.target.result)
-let workbook=XLSX.read(data,{type:"array"})
-let sheet=workbook.Sheets[workbook.SheetNames[0]]
-let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
+
+let workbook=
+XLSX.read(data,{type:"array"})
+
+let sheet=
+workbook.Sheets[
+workbook.SheetNames[0]
+]
+
+let rows=
+XLSX.utils.sheet_to_json(
+sheet,
+{header:1}
+)
 
 let points=[]
 
@@ -197,7 +336,12 @@ let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
 
 if(!isNaN(lat)&&!isNaN(lng)){
-points.push({lat:lat,lng:lng})
+
+points.push({
+lat:lat,
+lng:lng
+})
+
 }
 
 }
@@ -210,34 +354,46 @@ reader.readAsArrayBuffer(file)
 
 }
 
-/* حساب المسافة */
+/* المسافة */
 
 function distance(a,b){
 
 const R=6371000
 
-const dLat=(b.lat-a.lat)*Math.PI/180
-const dLng=(b.lng-a.lng)*Math.PI/180
+const dLat=
+(b.lat-a.lat)*Math.PI/180
+
+const dLng=
+(b.lng-a.lng)*Math.PI/180
 
 const lat1=a.lat*Math.PI/180
 const lat2=b.lat*Math.PI/180
 
-const x=Math.sin(dLat/2)**2+
-Math.sin(dLng/2)**2*Math.cos(lat1)*Math.cos(lat2)
+const x=
+Math.sin(dLat/2)**2+
+Math.sin(dLng/2)**2*
+Math.cos(lat1)*
+Math.cos(lat2)
 
-const c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))
+const c=
+2*Math.atan2(
+Math.sqrt(x),
+Math.sqrt(1-x)
+)
 
 return R*c
 
 }
 
-/* تجميع النقاط */
+/* التجميع */
 
 function groupPoints(points){
 
 groups=[]
+
 markers.forEach(m=>m.setMap(null))
 circles.forEach(c=>c.setMap(null))
+
 markers=[]
 circles=[]
 
@@ -248,15 +404,24 @@ let added=false
 for(let g of groups){
 
 if(distance(p,g.center)<=100){
+
 g.points.push(p)
+
 added=true
+
 break
+
 }
 
 }
 
 if(!added){
-groups.push({center:p,points:[p]})
+
+groups.push({
+center:p,
+points:[p]
+})
+
 }
 
 })
@@ -275,23 +440,31 @@ let color=COLORS[i%COLORS.length]
 
 g.points.forEach(p=>{
 
-let m=new google.maps.Marker({
+let m=
+new google.maps.Marker({
 position:p,
 map:map
 })
+
 markers.push(m)
 
 })
 
-let c=new google.maps.Circle({
+let c=
+new google.maps.Circle({
+
 strokeColor:color,
-strokeOpacity:0.9,
-strokeWeight:2,
+
 fillColor:color,
-fillOpacity:0.25,
+
+fillOpacity:.25,
+
 map:map,
+
 center:g.center,
+
 radius:100
+
 })
 
 circles.push(c)
@@ -300,18 +473,31 @@ circles.push(c)
 
 }
 
-/* استخراج العنوان */
+/* cache */
 
 async function getAddress(lat,lng){
 
-geoCount++
-localStorage.setItem("geoCount", geoCount)
-document.getElementById("geoCount").innerText = geoCount
-updateCost()
+const key=
+lat.toFixed(6)+","+lng.toFixed(6)
 
-let url="https://maps.googleapis.com/maps/api/geocode/json?latlng="+lat+","+lng+"&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y"
+let cache=
+JSON.parse(
+localStorage.getItem("geoCache")||"{}"
+)
+
+if(cache[key]){
+return cache[key]
+}
+
+checkLimit("geocode")
+
+let url=
+"https://maps.googleapis.com/maps/api/geocode/json?latlng="
++lat+","+lng+
+"&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y"
 
 let r=await fetch(url)
+
 let data=await r.json()
 
 let street=""
@@ -320,83 +506,144 @@ let district=""
 if(data.results.length){
 
 data.results.forEach(res=>{
+
 res.address_components.forEach(c=>{
-if(c.types.includes("route") && street=="") street=c.long_name
-if((c.types.includes("sublocality") || c.types.includes("neighborhood")) && district=="") district=c.long_name
+
+if(
+c.types.includes("route") &&
+street==""
+)
+street=c.long_name
+
+if(
+c.types.includes("neighborhood") &&
+district==""
+)
+district=c.long_name
+
 })
+
 })
 
 }
 
-if(street=="") street=district
+if(street=="")street=district
 
-return {street,district}
+let result={
+street:street,
+district:district
+}
+
+cache[key]=result
+
+localStorage.setItem(
+"geoCache",
+JSON.stringify(cache)
+)
+
+return result
 
 }
 
-/* تصدير Excel */
+/* تصدير الاكسل */
 
 async function exportExcel(){
 
-let workbook = new ExcelJS.Workbook()
-let sheet = workbook.addWorksheet("Map")
+let workbook=
+new ExcelJS.Workbook()
+
+let sheet=
+workbook.addWorksheet("Map")
 
 sheet.columns=[
-{header:"Group",key:"group",width:10},
-{header:"Latitude",key:"lat",width:18},
-{header:"Longitude",key:"lng",width:18},
-{header:"Street",key:"street",width:30},
-{header:"District",key:"district",width:30}
-]
 
-/* المجموعات */
+{header:"Group",key:"group",width:10},
+
+{header:"Latitude",key:"lat",width:18},
+
+{header:"Longitude",key:"lng",width:18},
+
+{header:"Street",key:"street",width:30},
+
+{header:"District",key:"district",width:30}
+
+]
 
 for(let i=0;i<groups.length;i++){
 
 let g=groups[i]
-let color=COLORS[i%COLORS.length].replace("#","")
+
+let color=
+COLORS[i%COLORS.length]
+.replace("#","")
 
 for(let p of g.points){
 
-let addr=await getAddress(p.lat,p.lng)
+let addr=
+await getAddress(p.lat,p.lng)
 
-let row=sheet.addRow({
+let row=
+sheet.addRow({
+
 group:i+1,
+
 lat:p.lat,
+
 lng:p.lng,
+
 street:addr.street,
+
 district:addr.district
+
 })
 
 row.eachCell(cell=>{
-cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:"55"+color}}
+
+cell.fill={
+type:'pattern',
+pattern:'solid',
+fgColor:{argb:"55"+color}
+}
+
 })
 
 }
 
 }
-
-/* الرسم اليدوي */
 
 for(let p of drawnPoints){
 
-let addr=await getAddress(p.lat,p.lng)
+let addr=
+await getAddress(p.lat,p.lng)
 
 sheet.addRow({
+
 group:"Drawing",
+
 lat:p.lat,
+
 lng:p.lng,
+
 street:addr.street,
+
 district:addr.district
+
 })
 
 }
 
-const buffer = await workbook.xlsx.writeBuffer()
+const buffer=
+await workbook.xlsx.writeBuffer()
 
 let link=document.createElement("a")
-link.href=URL.createObjectURL(new Blob([buffer]))
+
+link.href=
+URL.createObjectURL(
+new Blob([buffer])
+)
+
 link.download="map_report.xlsx"
+
 link.click()
 
 }
