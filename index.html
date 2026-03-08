@@ -84,7 +84,7 @@ cursor:pointer
 let map
 let groups=[]
 let markers=[]
-let circles=[]
+let charts=[]
 let drawnPoints=[]
 
 const COLORS=[
@@ -249,11 +249,8 @@ function distance(a,b){
 
 const R=6371000
 
-const dLat=
-(b.lat-a.lat)*Math.PI/180
-
-const dLng=
-(b.lng-a.lng)*Math.PI/180
+const dLat=(b.lat-a.lat)*Math.PI/180
+const dLng=(b.lng-a.lng)*Math.PI/180
 
 const lat1=a.lat*Math.PI/180
 const lat2=b.lat*Math.PI/180
@@ -281,10 +278,10 @@ function groupPoints(points){
 groups=[]
 
 markers.forEach(m=>m.setMap(null))
-circles.forEach(c=>c.setMap(null))
+charts.forEach(c=>c.setMap(null))
 
 markers=[]
-circles=[]
+charts=[]
 
 points.forEach(p=>{
 
@@ -319,18 +316,21 @@ drawGroups()
 
 }
 
-/* رسم الدوائر */
+/* رسم النقاط + الرسم البياني */
 
 function drawGroups(){
 
 groups.forEach((g,i)=>{
 
 let color=COLORS[i%COLORS.length]
+let count=g.points.length
+let center=g.center
+
+/* النقاط */
 
 g.points.forEach(p=>{
 
-let m=
-new google.maps.Marker({
+let m=new google.maps.Marker({
 position:p,
 map:map
 })
@@ -339,25 +339,45 @@ markers.push(m)
 
 })
 
-let c=
-new google.maps.Circle({
+/* رسم بياني دائري */
 
-strokeColor:color,
-fillColor:color,
-fillOpacity:.25,
+let svg=`
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">
+<circle cx="40" cy="40" r="30"
+fill="${color}"
+fill-opacity="0.25"
+stroke="${color}"
+stroke-width="4"/>
+<circle cx="40" cy="40" r="20" fill="white"/>
+<text x="40" y="45"
+font-size="18"
+text-anchor="middle"
+fill="${color}"
+font-weight="bold">${count}</text>
+</svg>
+`
+
+let chartMarker=new google.maps.Marker({
+
+position:center,
+
 map:map,
-center:g.center,
-radius:100
+
+icon:{
+url:"data:image/svg+xml;charset=UTF-8,"+
+encodeURIComponent(svg),
+scaledSize:new google.maps.Size(80,80)
+}
 
 })
 
-circles.push(c)
+charts.push(chartMarker)
 
 })
 
 }
 
-/* استخراج اسم الشارع والحي */
+/* استخراج العنوان */
 
 async function getAddress(lat,lng){
 
@@ -428,13 +448,9 @@ workbook.addWorksheet("Map")
 sheet.columns=[
 
 {header:"Group",key:"group",width:10},
-
 {header:"Latitude",key:"lat",width:18},
-
 {header:"Longitude",key:"lng",width:18},
-
 {header:"Street",key:"street",width:30},
-
 {header:"District",key:"district",width:30}
 
 ]
