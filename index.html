@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>تحليل المواقع</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
@@ -45,18 +47,6 @@ box-shadow:0 0 6px rgba(0,0,0,.3);
 z-index:5
 }
 
-.stats{
-position:absolute;
-bottom:10px;
-right:10px;
-background:#fff;
-padding:10px;
-border-radius:10px;
-box-shadow:0 0 6px rgba(0,0,0,.3);
-font-size:13px;
-z-index:5
-}
-
 button{
 margin-top:6px;
 padding:8px 12px;
@@ -68,6 +58,7 @@ cursor:pointer
 }
 
 </style>
+
 </head>
 
 <body>
@@ -86,111 +77,11 @@ cursor:pointer
 
 </div>
 
-<div class="stats">
-
-📊 إحصائيات الاستخدام
-
-<br>
-
-تحميل الخريطة:
-<span id="mapLoad">0</span>
-
-<br>
-
-عمليات البحث:
-<span id="searchCount">0</span>
-
-<br>
-
-تحويل الإحداثيات:
-<span id="geoCount">0</span>
-
-<br><br>
-
-التكلفة التقريبية:
-<span id="cost">$0</span>
-
-</div>
-
 <div id="map"></div>
 
 <script>
 
-/* حدود الحماية */
-
-const LIMITS={
-mapLoad:50,
-search:100,
-geocode:200
-}
-
-function today(){
-return new Date().toISOString().slice(0,10)
-}
-
-function getUsage(){
-
-let data=JSON.parse(localStorage.getItem("usageData")||"{}")
-
-if(data.date!==today()){
-
-data={
-date:today(),
-mapLoad:0,
-search:0,
-geocode:0
-}
-
-}
-
-return data
-}
-
-function saveUsage(d){
-localStorage.setItem("usageData",JSON.stringify(d))
-}
-
-function checkLimit(type){
-
-let u=getUsage()
-
-if(u[type]>=LIMITS[type]){
-
-alert("تم الوصول للحد اليومي")
-
-throw new Error("LIMIT")
-
-}
-
-u[type]++
-
-saveUsage(u)
-
-updateStats(u)
-
-}
-
-function updateStats(u){
-
-document.getElementById("mapLoad").innerText=u.mapLoad
-document.getElementById("searchCount").innerText=u.search
-document.getElementById("geoCount").innerText=u.geocode
-
-let cost=
-(u.mapLoad*0.007)+
-(u.search*0.017)+
-(u.geocode*0.005)
-
-document.getElementById("cost").innerText="$"+cost.toFixed(2)
-
-}
-
-window.onload=()=>{
-updateStats(getUsage())
-}
-
 let map
-
 let groups=[]
 let markers=[]
 let circles=[]
@@ -208,15 +99,15 @@ const COLORS=[
 
 function initMap(){
 
-checkLimit("mapLoad")
-
 map=new google.maps.Map(
 document.getElementById("map"),
 {
 center:{lat:21.4373,lng:40.5127},
-zoom:14,
+zoom:15,
 mapTypeId:"hybrid"
 })
+
+/* البحث */
 
 const input=document.getElementById("searchBox")
 
@@ -228,11 +119,7 @@ input,
 
 autocomplete.bindTo("bounds",map)
 
-autocomplete.addListener(
-"place_changed",
-function(){
-
-checkLimit("search")
+autocomplete.addListener("place_changed",function(){
 
 const place=autocomplete.getPlace()
 
@@ -241,6 +128,8 @@ if(!place.geometry)return
 map.fitBounds(place.geometry.viewport)
 
 })
+
+/* الرسم اليدوي */
 
 const drawingManager=
 new google.maps.drawing.DrawingManager({
@@ -264,9 +153,9 @@ drawingManager,
 'overlaycomplete',
 function(e){
 
-let poly=e.overlay
+let polygon=e.overlay
 
-poly.setOptions({
+polygon.setOptions({
 fillColor:"#00ff00",
 strokeColor:"#008000",
 strokeWeight:3
@@ -274,7 +163,7 @@ strokeWeight:3
 
 drawnPoints=[]
 
-let path=poly.getPath()
+let path=polygon.getPath()
 
 for(let i=0;i<path.getLength();i++){
 
@@ -300,7 +189,7 @@ Math.round(area)+
 
 }
 
-/* استيراد الاكسل */
+/* استيراد Excel */
 
 function importExcel(){
 
@@ -354,7 +243,7 @@ reader.readAsArrayBuffer(file)
 
 }
 
-/* المسافة */
+/* حساب المسافة */
 
 function distance(a,b){
 
@@ -385,7 +274,7 @@ return R*c
 
 }
 
-/* التجميع */
+/* تجميع النقاط */
 
 function groupPoints(points){
 
@@ -454,15 +343,10 @@ let c=
 new google.maps.Circle({
 
 strokeColor:color,
-
 fillColor:color,
-
 fillOpacity:.25,
-
 map:map,
-
 center:g.center,
-
 radius:100
 
 })
@@ -473,23 +357,9 @@ circles.push(c)
 
 }
 
-/* cache */
+/* استخراج اسم الشارع والحي */
 
 async function getAddress(lat,lng){
-
-const key=
-lat.toFixed(6)+","+lng.toFixed(6)
-
-let cache=
-JSON.parse(
-localStorage.getItem("geoCache")||"{}"
-)
-
-if(cache[key]){
-return cache[key]
-}
-
-checkLimit("geocode")
 
 let url=
 "https://maps.googleapis.com/maps/api/geocode/json?latlng="
@@ -512,14 +382,23 @@ res.address_components.forEach(c=>{
 if(
 c.types.includes("route") &&
 street==""
-)
+){
 street=c.long_name
+}
 
 if(
-c.types.includes("neighborhood") &&
-district==""
-)
+c.types.includes("sublocality") ||
+c.types.includes("neighborhood")
+){
 district=c.long_name
+}
+
+if(
+c.types.includes("locality") &&
+district==""
+){
+district=c.long_name
+}
 
 })
 
@@ -529,23 +408,14 @@ district=c.long_name
 
 if(street=="")street=district
 
-let result={
+return{
 street:street,
 district:district
 }
 
-cache[key]=result
-
-localStorage.setItem(
-"geoCache",
-JSON.stringify(cache)
-)
-
-return result
-
 }
 
-/* تصدير الاكسل */
+/* تصدير Excel */
 
 async function exportExcel(){
 
@@ -586,13 +456,9 @@ let row=
 sheet.addRow({
 
 group:i+1,
-
 lat:p.lat,
-
 lng:p.lng,
-
 street:addr.street,
-
 district:addr.district
 
 })
@@ -619,13 +485,9 @@ await getAddress(p.lat,p.lng)
 sheet.addRow({
 
 group:"Drawing",
-
 lat:p.lat,
-
 lng:p.lng,
-
 street:addr.street,
-
 district:addr.district
 
 })
