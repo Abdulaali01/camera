@@ -62,11 +62,9 @@ cursor:pointer
 <div class="panel">
 
 <input type="file" id="excelFile" accept=".xlsx,.xls">
-
 <br>
 
 <button onclick="importExcel()">استيراد Excel</button>
-
 <button onclick="exportExcel()">تصدير Excel</button>
 
 </div>
@@ -77,7 +75,6 @@ cursor:pointer
 
 let map
 let groups=[]
-let markers=[]
 let charts=[]
 let drawnPoints=[]
 
@@ -114,6 +111,7 @@ autocomplete.bindTo("bounds",map)
 autocomplete.addListener("place_changed",function(){
 
 const place=autocomplete.getPlace()
+
 if(!place.geometry)return
 
 map.fitBounds(place.geometry.viewport)
@@ -241,11 +239,7 @@ return R*c
 function groupPoints(points){
 
 groups=[]
-
-markers.forEach(m=>m.setMap(null))
 charts.forEach(c=>c.setMap(null))
-
-markers=[]
 charts=[]
 
 points.forEach(p=>{
@@ -279,7 +273,7 @@ drawGroups()
 
 }
 
-/* رسم المخطط */
+/* رسم الدوائر */
 
 function drawGroups(){
 
@@ -295,29 +289,10 @@ let color=COLORS[i%COLORS.length]
 let count=g.points.length
 let center=g.center
 
-/* تكبير الحجم حسب العدد */
-
 let size=80+(count*6)
 if(size>200)size=200
 
-/* رسم النقاط */
-
-g.points.forEach(p=>{
-
-let m=new google.maps.Marker({
-position:p,
-map:map
-})
-
-markers.push(m)
-
-})
-
-/* حساب النسبة */
-
 let percent=Math.round((count/totalPoints)*100)
-
-/* رسم Pie Chart */
 
 let svg=`
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100">
@@ -348,7 +323,7 @@ ${percent}%
 </svg>
 `
 
-let chartMarker=new google.maps.Marker({
+let marker=new google.maps.Marker({
 
 position:center,
 
@@ -362,9 +337,67 @@ scaledSize:new google.maps.Size(size,size)
 
 })
 
-charts.push(chartMarker)
+charts.push(marker)
 
 })
+
+}
+
+/* تصدير Excel */
+
+async function exportExcel(){
+
+if(groups.length==0){
+alert("لا يوجد بيانات")
+return
+}
+
+let workbook=new ExcelJS.Workbook()
+
+let sheet=workbook.addWorksheet("Groups")
+
+sheet.columns=[
+{header:"Color",key:"color",width:10},
+{header:"Group",key:"group",width:10},
+{header:"Latitude",key:"lat",width:18},
+{header:"Longitude",key:"lng",width:18},
+{header:"Count",key:"count",width:10}
+]
+
+for(let i=0;i<groups.length;i++){
+
+let g=groups[i]
+let color=COLORS[i%COLORS.length].replace("#","")
+
+for(let p of g.points){
+
+let row=sheet.addRow({
+color:"",
+group:i+1,
+lat:p.lat,
+lng:p.lng,
+count:g.points.length
+})
+
+row.getCell(1).fill={
+type:'pattern',
+pattern:'solid',
+fgColor:{argb:"FF"+color}
+}
+
+}
+
+}
+
+const buffer=await workbook.xlsx.writeBuffer()
+
+let link=document.createElement("a")
+
+link.href=URL.createObjectURL(new Blob([buffer]))
+
+link.download="groups.xlsx"
+
+link.click()
 
 }
 
