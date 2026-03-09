@@ -22,20 +22,6 @@ height:100vh;
 width:100%
 }
 
-#searchBox{
-position:absolute;
-top:10px;
-left:50%;
-transform:translateX(-50%);
-width:320px;
-padding:10px;
-border-radius:8px;
-border:1px solid #ccc;
-background:#fff;
-font-size:16px;
-z-index:5
-}
-
 .panel{
 position:absolute;
 top:60px;
@@ -63,8 +49,6 @@ cursor:pointer
 
 <body>
 
-<input id="searchBox" placeholder="ابحث عن حي أو شارع">
-
 <div class="panel">
 
 <input type="file" id="excelFile" accept=".xlsx,.xls">
@@ -84,7 +68,6 @@ let map
 let groups=[]
 let markers=[]
 let polygons=[]
-let lines=[]
 
 const COLORS=[
 "#ff5722",
@@ -106,24 +89,57 @@ zoom:13,
 mapTypeId:"hybrid"
 })
 
-const input=document.getElementById("searchBox")
+}
 
-const autocomplete=new google.maps.places.Autocomplete(
-input,
-{componentRestrictions:{country:"sa"}}
+/* خوارزمية Convex Hull */
+
+function convexHull(points){
+
+points=points.slice()
+
+points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
+
+const cross=(o,a,b)=>(
+(a.lng-o.lng)*(b.lat-o.lat)-
+(a.lat-o.lat)*(b.lng-o.lng)
 )
 
-autocomplete.bindTo("bounds",map)
+let lower=[]
 
-autocomplete.addListener("place_changed",function(){
+for(let p of points){
 
-const place=autocomplete.getPlace()
+while(lower.length>=2 &&
+cross(lower[lower.length-2],
+lower[lower.length-1],
+p)<=0){
+lower.pop()
+}
 
-if(!place.geometry)return
+lower.push(p)
 
-map.fitBounds(place.geometry.viewport)
+}
 
-})
+let upper=[]
+
+for(let i=points.length-1;i>=0;i--){
+
+let p=points[i]
+
+while(upper.length>=2 &&
+cross(upper[upper.length-2],
+upper[upper.length-1],
+p)<=0){
+upper.pop()
+}
+
+upper.push(p)
+
+}
+
+upper.pop()
+lower.pop()
+
+return lower.concat(upper)
 
 }
 
@@ -132,6 +148,7 @@ map.fitBounds(place.geometry.viewport)
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
+
 if(!file)return
 
 let reader=new FileReader()
@@ -210,11 +227,9 @@ groups=[]
 
 markers.forEach(m=>m.setMap(null))
 polygons.forEach(p=>p.setMap(null))
-lines.forEach(l=>l.setMap(null))
 
 markers=[]
 polygons=[]
-lines=[]
 
 points.forEach(p=>{
 
@@ -257,11 +272,11 @@ groups.forEach((g,i)=>{
 
 let color=COLORS[i%COLORS.length]
 
-let path=[]
+let hull=convexHull(g.points)
+
+/* رسم النقاط */
 
 g.points.forEach(p=>{
-
-path.push(p)
 
 let marker=new google.maps.Marker({
 position:p,
@@ -271,7 +286,7 @@ path:google.maps.SymbolPath.CIRCLE,
 scale:6,
 fillColor:color,
 fillOpacity:1,
-strokeColor:"#ffffff",
+strokeColor:"#fff",
 strokeWeight:1
 }
 })
@@ -280,38 +295,27 @@ markers.push(marker)
 
 })
 
-/* خط يربط النقاط */
-
-let line=new google.maps.Polyline({
-path:path,
-geodesic:true,
-strokeColor:color,
-strokeOpacity:1,
-strokeWeight:3,
-map:map
-})
-
-lines.push(line)
-
-/* المضلع حول النقاط */
+/* رسم المنطقة */
 
 let polygon=new google.maps.Polygon({
-paths:path,
+
+paths:hull,
 strokeColor:color,
 strokeOpacity:1,
 strokeWeight:4,
 fillColor:color,
 fillOpacity:0.25,
 map:map
+
 })
 
 polygons.push(polygon)
 
 let percent=Math.round((g.points.length/totalPoints)*100)
 
-/* النص داخل المنطقة */
+/* النص */
 
-let labelMarker=new google.maps.Marker({
+let label=new google.maps.Marker({
 
 position:g.center,
 
@@ -323,12 +327,10 @@ scale:0
 },
 
 label:{
-let district = await getDistrictName(g.center.lat,g.center.lng)
-
 text:
-district+"\n"+
+"حي "+(i+1)+"\n"+
 g.points.length+"\n"+
-percent+"%"
+percent+"%",
 color:"#000",
 fontSize:"14px",
 fontWeight:"bold"
@@ -336,7 +338,7 @@ fontWeight:"bold"
 
 })
 
-markers.push(labelMarker)
+markers.push(label)
 
 })
 
@@ -389,7 +391,7 @@ link.click()
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,geometry&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=geometry&callback=initMap">
 </script>
 
 </body>
