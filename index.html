@@ -46,9 +46,11 @@ cursor:pointer
 <div class="panel">
 
 <input type="file" id="excelFile" accept=".xlsx,.xls">
+
 <br>
 
 <button onclick="importExcel()">استيراد Excel</button>
+
 <button onclick="exportExcel()">تصدير Excel</button>
 
 </div>
@@ -228,16 +230,17 @@ let color=COLORS[i%COLORS.length]
 
 let percent=Math.round((g.points.length/total)*100)
 
-let radius=150+g.points.length*40
+/* الدائرة الكبيرة */
 
 let circle=new google.maps.Circle({
 
 strokeColor:color,
+strokeWeight:4,
 fillColor:color,
-fillOpacity:0.35,
+fillOpacity:0.45,
 map:map,
 center:g.center,
-radius:radius
+radius:600
 
 })
 
