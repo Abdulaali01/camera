@@ -323,10 +323,12 @@ scale:0
 },
 
 label:{
+let district = await getDistrictName(g.center.lat,g.center.lng)
+
 text:
-"حي "+(i+1)+"\n"+
+district+"\n"+
 g.points.length+"\n"+
-percent+"%",
+percent+"%"
 color:"#000",
 fontSize:"14px",
 fontWeight:"bold"
