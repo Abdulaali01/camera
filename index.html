@@ -91,58 +91,6 @@ mapTypeId:"hybrid"
 
 }
 
-/* خوارزمية Convex Hull */
-
-function convexHull(points){
-
-points=points.slice()
-
-points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
-
-const cross=(o,a,b)=>(
-(a.lng-o.lng)*(b.lat-o.lat)-
-(a.lat-o.lat)*(b.lng-o.lng)
-)
-
-let lower=[]
-
-for(let p of points){
-
-while(lower.length>=2 &&
-cross(lower[lower.length-2],
-lower[lower.length-1],
-p)<=0){
-lower.pop()
-}
-
-lower.push(p)
-
-}
-
-let upper=[]
-
-for(let i=points.length-1;i>=0;i--){
-
-let p=points[i]
-
-while(upper.length>=2 &&
-cross(upper[upper.length-2],
-upper[upper.length-1],
-p)<=0){
-upper.pop()
-}
-
-upper.push(p)
-
-}
-
-upper.pop()
-lower.pop()
-
-return lower.concat(upper)
-
-}
-
 /* استيراد Excel */
 
 function importExcel(){
@@ -219,6 +167,39 @@ return R*c
 
 }
 
+/* استخراج اسم الحي */
+
+async function getDistrict(lat,lng){
+
+let url =
+"https://maps.googleapis.com/maps/api/geocode/json?latlng="
++lat+","+lng+
+"&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y"
+
+let r=await fetch(url)
+let data=await r.json()
+
+let district="غير معروف"
+
+if(data.results.length){
+
+data.results[0].address_components.forEach(c=>{
+
+if(
+c.types.includes("sublocality") ||
+c.types.includes("neighborhood")
+){
+district=c.long_name
+}
+
+})
+
+}
+
+return district
+
+}
+
 /* تجميع النقاط */
 
 function groupPoints(points){
@@ -260,7 +241,7 @@ drawGroups()
 
 /* رسم المجموعات */
 
-function drawGroups(){
+async function drawGroups(){
 
 let totalPoints=0
 
@@ -268,11 +249,11 @@ groups.forEach(g=>{
 totalPoints+=g.points.length
 })
 
-groups.forEach((g,i)=>{
+for(let i=0;i<groups.length;i++){
+
+let g=groups[i]
 
 let color=COLORS[i%COLORS.length]
-
-let hull=convexHull(g.points)
 
 /* رسم النقاط */
 
@@ -295,23 +276,28 @@ markers.push(marker)
 
 })
 
-/* رسم المنطقة */
+/* اسم الحي */
 
-let polygon=new google.maps.Polygon({
+let district = await getDistrict(g.center.lat,g.center.lng)
 
-paths:hull,
+let percent=Math.round((g.points.length/totalPoints)*100)
+
+/* تظليل الحي */
+
+let circle=new google.maps.Circle({
+
 strokeColor:color,
 strokeOpacity:1,
 strokeWeight:4,
 fillColor:color,
 fillOpacity:0.25,
-map:map
+map:map,
+center:g.center,
+radius:800
 
 })
 
-polygons.push(polygon)
-
-let percent=Math.round((g.points.length/totalPoints)*100)
+polygons.push(circle)
 
 /* النص */
 
@@ -328,7 +314,7 @@ scale:0
 
 label:{
 text:
-"حي "+(i+1)+"\n"+
+district+"\n"+
 g.points.length+"\n"+
 percent+"%",
 color:"#000",
@@ -340,7 +326,7 @@ fontWeight:"bold"
 
 markers.push(label)
 
-})
+}
 
 }
 
@@ -391,7 +377,7 @@ link.click()
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=geometry&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=geometry,places&callback=initMap">
 </script>
 
 </body>
