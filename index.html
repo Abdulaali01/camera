@@ -46,11 +46,9 @@ cursor:pointer
 <div class="panel">
 
 <input type="file" id="excelFile" accept=".xlsx,.xls">
-
 <br>
 
 <button onclick="importExcel()">استيراد Excel</button>
-
 <button onclick="exportExcel()">تصدير Excel</button>
 
 </div>
@@ -212,7 +210,7 @@ drawDistricts()
 
 }
 
-/* رسم دائرة لكل حي */
+/* رسم الدوائر */
 
 function drawDistricts(){
 
@@ -230,14 +228,16 @@ let color=COLORS[i%COLORS.length]
 
 let percent=Math.round((g.points.length/total)*100)
 
+let radius=150+g.points.length*40
+
 let circle=new google.maps.Circle({
 
 strokeColor:color,
 fillColor:color,
-fillOpacity:0.25,
+fillOpacity:0.35,
 map:map,
 center:g.center,
-radius:100
+radius:radius
 
 })
 
@@ -251,38 +251,24 @@ position:g.center,
 
 map:map,
 
+icon:{
+path:google.maps.SymbolPath.CIRCLE,
+scale:0
+},
+
 label:{
-text:g.points.length+" ("+percent+"%)",
+text:
+name+"\n"+
+g.points.length+"\n"+
+percent+"%",
 color:"#000",
-fontSize:"12px",
+fontSize:"14px",
 fontWeight:"bold"
 }
 
 })
 
 labels.push(label)
-
-/* اسم الحي */
-
-let nameLabel=new google.maps.Marker({
-
-position:{
-lat:g.center.lat+0.0003,
-lng:g.center.lng
-},
-
-map:map,
-
-label:{
-text:name,
-color:"#000",
-fontSize:"13px",
-fontWeight:"bold"
-}
-
-})
-
-labels.push(nameLabel)
 
 })
 
@@ -299,7 +285,6 @@ let sheet=workbook.addWorksheet("Districts")
 sheet.columns=[
 
 {header:"District",key:"district",width:25},
-
 {header:"Count",key:"count",width:10}
 
 ]
@@ -307,11 +292,8 @@ sheet.columns=[
 Object.keys(groups).forEach(name=>{
 
 sheet.addRow({
-
 district:name,
-
 count:groups[name].points.length
-
 })
 
 })
