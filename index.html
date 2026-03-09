@@ -7,8 +7,8 @@
 
 <title>تحليل المواقع</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
 <style>
 
@@ -65,19 +65,9 @@ cursor:pointer
 <script>
 
 let map
-let groups=[]
 let markers=[]
-let polygons=[]
-
-const COLORS=[
-"#ff5722",
-"#4caf50",
-"#2196f3",
-"#9c27b0",
-"#ffc107",
-"#00bcd4",
-"#8bc34a"
-]
+let polygon=null
+let allPoints=[]
 
 function initMap(){
 
@@ -163,7 +153,7 @@ let sheet=workbook.Sheets[workbook.SheetNames[0]]
 
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
-let points=[]
+allPoints=[]
 
 for(let i=1;i<rows.length;i++){
 
@@ -171,14 +161,13 @@ let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
 
 if(!isNaN(lat)&&!isNaN(lng)){
-points.push({lat:lat,lng:lng})
+allPoints.push({lat:lat,lng:lng})
 }
 
 }
 
-zoomToPoints(points)
-
-groupPoints(points)
+drawPoints()
+drawHull()
 
 }
 
@@ -186,163 +175,53 @@ reader.readAsArrayBuffer(file)
 
 }
 
-/* تقريب الخريطة */
-
-function zoomToPoints(points){
-
-let bounds=new google.maps.LatLngBounds()
-
-points.forEach(p=>bounds.extend(p))
-
-map.fitBounds(bounds)
-
-}
-
-/* حساب المسافة */
-
-function distance(a,b){
-
-const R=6371000
-
-const dLat=(b.lat-a.lat)*Math.PI/180
-const dLng=(b.lng-a.lng)*Math.PI/180
-
-const lat1=a.lat*Math.PI/180
-const lat2=b.lat*Math.PI/180
-
-const x=Math.sin(dLat/2)**2+
-Math.sin(dLng/2)**2*Math.cos(lat1)*Math.cos(lat2)
-
-const c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))
-
-return R*c
-
-}
-
-/* تجميع النقاط */
-
-function groupPoints(points){
-
-groups=[]
-
-markers.forEach(m=>m.setMap(null))
-polygons.forEach(p=>p.setMap(null))
-
-markers=[]
-polygons=[]
-
-points.forEach(p=>{
-
-let added=false
-
-for(let g of groups){
-
-if(distance(p,g.center)<=100){
-g.points.push(p)
-added=true
-break
-}
-
-}
-
-if(!added){
-groups.push({
-center:p,
-points:[p]
-})
-}
-
-})
-
-drawGroups()
-
-}
-
-/* رسم المجموعات */
-
-function drawGroups(){
-
-let totalPoints=0
-
-groups.forEach(g=>{
-totalPoints+=g.points.length
-})
-
-groups.forEach((g,i)=>{
-
-let color=COLORS[i%COLORS.length]
-
-/* حساب الحدود */
-
-let hull=convexHull(g.points)
-
 /* رسم النقاط */
 
-g.points.forEach(p=>{
+function drawPoints(){
+
+markers.forEach(m=>m.setMap(null))
+markers=[]
+
+allPoints.forEach(p=>{
 
 let marker=new google.maps.Marker({
 position:p,
-map:map,
-icon:{
-path:google.maps.SymbolPath.CIRCLE,
-scale:5,
-fillColor:color,
-fillOpacity:1,
-strokeColor:"#fff",
-strokeWeight:1
-}
+map:map
 })
 
 markers.push(marker)
 
 })
 
-/* رسم التظليل */
+}
 
-let polygon=new google.maps.Polygon({
+/* رسم الشكل الخارجي */
+
+function drawHull(){
+
+if(polygon){
+polygon.setMap(null)
+}
+
+let hull=convexHull(allPoints)
+
+polygon=new google.maps.Polygon({
 
 paths:hull,
-strokeColor:color,
+strokeColor:"#ff0000",
 strokeOpacity:1,
 strokeWeight:4,
-fillColor:color,
+fillColor:"#ff0000",
 fillOpacity:0.25,
 map:map
 
 })
 
-polygons.push(polygon)
+let bounds=new google.maps.LatLngBounds()
 
-let percent=Math.round((g.points.length/totalPoints)*100)
+allPoints.forEach(p=>bounds.extend(p))
 
-/* النص */
-
-let label=new google.maps.Marker({
-
-position:g.center,
-
-map:map,
-
-icon:{
-path:google.maps.SymbolPath.CIRCLE,
-scale:0
-},
-
-label:{
-text:
-"حي "+(i+1)+"\n"+
-g.points.length+"\n"+
-percent+"%",
-color:"#000",
-fontSize:"14px",
-fontWeight:"bold"
-}
-
-})
-
-markers.push(label)
-
-})
+map.fitBounds(bounds)
 
 }
 
@@ -352,31 +231,23 @@ async function exportExcel(){
 
 let workbook=new ExcelJS.Workbook()
 
-let sheet=workbook.addWorksheet("Map")
+let sheet=workbook.addWorksheet("Points")
 
 sheet.columns=[
 
-{header:"Group",key:"group",width:10},
 {header:"Latitude",key:"lat",width:18},
 {header:"Longitude",key:"lng",width:18}
 
 ]
 
-for(let i=0;i<groups.length;i++){
-
-let g=groups[i]
-
-for(let p of g.points){
+allPoints.forEach(p=>{
 
 sheet.addRow({
-group:i+1,
 lat:p.lat,
 lng:p.lng
 })
 
-}
-
-}
+})
 
 const buffer=await workbook.xlsx.writeBuffer()
 
@@ -384,7 +255,7 @@ let link=document.createElement("a")
 
 link.href=URL.createObjectURL(new Blob([buffer]))
 
-link.download="map_report.xlsx"
+link.download="points.xlsx"
 
 link.click()
 
@@ -393,7 +264,7 @@ link.click()
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=geometry&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&callback=initMap">
 </script>
 
 </body>
