@@ -5,21 +5,41 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>تحليل الأحياء</title>
+<title>تحليل المواقع</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
 <style>
 
-body{margin:0;font-family:tahoma}
+body{
+margin:0;
+font-family:tahoma
+}
 
-#map{height:100vh;width:100%}
+#map{
+height:100vh;
+width:100%
+}
+
+#searchBox{
+position:absolute;
+top:10px;
+left:50%;
+transform:translateX(-50%);
+width:320px;
+padding:10px;
+border-radius:8px;
+border:1px solid #ccc;
+background:#fff;
+font-size:16px;
+z-index:5
+}
 
 .panel{
 position:absolute;
-top:20px;
-right:20px;
+top:60px;
+right:10px;
 background:#fff;
 padding:12px;
 border-radius:10px;
@@ -43,6 +63,8 @@ cursor:pointer
 
 <body>
 
+<input id="searchBox" placeholder="ابحث عن حي أو شارع">
+
 <div class="panel">
 
 <input type="file" id="excelFile" accept=".xlsx,.xls">
@@ -50,7 +72,6 @@ cursor:pointer
 <br>
 
 <button onclick="importExcel()">استيراد Excel</button>
-
 <button onclick="exportExcel()">تصدير Excel</button>
 
 </div>
@@ -60,9 +81,10 @@ cursor:pointer
 <script>
 
 let map
-let groups={}
-let circles=[]
-let labels=[]
+let groups=[]
+let markers=[]
+let polygons=[]
+let lines=[]
 
 const COLORS=[
 "#ff5722",
@@ -80,8 +102,27 @@ map=new google.maps.Map(
 document.getElementById("map"),
 {
 center:{lat:21.4373,lng:40.5127},
-zoom:12,
+zoom:13,
 mapTypeId:"hybrid"
+})
+
+const input=document.getElementById("searchBox")
+
+const autocomplete=new google.maps.places.Autocomplete(
+input,
+{componentRestrictions:{country:"sa"}}
+)
+
+autocomplete.bindTo("bounds",map)
+
+autocomplete.addListener("place_changed",function(){
+
+const place=autocomplete.getPlace()
+
+if(!place.geometry)return
+
+map.fitBounds(place.geometry.viewport)
+
 })
 
 }
@@ -91,7 +132,6 @@ mapTypeId:"hybrid"
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
-
 if(!file)return
 
 let reader=new FileReader()
@@ -114,16 +154,14 @@ let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
 
 if(!isNaN(lat)&&!isNaN(lng)){
-
 points.push({lat:lat,lng:lng})
-
 }
 
 }
 
 zoomToPoints(points)
 
-groupByDistrict(points)
+groupPoints(points)
 
 }
 
@@ -137,118 +175,143 @@ function zoomToPoints(points){
 
 let bounds=new google.maps.LatLngBounds()
 
-points.forEach(p=>{
-bounds.extend(p)
-})
+points.forEach(p=>bounds.extend(p))
 
 map.fitBounds(bounds)
 
 }
 
-/* جلب اسم الحي */
+/* حساب المسافة */
 
-async function getDistrict(lat,lng){
+function distance(a,b){
 
-let url=
-"https://maps.googleapis.com/maps/api/geocode/json?latlng="
-+lat+","+lng+
-"&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y"
+const R=6371000
 
-let r=await fetch(url)
+const dLat=(b.lat-a.lat)*Math.PI/180
+const dLng=(b.lng-a.lng)*Math.PI/180
 
-let data=await r.json()
+const lat1=a.lat*Math.PI/180
+const lat2=b.lat*Math.PI/180
 
-let district="غير معروف"
+const x=Math.sin(dLat/2)**2+
+Math.sin(dLng/2)**2*Math.cos(lat1)*Math.cos(lat2)
 
-if(data.results.length){
+const c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))
 
-data.results[0].address_components.forEach(c=>{
-
-if(
-c.types.includes("sublocality") ||
-c.types.includes("neighborhood")
-){
-district=c.long_name
-}
-
-})
+return R*c
 
 }
 
-return district
+/* تجميع النقاط */
+
+function groupPoints(points){
+
+groups=[]
+
+markers.forEach(m=>m.setMap(null))
+polygons.forEach(p=>p.setMap(null))
+lines.forEach(l=>l.setMap(null))
+
+markers=[]
+polygons=[]
+lines=[]
+
+points.forEach(p=>{
+
+let added=false
+
+for(let g of groups){
+
+if(distance(p,g.center)<=100){
+g.points.push(p)
+added=true
+break
+}
 
 }
 
-/* تجميع حسب الحي */
-
-async function groupByDistrict(points){
-
-groups={}
-
-circles.forEach(c=>c.setMap(null))
-labels.forEach(l=>l.setMap(null))
-
-circles=[]
-labels=[]
-
-for(let p of points){
-
-let district=await getDistrict(p.lat,p.lng)
-
-if(!groups[district]){
-
-groups[district]={
+if(!added){
+groups.push({
 center:p,
-points:[]
+points:[p]
+})
 }
 
-}
-
-groups[district].points.push(p)
-
-}
-
-drawDistricts()
-
-}
-
-/* رسم الدوائر */
-
-function drawDistricts(){
-
-let total=0
-
-Object.values(groups).forEach(g=>{
-total+=g.points.length
 })
 
-Object.keys(groups).forEach((name,i)=>{
+drawGroups()
 
-let g=groups[name]
+}
+
+/* رسم المجموعات */
+
+function drawGroups(){
+
+let totalPoints=0
+
+groups.forEach(g=>{
+totalPoints+=g.points.length
+})
+
+groups.forEach((g,i)=>{
 
 let color=COLORS[i%COLORS.length]
 
-let percent=Math.round((g.points.length/total)*100)
+let path=[]
 
-/* الدائرة الكبيرة */
+g.points.forEach(p=>{
 
-let circle=new google.maps.Circle({
+path.push(p)
 
-strokeColor:color,
-strokeWeight:4,
-fillColor:color,
-fillOpacity:0.45,
+let marker=new google.maps.Marker({
+position:p,
 map:map,
-center:g.center,
-radius:600
+icon:{
+path:google.maps.SymbolPath.CIRCLE,
+scale:6,
+fillColor:color,
+fillOpacity:1,
+strokeColor:"#ffffff",
+strokeWeight:1
+}
+})
+
+markers.push(marker)
 
 })
 
-circles.push(circle)
+/* خط يربط النقاط */
 
-/* النص داخل الدائرة */
+let line=new google.maps.Polyline({
+path:path,
+geodesic:true,
+strokeColor:color,
+strokeOpacity:1,
+strokeWeight:3,
+map:map
+})
 
-let label=new google.maps.Marker({
+lines.push(line)
+
+/* المضلع حول النقاط */
+
+let polygon=new google.maps.Polygon({
+paths:path,
+strokeColor:color,
+strokeOpacity:1,
+strokeWeight:4,
+fillColor:color,
+fillOpacity:0.25,
+map:map
+})
+
+polygons.push(polygon)
+
+let percent=Math.round((g.points.length/totalPoints)*100)
+
+/* النص داخل المنطقة */
+
+let labelMarker=new google.maps.Marker({
 
 position:g.center,
 
@@ -261,7 +324,7 @@ scale:0
 
 label:{
 text:
-name+"\n"+
+"حي "+(i+1)+"\n"+
 g.points.length+"\n"+
 percent+"%",
 color:"#000",
@@ -271,7 +334,7 @@ fontWeight:"bold"
 
 })
 
-labels.push(label)
+markers.push(labelMarker)
 
 })
 
@@ -283,23 +346,31 @@ async function exportExcel(){
 
 let workbook=new ExcelJS.Workbook()
 
-let sheet=workbook.addWorksheet("Districts")
+let sheet=workbook.addWorksheet("Map")
 
 sheet.columns=[
 
-{header:"District",key:"district",width:25},
-{header:"Count",key:"count",width:10}
+{header:"Group",key:"group",width:10},
+{header:"Latitude",key:"lat",width:18},
+{header:"Longitude",key:"lng",width:18}
 
 ]
 
-Object.keys(groups).forEach(name=>{
+for(let i=0;i<groups.length;i++){
+
+let g=groups[i]
+
+for(let p of g.points){
 
 sheet.addRow({
-district:name,
-count:groups[name].points.length
+group:i+1,
+lat:p.lat,
+lng:p.lng
 })
 
-})
+}
+
+}
 
 const buffer=await workbook.xlsx.writeBuffer()
 
@@ -307,7 +378,7 @@ let link=document.createElement("a")
 
 link.href=URL.createObjectURL(new Blob([buffer]))
 
-link.download="district_report.xlsx"
+link.download="map_report.xlsx"
 
 link.click()
 
@@ -316,7 +387,7 @@ link.click()
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=geometry&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,geometry&callback=initMap">
 </script>
 
 </body>
