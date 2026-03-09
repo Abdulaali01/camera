@@ -77,7 +77,6 @@ let map
 let groups=[]
 let markers=[]
 let circles=[]
-let drawnPoints=[]
 
 const COLORS=[
 "#ff5722",
@@ -95,61 +94,8 @@ map=new google.maps.Map(
 document.getElementById("map"),
 {
 center:{lat:21.4373,lng:40.5127},
-zoom:15,
+zoom:13,
 mapTypeId:"hybrid"
-})
-
-/* البحث */
-
-const input=document.getElementById("searchBox")
-
-const autocomplete=new google.maps.places.Autocomplete(
-input,{componentRestrictions:{country:"sa"}}
-)
-
-autocomplete.bindTo("bounds",map)
-
-autocomplete.addListener("place_changed",function(){
-
-const place=autocomplete.getPlace()
-if(!place.geometry)return
-map.fitBounds(place.geometry.viewport)
-
-})
-
-/* الرسم اليدوي */
-
-const drawingManager=new google.maps.drawing.DrawingManager({
-
-drawingMode:null,
-
-drawingControl:true,
-
-drawingControlOptions:{
-position:google.maps.ControlPosition.LEFT_CENTER,
-drawingModes:["polygon"]
-}
-
-})
-
-drawingManager.setMap(map)
-
-google.maps.event.addListener(
-drawingManager,'overlaycomplete',function(e){
-
-let polygon=e.overlay
-
-polygon.setOptions({
-fillColor:"#00ff00",
-strokeColor:"#008000",
-strokeWeight:3
-})
-
-let area=
-google.maps.geometry.spherical.computeArea(polygon.getPath())
-
-alert("المساحة: "+Math.round(area)+" متر مربع")
-
 })
 
 }
@@ -186,11 +132,29 @@ points.push({lat:lat,lng:lng})
 
 }
 
+/* التقريب التلقائي */
+
+zoomToPoints(points)
+
 groupPoints(points)
 
 }
 
 reader.readAsArrayBuffer(file)
+
+}
+
+/* تقريب الخريطة */
+
+function zoomToPoints(points){
+
+let bounds=new google.maps.LatLngBounds()
+
+points.forEach(p=>{
+bounds.extend(p)
+})
+
+map.fitBounds(bounds)
 
 }
 
@@ -300,7 +264,7 @@ circles.push(c)
 
 let percent=Math.round((g.points.length/totalPoints)*100)
 
-/* الرقم داخل الدائرة */
+/* النص داخل الدائرة */
 
 let labelMarker=new google.maps.Marker({
 
@@ -319,55 +283,7 @@ fontWeight:"bold"
 
 markers.push(labelMarker)
 
-/* اسم الحي */
-
-getDistrictName(g.center.lat,g.center.lng).then(function(name){
-
-let info=new google.maps.InfoWindow({
-content:"<b>"+name+"</b>"
 })
-
-info.open(map,labelMarker)
-
-})
-
-})
-
-}
-
-/* جلب اسم الحي */
-
-async function getDistrictName(lat,lng){
-
-let url=
-"https://maps.googleapis.com/maps/api/geocode/json?latlng="
-+lat+","+lng+
-"&key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y"
-
-let r=await fetch(url)
-
-let data=await r.json()
-
-let district=""
-
-if(data.results.length){
-
-data.results[0].address_components.forEach(c=>{
-
-if(
-c.types.includes("sublocality") ||
-c.types.includes("neighborhood")
-){
-district=c.long_name
-}
-
-})
-
-}
-
-if(district=="")district="حي غير معروف"
-
-return district
 
 }
 
@@ -415,7 +331,7 @@ link.click()
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,geometry,drawing&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,geometry&callback=initMap">
 </script>
 
 </body>
