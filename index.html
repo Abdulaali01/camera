@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
 
 <meta charset="UTF-8">
@@ -98,6 +99,7 @@ let currentFilter="all"
 let topDistricts=[]
 
 const COLORS=[
+
 "#ff5722",
 "#4caf50",
 "#2196f3",
@@ -106,17 +108,7 @@ const COLORS=[
 "#00bcd4",
 "#8bc34a",
 "#e91e63"
-]
 
-/* التصنيفات المطلوبة فقط */
-
-const allowedCategories=[
-"تدني مستوى نظافة الأماكن العامة",
-"نفايات او مبعثرات بالشارع",
-"تجمع المياه او المستنقعات",
-"تأخر في تفريغ حاوية نفايات",
-"حوادث الكوارث الطبيعية والصناعية",
-"صيانة او تغيير حاوية"
 ]
 
 function initMap(){
@@ -170,8 +162,12 @@ points=points.slice()
 
 points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
 
-const cross=(o,a,b)=>
-(a.lng-o.lng)*(b.lat-o.lat)-(a.lat-o.lat)*(b.lng-o.lng)
+const cross=(o,a,b)=>(
+
+(a.lng-o.lng)*(b.lat-o.lat)-
+(a.lat-o.lat)*(b.lng-o.lng)
+
+)
 
 let lower=[]
 
@@ -179,7 +175,9 @@ for(let p of points){
 
 while(lower.length>=2 &&
 cross(lower[lower.length-2],lower[lower.length-1],p)<=0){
+
 lower.pop()
+
 }
 
 lower.push(p)
@@ -194,7 +192,9 @@ let p=points[i]
 
 while(upper.length>=2 &&
 cross(upper[upper.length-2],upper[upper.length-1],p)<=0){
+
 upper.pop()
+
 }
 
 upper.push(p)
@@ -211,6 +211,7 @@ return lower.concat(upper)
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
+
 if(!file)return
 
 let reader=new FileReader()
@@ -218,8 +219,11 @@ let reader=new FileReader()
 reader.onload=function(e){
 
 let data=new Uint8Array(e.target.result)
+
 let workbook=XLSX.read(data,{type:"array"})
+
 let sheet=workbook.Sheets[workbook.SheetNames[0]]
+
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
 districts={}
@@ -233,14 +237,14 @@ let bounds=new google.maps.LatLngBounds()
 
 for(let i=1;i<rows.length;i++){
 
-/* ترتيب الأعمدة حسب ملفك */
+let lat=parseFloat(rows[i][0])
+let lng=parseFloat(rows[i][1])
 
-let lng=parseFloat(rows[i][0])   // A
-let lat=parseFloat(rows[i][1])   // B
-let district=rows[i][2]          // C
-let category=rows[i][3]          // D
+let district=rows[i][2]
 
-if(!allowedCategories.includes(category)) continue
+/* التصنيف التخصصي */
+
+let category=rows[i][4]
 
 bounds.extend({lat:lat,lng:lng})
 
@@ -265,7 +269,7 @@ districts[district].stats[category]++
 
 map.fitBounds(bounds)
 
-/* أعلى 3 أحياء */
+/* أعلى 3 */
 
 let arr=[]
 
@@ -297,6 +301,7 @@ let index=0
 for(let district in districts){
 
 let data=districts[district]
+
 let count=data.points.length
 
 if(currentFilter=="top3" && !topDistricts.includes(district)) continue
@@ -307,6 +312,7 @@ if(currentFilter=="100" && count>=100) continue
 if(count<3) continue
 
 let color=COLORS[index%COLORS.length]
+
 index++
 
 let hull=convexHull(data.points)
@@ -324,8 +330,6 @@ map:map
 
 polygons.push(polygon)
 
-/* مركز الحي */
-
 let lat=0
 let lng=0
 
@@ -342,6 +346,7 @@ lng:lng/hull.length
 /* الرسم البياني */
 
 let canvas=document.createElement("canvas")
+
 canvas.width=220
 canvas.height=220
 
@@ -356,7 +361,9 @@ values.push(data.stats[k])
 }
 
 new Chart(ctx,{
+
 type:'pie',
+
 data:{
 labels:labels,
 datasets:[{
@@ -371,6 +378,7 @@ backgroundColor:[
 ]
 }]
 },
+
 options:{
 plugins:{
 legend:{display:false},
@@ -380,34 +388,40 @@ text:district+" ("+count+")"
 }
 }
 }
+
 })
 
 let chartMarker=new google.maps.Marker({
+
 position:center,
 map:map,
+
 icon:{
 url:canvas.toDataURL(),
 scaledSize:new google.maps.Size(220,220)
 }
+
 })
 
 markers.push(chartMarker)
 
-/* اسم الحي */
-
 let labelMarker=new google.maps.Marker({
+
 position:center,
 map:map,
+
 icon:{
 path:google.maps.SymbolPath.CIRCLE,
 scale:0
 },
+
 label:{
 text:district,
 color:"#000",
 fontSize:"18px",
 fontWeight:"bold"
 }
+
 })
 
 markers.push(labelMarker)
