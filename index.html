@@ -57,6 +57,16 @@ color:#fff;
 cursor:pointer
 }
 
+.countBox{
+background:#000;
+color:#fff;
+padding:4px 10px;
+border-radius:6px;
+font-weight:bold;
+font-size:16px;
+text-align:center
+}
+
 </style>
 
 </head>
@@ -95,6 +105,7 @@ let map
 let districts={}
 let polygons=[]
 let markers=[]
+let overlays=[]
 let currentFilter="all"
 let topDistricts=[]
 
@@ -148,9 +159,11 @@ currentFilter=type
 
 polygons.forEach(p=>p.setMap(null))
 markers.forEach(m=>m.setMap(null))
+overlays.forEach(o=>o.setMap(null))
 
 polygons=[]
 markers=[]
+overlays=[]
 
 drawDistricts()
 
@@ -163,10 +176,8 @@ points=points.slice()
 points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
 
 const cross=(o,a,b)=>(
-
 (a.lng-o.lng)*(b.lat-o.lat)-
 (a.lat-o.lat)*(b.lng-o.lng)
-
 )
 
 let lower=[]
@@ -229,9 +240,11 @@ let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 districts={}
 polygons.forEach(p=>p.setMap(null))
 markers.forEach(m=>m.setMap(null))
+overlays.forEach(o=>o.setMap(null))
 
 polygons=[]
 markers=[]
+overlays=[]
 
 let bounds=new google.maps.LatLngBounds()
 
@@ -239,11 +252,7 @@ for(let i=1;i<rows.length;i++){
 
 let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
-
 let district=rows[i][2]
-
-/* التصنيف التخصصي */
-
 let category=rows[i][4]
 
 bounds.extend({lat:lat,lng:lng})
@@ -269,8 +278,6 @@ districts[district].stats[category]++
 
 map.fitBounds(bounds)
 
-/* أعلى 3 */
-
 let arr=[]
 
 for(let d in districts){
@@ -294,6 +301,50 @@ reader.readAsArrayBuffer(file)
 
 }
 
+function createCountOverlay(position,count){
+
+class CustomOverlay extends google.maps.OverlayView{
+
+onAdd(){
+
+this.div=document.createElement("div")
+this.div.className="countBox"
+this.div.innerHTML=count
+
+this.getPanes().overlayMouseTarget.appendChild(this.div)
+
+}
+
+draw(){
+
+let projection=this.getProjection()
+let pos=projection.fromLatLngToDivPixel(
+new google.maps.LatLng(position.lat,position.lng)
+)
+
+this.div.style.position="absolute"
+this.div.style.left=pos.x-20+"px"
+this.div.style.top=pos.y-10+"px"
+
+}
+
+onRemove(){
+
+this.div.parentNode.removeChild(this.div)
+this.div=null
+
+}
+
+}
+
+let overlay=new CustomOverlay()
+
+overlay.setMap(map)
+
+overlays.push(overlay)
+
+}
+
 function drawDistricts(){
 
 let index=0
@@ -301,7 +352,6 @@ let index=0
 for(let district in districts){
 
 let data=districts[district]
-
 let count=data.points.length
 
 if(currentFilter=="top3" && !topDistricts.includes(district)) continue
@@ -343,7 +393,7 @@ lat:lat/hull.length,
 lng:lng/hull.length
 }
 
-/* الرسم البياني */
+createCountOverlay(center,count)
 
 let canvas=document.createElement("canvas")
 
