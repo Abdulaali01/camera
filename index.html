@@ -37,33 +37,23 @@ z-index:5
 }
 
 .panel{
-
 position:absolute;
 top:60px;
 right:10px;
-
 background:#fff;
 padding:12px;
-
 border-radius:10px;
-
 box-shadow:0 0 6px rgba(0,0,0,.3);
-
 z-index:5
 }
 
 button{
-
 margin-top:6px;
 padding:8px 12px;
-
 border:none;
 border-radius:6px;
-
 background:#2d6cff;
-
 color:#fff;
-
 cursor:pointer
 }
 
@@ -110,17 +100,11 @@ const COLORS=[
 function initMap(){
 
 map=new google.maps.Map(
-
 document.getElementById("map"),
-
 {
-
 center:{lat:21.4373,lng:40.5127},
-
 zoom:12,
-
 mapTypeId:"hybrid"
-
 })
 
 /* البحث */
@@ -157,7 +141,6 @@ points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
 const cross=(o,a,b)=>(
 
 (a.lng-o.lng)*(b.lat-o.lat)-
-
 (a.lat-o.lat)*(b.lng-o.lng)
 
 )
@@ -243,10 +226,8 @@ bounds.extend({lat:lat,lng:lng})
 if(!districts[district]){
 
 districts[district]={
-
 points:[],
 stats:{}
-
 }
 
 }
@@ -254,9 +235,7 @@ stats:{}
 districts[district].points.push({lat,lng})
 
 if(!districts[district].stats[status]){
-
 districts[district].stats[status]=0
-
 }
 
 districts[district].stats[status]++
@@ -304,7 +283,7 @@ map:map
 
 polygons.push(polygon)
 
-/* مركز الحي */
+/* حساب مركز الحي */
 
 let lat=0
 let lng=0
@@ -319,25 +298,21 @@ lat:lat/hull.length,
 lng:lng/hull.length
 }
 
-/* إنشاء canvas للرسم البياني */
+/* إنشاء الرسم البياني */
 
 let canvas=document.createElement("canvas")
 
-canvas.width=180
-canvas.height=180
+canvas.width=220
+canvas.height=220
 
 let ctx=canvas.getContext("2d")
-
-/* الرسم البياني */
 
 let labels=[]
 let values=[]
 
 for(let k in data.stats){
-
 labels.push(k)
 values.push(data.stats[k])
-
 }
 
 new Chart(ctx,{
@@ -345,66 +320,69 @@ new Chart(ctx,{
 type:'pie',
 
 data:{
-
 labels:labels,
-
 datasets:[{
-
 data:values,
-
 backgroundColor:[
-
 "#4caf50",
 "#ff9800",
 "#f44336",
 "#2196f3",
 "#9c27b0"
-
 ]
-
 }]
-
 },
 
 options:{
-
 plugins:{
-
 legend:{display:false},
-
 title:{
-
 display:true,
-
 text:district+" ("+data.points.length+")"
-
 }
-
 }
-
 }
 
 })
 
-/* تحويل الرسم إلى صورة */
+/* وضع الرسم داخل الخريطة */
 
-let marker=new google.maps.Marker({
+let chartMarker=new google.maps.Marker({
 
 position:center,
-
 map:map,
 
 icon:{
-
 url:canvas.toDataURL(),
-
-scaledSize:new google.maps.Size(180,180)
-
+scaledSize:new google.maps.Size(220,220)
 }
 
 })
 
-markers.push(marker)
+markers.push(chartMarker)
+
+/* اسم الحي */
+
+let labelMarker=new google.maps.Marker({
+
+position:center,
+map:map,
+
+icon:{
+path:google.maps.SymbolPath.CIRCLE,
+scale:0
+},
+
+label:{
+text:district,
+color:"#000",
+fontSize:"18px",
+fontWeight:"bold"
+}
+
+})
+
+markers.push(labelMarker)
 
 }
 
@@ -417,5 +395,4 @@ src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB
 </script>
 
 </body>
-
 </html>
