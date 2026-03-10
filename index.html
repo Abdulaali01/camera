@@ -228,6 +228,8 @@ markers.forEach(m=>m.setMap(null))
 polygons=[]
 markers=[]
 
+let bounds=new google.maps.LatLngBounds()
+
 for(let i=1;i<rows.length;i++){
 
 let lat=parseFloat(rows[i][0])
@@ -235,6 +237,8 @@ let lng=parseFloat(rows[i][1])
 
 let district=rows[i][2]
 let status=rows[i][3]
+
+bounds.extend({lat:lat,lng:lng})
 
 if(!districts[district]){
 
@@ -259,6 +263,8 @@ districts[district].stats[status]++
 
 }
 
+map.fitBounds(bounds)
+
 drawDistricts()
 
 }
@@ -276,6 +282,8 @@ let index=0
 for(let district in districts){
 
 let data=districts[district]
+
+if(data.points.length<3) continue
 
 let color=COLORS[index%COLORS.length]
 
@@ -298,14 +306,25 @@ polygons.push(polygon)
 
 /* مركز الحي */
 
-let center=hull[0]
+let lat=0
+let lng=0
+
+hull.forEach(p=>{
+lat+=p.lat
+lng+=p.lng
+})
+
+let center={
+lat:lat/hull.length,
+lng:lng/hull.length
+}
 
 /* إنشاء canvas للرسم البياني */
 
 let canvas=document.createElement("canvas")
 
-canvas.width=140
-canvas.height=140
+canvas.width=180
+canvas.height=180
 
 let ctx=canvas.getContext("2d")
 
@@ -379,7 +398,7 @@ icon:{
 
 url:canvas.toDataURL(),
 
-scaledSize:new google.maps.Size(140,140)
+scaledSize:new google.maps.Size(180,180)
 
 }
 
@@ -394,7 +413,7 @@ markers.push(marker)
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places&callback=initMap">
 </script>
 
 </body>
