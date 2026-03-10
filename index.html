@@ -241,7 +241,10 @@ let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
 
 let district=rows[i][2]
-let status=rows[i][3]
+
+/* التصنيف التخصصي */
+
+let category=rows[i][4]
 
 bounds.extend({lat:lat,lng:lng})
 
@@ -256,17 +259,17 @@ stats:{}
 
 districts[district].points.push({lat,lng})
 
-if(!districts[district].stats[status]){
-districts[district].stats[status]=0
+if(!districts[district].stats[category]){
+districts[district].stats[category]=0
 }
 
-districts[district].stats[status]++
+districts[district].stats[category]++
 
 }
 
 map.fitBounds(bounds)
 
-/* حساب أعلى 3 */
+/* أعلى 3 */
 
 let arr=[]
 
@@ -340,6 +343,8 @@ lat:lat/hull.length,
 lng:lng/hull.length
 }
 
+/* الرسم البياني */
+
 let canvas=document.createElement("canvas")
 
 canvas.width=220
@@ -368,7 +373,8 @@ backgroundColor:[
 "#ff9800",
 "#f44336",
 "#2196f3",
-"#9c27b0"
+"#9c27b0",
+"#009688"
 ]
 }]
 },
