@@ -77,6 +77,8 @@ cursor:pointer
 
 <label><input type="radio" name="filter" onclick="setFilter('all')" checked> عرض الكل</label><br>
 
+<label><input type="radio" name="filter" onclick="setFilter('top3')"> عرض أعلى 3</label><br>
+
 <label><input type="radio" name="filter" onclick="setFilter('200')"> أكثر من 200</label><br>
 
 <label><input type="radio" name="filter" onclick="setFilter('100_200')"> من 100 إلى 200</label><br>
@@ -94,6 +96,7 @@ let districts={}
 let polygons=[]
 let markers=[]
 let currentFilter="all"
+let topDistricts=[]
 
 const COLORS=[
 
@@ -105,6 +108,19 @@ const COLORS=[
 "#00bcd4",
 "#8bc34a",
 "#e91e63"
+
+]
+
+/* التصنيفات المسموح بها فقط */
+
+const allowedCategories=[
+
+"تدني مستوى نظافة الأماكن العامة",
+"نفايات او مبعثرات بالشارع",
+"تجمع المياه او المستنقعات",
+"تأخر في تفريغ حاوية نفايات",
+"حوادث الكوارث الطبيعية والصناعية",
+"صيانة او تغيير حاوية"
 
 ]
 
@@ -139,8 +155,6 @@ map.fitBounds(place.geometry.viewport)
 
 }
 
-/* تغيير الفلتر */
-
 function setFilter(type){
 
 currentFilter=type
@@ -154,8 +168,6 @@ markers=[]
 drawDistricts()
 
 }
-
-/* حساب الحدود الخارجية */
 
 function convexHull(points){
 
@@ -209,8 +221,6 @@ return lower.concat(upper)
 
 }
 
-/* استيراد Excel */
-
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
@@ -242,22 +252,15 @@ for(let i=1;i<rows.length;i++){
 
 let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
-
 let district=rows[i][2]
-let status=rows[i][3]
 
-/* فلترة التصنيفات المطلوبة فقط */
+/* التصنيف التخصصي */
 
-const allowedStatus=[
-"تدني مستوى نظافة الأماكن العامة",
-"نفايات او مبعثرات بالشارع",
-"تجمع المياه او المستنقعات",
-"تأخر في تفريغ حاوية نفايات",
-"حوادث الكوارث الطبيعية والصناعية",
-"صيانة او تغيير حاوية"
-]
+let category=rows[i][4]
 
-if(!allowedStatus.includes(status)) continue
+/* تجاهل أي تصنيف غير مطلوب */
+
+if(!allowedCategories.includes(category)) continue
 
 bounds.extend({lat:lat,lng:lng})
 
@@ -272,15 +275,32 @@ stats:{}
 
 districts[district].points.push({lat,lng})
 
-if(!districts[district].stats[status]){
-districts[district].stats[status]=0
+if(!districts[district].stats[category]){
+districts[district].stats[category]=0
 }
 
-districts[district].stats[status]++
+districts[district].stats[category]++
 
 }
 
 map.fitBounds(bounds)
+
+/* أعلى 3 */
+
+let arr=[]
+
+for(let d in districts){
+
+arr.push({
+name:d,
+count:districts[d].points.length
+})
+
+}
+
+arr.sort((a,b)=>b.count-a.count)
+
+topDistricts=arr.slice(0,3).map(d=>d.name)
 
 drawDistricts()
 
@@ -289,8 +309,6 @@ drawDistricts()
 reader.readAsArrayBuffer(file)
 
 }
-
-/* رسم الأحياء */
 
 function drawDistricts(){
 
@@ -302,6 +320,7 @@ let data=districts[district]
 
 let count=data.points.length
 
+if(currentFilter=="top3" && !topDistricts.includes(district)) continue
 if(currentFilter=="200" && count<=200) continue
 if(currentFilter=="100_200" && (count<100 || count>200)) continue
 if(currentFilter=="100" && count>=100) continue
@@ -326,8 +345,6 @@ map:map
 })
 
 polygons.push(polygon)
-
-/* مركز الحي */
 
 let lat=0
 let lng=0
@@ -372,7 +389,8 @@ backgroundColor:[
 "#ff9800",
 "#f44336",
 "#2196f3",
-"#9c27b0"
+"#9c27b0",
+"#009688"
 ]
 }]
 },
@@ -402,8 +420,6 @@ scaledSize:new google.maps.Size(220,220)
 })
 
 markers.push(chartMarker)
-
-/* اسم الحي */
 
 let labelMarker=new google.maps.Marker({
 
