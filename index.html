@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>تحليل المواقع</title>
+<title>تحليل الأحياء + الرسم البياني</title>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
 <style>
 
@@ -22,24 +23,47 @@ height:100vh;
 width:100%
 }
 
+#searchBox{
+position:absolute;
+top:10px;
+left:50%;
+transform:translateX(-50%);
+width:300px;
+padding:10px;
+border-radius:8px;
+border:1px solid #ccc;
+background:#fff;
+z-index:5
+}
+
 .panel{
+
 position:absolute;
 top:60px;
 right:10px;
+
 background:#fff;
 padding:12px;
+
 border-radius:10px;
+
 box-shadow:0 0 6px rgba(0,0,0,.3);
+
 z-index:5
 }
 
 button{
+
 margin-top:6px;
 padding:8px 12px;
+
 border:none;
 border-radius:6px;
+
 background:#2d6cff;
+
 color:#fff;
+
 cursor:pointer
 }
 
@@ -49,14 +73,15 @@ cursor:pointer
 
 <body>
 
+<input id="searchBox" placeholder="ابحث عن حي أو شارع">
+
 <div class="panel">
 
-<input type="file" id="excelFile" accept=".xlsx,.xls">
+<input type="file" id="excelFile">
 
 <br>
 
 <button onclick="importExcel()">استيراد Excel</button>
-<button onclick="exportExcel()">تصدير Excel</button>
 
 </div>
 
@@ -65,23 +90,63 @@ cursor:pointer
 <script>
 
 let map
+let districts={}
+let polygons=[]
 let markers=[]
-let polygon=null
-let allPoints=[]
+
+const COLORS=[
+
+"#ff5722",
+"#4caf50",
+"#2196f3",
+"#9c27b0",
+"#ffc107",
+"#00bcd4",
+"#8bc34a",
+"#e91e63"
+
+]
 
 function initMap(){
 
 map=new google.maps.Map(
+
 document.getElementById("map"),
+
 {
+
 center:{lat:21.4373,lng:40.5127},
-zoom:13,
+
+zoom:12,
+
 mapTypeId:"hybrid"
+
+})
+
+/* البحث */
+
+const input=document.getElementById("searchBox")
+
+const autocomplete=new google.maps.places.Autocomplete(
+input,
+{componentRestrictions:{country:"sa"}}
+)
+
+autocomplete.bindTo("bounds",map)
+
+autocomplete.addListener("place_changed",function(){
+
+const place=autocomplete.getPlace()
+
+if(!place.geometry)return
+
+map.fitBounds(place.geometry.viewport)
+
 })
 
 }
 
-/* خوارزمية الحدود الخارجية */
+/* حساب الحدود الخارجية للنقاط */
 
 function convexHull(points){
 
@@ -90,8 +155,11 @@ points=points.slice()
 points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
 
 const cross=(o,a,b)=>(
+
 (a.lng-o.lng)*(b.lat-o.lat)-
+
 (a.lat-o.lat)*(b.lng-o.lng)
+
 )
 
 let lower=[]
@@ -99,10 +167,10 @@ let lower=[]
 for(let p of points){
 
 while(lower.length>=2 &&
-cross(lower[lower.length-2],
-lower[lower.length-1],
-p)<=0){
+cross(lower[lower.length-2],lower[lower.length-1],p)<=0){
+
 lower.pop()
+
 }
 
 lower.push(p)
@@ -116,10 +184,10 @@ for(let i=points.length-1;i>=0;i--){
 let p=points[i]
 
 while(upper.length>=2 &&
-cross(upper[upper.length-2],
-upper[upper.length-1],
-p)<=0){
+cross(upper[upper.length-2],upper[upper.length-1],p)<=0){
+
 upper.pop()
+
 }
 
 upper.push(p)
@@ -153,21 +221,45 @@ let sheet=workbook.Sheets[workbook.SheetNames[0]]
 
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
-allPoints=[]
+districts={}
+polygons.forEach(p=>p.setMap(null))
+markers.forEach(m=>m.setMap(null))
+
+polygons=[]
+markers=[]
 
 for(let i=1;i<rows.length;i++){
 
 let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
 
-if(!isNaN(lat)&&!isNaN(lng)){
-allPoints.push({lat:lat,lng:lng})
-}
+let district=rows[i][2]
+let status=rows[i][3]
+
+if(!districts[district]){
+
+districts[district]={
+
+points:[],
+stats:{}
 
 }
 
-drawPoints()
-drawHull()
+}
+
+districts[district].points.push({lat,lng})
+
+if(!districts[district].stats[status]){
+
+districts[district].stats[status]=0
+
+}
+
+districts[district].stats[status]++
+
+}
+
+drawDistricts()
 
 }
 
@@ -175,97 +267,136 @@ reader.readAsArrayBuffer(file)
 
 }
 
-/* رسم النقاط */
+/* رسم الأحياء */
 
-function drawPoints(){
+function drawDistricts(){
 
-markers.forEach(m=>m.setMap(null))
-markers=[]
+let index=0
 
-allPoints.forEach(p=>{
+for(let district in districts){
+
+let data=districts[district]
+
+let color=COLORS[index%COLORS.length]
+
+index++
+
+let hull=convexHull(data.points)
+
+let polygon=new google.maps.Polygon({
+
+paths:hull,
+strokeColor:color,
+strokeWeight:4,
+fillColor:color,
+fillOpacity:0.35,
+map:map
+
+})
+
+polygons.push(polygon)
+
+/* مركز الحي */
+
+let center=hull[0]
+
+/* إنشاء canvas للرسم البياني */
+
+let canvas=document.createElement("canvas")
+
+canvas.width=140
+canvas.height=140
+
+let ctx=canvas.getContext("2d")
+
+/* الرسم البياني */
+
+let labels=[]
+let values=[]
+
+for(let k in data.stats){
+
+labels.push(k)
+values.push(data.stats[k])
+
+}
+
+new Chart(ctx,{
+
+type:'pie',
+
+data:{
+
+labels:labels,
+
+datasets:[{
+
+data:values,
+
+backgroundColor:[
+
+"#4caf50",
+"#ff9800",
+"#f44336",
+"#2196f3",
+"#9c27b0"
+
+]
+
+}]
+
+},
+
+options:{
+
+plugins:{
+
+legend:{display:false},
+
+title:{
+
+display:true,
+
+text:district+" ("+data.points.length+")"
+
+}
+
+}
+
+}
+
+})
+
+/* تحويل الرسم إلى صورة */
 
 let marker=new google.maps.Marker({
-position:p,
-map:map
+
+position:center,
+
+map:map,
+
+icon:{
+
+url:canvas.toDataURL(),
+
+scaledSize:new google.maps.Size(140,140)
+
+}
+
 })
 
 markers.push(marker)
 
-})
-
 }
-
-/* رسم الشكل الخارجي */
-
-function drawHull(){
-
-if(polygon){
-polygon.setMap(null)
-}
-
-let hull=convexHull(allPoints)
-
-polygon=new google.maps.Polygon({
-
-paths:hull,
-strokeColor:"#ff0000",
-strokeOpacity:1,
-strokeWeight:4,
-fillColor:"#ff0000",
-fillOpacity:0.25,
-map:map
-
-})
-
-let bounds=new google.maps.LatLngBounds()
-
-allPoints.forEach(p=>bounds.extend(p))
-
-map.fitBounds(bounds)
-
-}
-
-/* تصدير Excel */
-
-async function exportExcel(){
-
-let workbook=new ExcelJS.Workbook()
-
-let sheet=workbook.addWorksheet("Points")
-
-sheet.columns=[
-
-{header:"Latitude",key:"lat",width:18},
-{header:"Longitude",key:"lng",width:18}
-
-]
-
-allPoints.forEach(p=>{
-
-sheet.addRow({
-lat:p.lat,
-lng:p.lng
-})
-
-})
-
-const buffer=await workbook.xlsx.writeBuffer()
-
-let link=document.createElement("a")
-
-link.href=URL.createObjectURL(new Blob([buffer]))
-
-link.download="points.xlsx"
-
-link.click()
 
 }
 
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&callback=initMap">
 </script>
 
 </body>
+
 </html>
