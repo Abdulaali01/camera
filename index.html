@@ -73,6 +73,16 @@ cursor:pointer
 
 <button onclick="importExcel()">استيراد Excel</button>
 
+<br><br>
+
+<label><input type="radio" name="filter" onclick="setFilter('all')" checked> عرض الكل</label><br>
+
+<label><input type="radio" name="filter" onclick="setFilter('200')"> أكثر من 200</label><br>
+
+<label><input type="radio" name="filter" onclick="setFilter('100_200')"> من 100 إلى 200</label><br>
+
+<label><input type="radio" name="filter" onclick="setFilter('100')"> أقل من 100</label>
+
 </div>
 
 <div id="map"></div>
@@ -83,6 +93,7 @@ let map
 let districts={}
 let polygons=[]
 let markers=[]
+let currentFilter="all"
 
 const COLORS=[
 
@@ -107,8 +118,6 @@ zoom:12,
 mapTypeId:"hybrid"
 })
 
-/* البحث */
-
 const input=document.getElementById("searchBox")
 
 const autocomplete=new google.maps.places.Autocomplete(
@@ -130,7 +139,23 @@ map.fitBounds(place.geometry.viewport)
 
 }
 
-/* حساب الحدود الخارجية للنقاط */
+/* تغيير الفلتر */
+
+function setFilter(type){
+
+currentFilter=type
+
+polygons.forEach(p=>p.setMap(null))
+markers.forEach(m=>m.setMap(null))
+
+polygons=[]
+markers=[]
+
+drawDistricts()
+
+}
+
+/* حساب الحدود الخارجية */
 
 function convexHull(points){
 
@@ -262,7 +287,13 @@ for(let district in districts){
 
 let data=districts[district]
 
-if(data.points.length<3) continue
+let count=data.points.length
+
+if(currentFilter=="200" && count<=200) continue
+if(currentFilter=="100_200" && (count<100 || count>200)) continue
+if(currentFilter=="100" && count>=100) continue
+
+if(count<3) continue
 
 let color=COLORS[index%COLORS.length]
 
@@ -283,7 +314,7 @@ map:map
 
 polygons.push(polygon)
 
-/* حساب مركز الحي */
+/* مركز الحي */
 
 let lat=0
 let lng=0
@@ -298,7 +329,7 @@ lat:lat/hull.length,
 lng:lng/hull.length
 }
 
-/* إنشاء الرسم البياني */
+/* الرسم البياني */
 
 let canvas=document.createElement("canvas")
 
@@ -338,14 +369,12 @@ plugins:{
 legend:{display:false},
 title:{
 display:true,
-text:district+" ("+data.points.length+")"
+text:district+" ("+count+")"
 }
 }
 }
 
 })
-
-/* وضع الرسم داخل الخريطة */
 
 let chartMarker=new google.maps.Marker({
 
