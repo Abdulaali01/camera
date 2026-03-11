@@ -65,7 +65,7 @@ font-weight:bold;
 font-size:16px;
 text-align:center;
 line-height:1.3;
-min-width:90px
+min-width:110px
 }
 
 .countNumber{
@@ -80,8 +80,37 @@ margin-top:2px
 
 .stats{
 font-size:12px;
-margin-top:4px;
+margin-top:6px;
 line-height:1.2
+}
+
+.statRow{
+display:flex;
+align-items:center;
+gap:4px;
+margin-top:2px
+}
+
+.bar{
+display:flex;
+gap:1px
+}
+
+.bar span{
+width:6px;
+height:6px;
+background:#fff;
+display:inline-block
+}
+
+.label{
+min-width:45px;
+text-align:right;
+font-size:11px
+}
+
+.count{
+font-size:11px
 }
 
 </style>
@@ -318,8 +347,32 @@ this.div.className="countBox"
 
 let statsHTML=""
 
+let max=0
+
 for(let t in data.third){
-statsHTML+=t+" "+data.third[t]+"<br>"
+if(data.third[t]>max) max=data.third[t]
+}
+
+for(let t in data.third){
+
+let val=data.third[t]
+
+let squares=Math.round((val/max)*10)
+
+let bar=""
+
+for(let i=0;i<squares;i++){
+bar+="<span></span>"
+}
+
+statsHTML+=`
+<div class="statRow">
+<div class="label">${t}</div>
+<div class="bar">${bar}</div>
+<div class="count">${val}</div>
+</div>
+`
+
 }
 
 this.div.innerHTML=
