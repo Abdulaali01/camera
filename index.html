@@ -78,6 +78,12 @@ font-size:13px;
 margin-top:2px
 }
 
+.stats{
+font-size:12px;
+margin-top:4px;
+line-height:1.2
+}
+
 </style>
 </head>
 
@@ -241,11 +247,9 @@ let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
 districts={}
 polygons.forEach(p=>p.setMap(null))
-markers.forEach(m=>m.setMap(null))
 overlays.forEach(o=>o.setMap(null))
 
 polygons=[]
-markers=[]
 overlays=[]
 
 let bounds=new google.maps.LatLngBounds()
@@ -255,7 +259,7 @@ for(let i=1;i<rows.length;i++){
 let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
 let district=rows[i][2]
-let category=rows[i][4]
+let third=rows[i][3]
 
 bounds.extend({lat:lat,lng:lng})
 
@@ -263,18 +267,18 @@ if(!districts[district]){
 
 districts[district]={
 points:[],
-stats:{}
+third:{}
 }
 
 }
 
 districts[district].points.push({lat,lng})
 
-if(!districts[district].stats[category]){
-districts[district].stats[category]=0
+if(!districts[district].third[third]){
+districts[district].third[third]=0
 }
 
-districts[district].stats[category]++
+districts[district].third[third]++
 
 }
 
@@ -303,7 +307,7 @@ reader.readAsArrayBuffer(file)
 
 }
 
-function createCountOverlay(position,count,district){
+function createCountOverlay(position,count,district,data){
 
 class CustomOverlay extends google.maps.OverlayView{
 
@@ -312,9 +316,16 @@ onAdd(){
 this.div=document.createElement("div")
 this.div.className="countBox"
 
+let statsHTML=""
+
+for(let t in data.third){
+statsHTML+=t+" "+data.third[t]+"<br>"
+}
+
 this.div.innerHTML=
 '<div class="countNumber">'+count+'</div>'+
-'<div class="countDistrict">'+district+'</div>'
+'<div class="countDistrict">'+district+'</div>'+
+'<div class="stats">'+statsHTML+'</div>'
 
 this.getPanes().overlayMouseTarget.appendChild(this.div)
 
@@ -398,7 +409,7 @@ lat:lat/hull.length,
 lng:lng/hull.length
 }
 
-createCountOverlay(center,count,district)
+createCountOverlay(center,count,district,data)
 
 }
 
