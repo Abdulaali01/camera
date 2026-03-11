@@ -465,12 +465,25 @@ path:google.maps.SymbolPath.CIRCLE,
 scale:0
 },
 
+let labelMarker=new google.maps.Marker({
+
+position:center,
+map:map,
+
+icon:{
+path:google.maps.SymbolPath.CIRCLE,
+scale:0,
+labelOrigin:new google.maps.Point(0,40)   // ينزل اسم الحي للأسفل
+},
+
 label:{
 text:district,
 color:"#000",
 fontSize:"18px",
 fontWeight:"bold"
 }
+
+})
 
 })
 
