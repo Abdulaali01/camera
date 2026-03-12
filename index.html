@@ -162,30 +162,6 @@ font-size:11px
 font-size:11px
 }
 
-/* للجوال */
-@media (max-width:900px){
-
-.topPanel{
-width:95%;
-padding:10px
-}
-
-#searchBox{
-width:100%
-}
-
-.topPanel .group{
-width:100%
-}
-
-.fileInput,
-select,
-button{
-width:100%
-}
-
-}
-
 </style>
 </head>
 
@@ -262,30 +238,6 @@ document.getElementById("map"),
 center:{lat:21.4373,lng:40.5127},
 zoom:12,
 mapTypeId:"hybrid"
-})
-
-const input=document.getElementById("searchBox")
-
-const autocomplete=new google.maps.places.Autocomplete(
-input,
-{componentRestrictions:{country:"sa"}}
-)
-
-autocomplete.bindTo("bounds",map)
-
-autocomplete.addListener("place_changed",function(){
-
-const place=autocomplete.getPlace()
-
-if(!place.geometry)return
-
-if(place.geometry.viewport){
-map.fitBounds(place.geometry.viewport)
-}else{
-map.setCenter(place.geometry.location)
-map.setZoom(16)
-}
-
 })
 
 }
@@ -371,6 +323,93 @@ return lower.concat(upper)
 
 }
 
+function importExcel(){
+
+let file=document.getElementById("excelFile").files[0]
+
+if(!file)return
+
+let reader=new FileReader()
+
+reader.onload=function(e){
+
+let data=new Uint8Array(e.target.result)
+
+let workbook=XLSX.read(data,{type:"array"})
+
+let sheet=workbook.Sheets[workbook.SheetNames[0]]
+
+let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
+
+districts={}
+clearMap()
+
+let bounds=new google.maps.LatLngBounds()
+
+for(let i=1;i<rows.length;i++){
+
+let lat=parseFloat(rows[i][0])
+let lng=parseFloat(rows[i][1])
+let district=rows[i][2]
+
+if(isNaN(lat)||isNaN(lng)||!district)continue
+
+bounds.extend({lat:lat,lng:lng})
+
+if(!districts[district]){
+
+districts[district]={
+points:[]
+}
+
+}
+
+districts[district].points.push({lat,lng})
+
+}
+
+map.fitBounds(bounds)
+
+drawDistricts()
+
+}
+
+reader.readAsArrayBuffer(file)
+
+}
+
+function drawDistricts(){
+
+let index=0
+
+for(let district in districts){
+
+let data=districts[district]
+
+if(data.points.length<3)continue
+
+let hull=convexHull(data.points)
+
+let color=COLORS[index%COLORS.length]
+index++
+
+let polygon=new google.maps.Polygon({
+
+paths:hull,
+strokeColor:color,
+strokeWeight:4,
+fillColor:color,
+fillOpacity:0.35,
+map:map
+
+})
+
+polygons.push(polygon)
+
+}
+
+}
+
 function exportHDImage(){
 
 let bounds=new google.maps.LatLngBounds()
@@ -388,15 +427,14 @@ map.fitBounds(bounds)
 setTimeout(function(){
 
 html2canvas(document.getElementById("map"),{
-scale:4,
-useCORS:true
+scale:4
 }).then(canvas=>{
 
 let link=document.createElement("a")
 
 link.download="map_report_hd.png"
 
-link.href=canvas.toDataURL("image/png")
+link.href=canvas.toDataURL()
 
 link.click()
 
