@@ -220,7 +220,9 @@ width:100%
 <option value="">كل الأحياء</option>
 </select>
 </div>
-
+<div class="group">
+<button onclick="exportHDImage()">تصدير صورة HD</button>
+</div>
 </div>
 
 <div id="map"></div>
@@ -642,7 +644,21 @@ map.fitBounds(visibleBounds)
 }
 
 }
+function exportHDImage(){
 
+html2canvas(document.getElementById("map"),{
+scale:4,
+useCORS:true
+}).then(canvas=>{
+
+let link=document.createElement("a")
+link.download="map_hd.png"
+link.href=canvas.toDataURL("image/png")
+link.click()
+
+})
+
+}
 </script>
 
 <script async defer
