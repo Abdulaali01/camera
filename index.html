@@ -6,11 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>تحليل الأحياء + الرسم البياني</title>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-
-<!-- مكتبة تصوير الخريطة -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
@@ -224,43 +221,425 @@ width:100%
 </select>
 </div>
 
-<div class="group">
-<button onclick="exportHDImage()">تصدير صورة HD</button>
-</div>
-
 </div>
 
 <div id="map"></div>
 
 <script>
 
-function exportHDImage(){
+let map
+let districts={}
+let polygons=[]
+let markers=[]
+let overlays=[]
+let currentFilter="all"
+let selectedDistrict=""
+let rankedDistricts=[]
 
-let bounds=new google.maps.LatLngBounds()
+const COLORS=[
+"#ff5722",
+"#4caf50",
+"#2196f3",
+"#9c27b0",
+"#ffc107",
+"#00bcd4",
+"#8bc34a",
+"#e91e63"
+]
 
-for(let district in districts){
-districts[district].points.forEach(p=>{
-bounds.extend(p)
+function initMap(){
+
+map=new google.maps.Map(
+document.getElementById("map"),
+{
+center:{lat:21.4373,lng:40.5127},
+zoom:12,
+mapTypeId:"hybrid"
 })
+
+const input=document.getElementById("searchBox")
+
+const autocomplete=new google.maps.places.Autocomplete(
+input,
+{componentRestrictions:{country:"sa"}}
+)
+
+autocomplete.bindTo("bounds",map)
+
+autocomplete.addListener("place_changed",function(){
+
+const place=autocomplete.getPlace()
+
+if(!place.geometry)return
+
+if(place.geometry.viewport){
+map.fitBounds(place.geometry.viewport)
+}else{
+map.setCenter(place.geometry.location)
+map.setZoom(16)
 }
 
-map.fitBounds(bounds)
-
-setTimeout(function(){
-
-html2canvas(document.getElementById("map"),{
-scale:4,
-useCORS:true
-}).then(canvas=>{
-
-let link=document.createElement("a")
-link.download="map_report_hd.png"
-link.href=canvas.toDataURL("image/png")
-link.click()
-
 })
 
-},1200)
+}
+
+function setFilter(type){
+
+currentFilter=type
+selectedDistrict=document.getElementById("districtList").value || ""
+
+clearMap()
+drawDistricts()
+
+}
+
+function selectDistrict(name){
+
+selectedDistrict=name || ""
+
+clearMap()
+drawDistricts()
+
+}
+
+function clearMap(){
+
+polygons.forEach(p=>p.setMap(null))
+markers.forEach(m=>m.setMap(null))
+overlays.forEach(o=>o.setMap(null))
+
+polygons=[]
+markers=[]
+overlays=[]
+
+}
+
+function convexHull(points){
+
+points=points.slice()
+
+points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
+
+const cross=(o,a,b)=>(
+(a.lng-o.lng)*(b.lat-o.lat)-
+(a.lat-o.lat)*(b.lng-o.lng)
+)
+
+let lower=[]
+
+for(let p of points){
+
+while(lower.length>=2 &&
+cross(lower[lower.length-2],lower[lower.length-1],p)<=0){
+
+lower.pop()
+
+}
+
+lower.push(p)
+
+}
+
+let upper=[]
+
+for(let i=points.length-1;i>=0;i--){
+
+let p=points[i]
+
+while(upper.length>=2 &&
+cross(upper[upper.length-2],upper[upper.length-1],p)<=0){
+
+upper.pop()
+
+}
+
+upper.push(p)
+
+}
+
+upper.pop()
+lower.pop()
+
+return lower.concat(upper)
+
+}
+
+function importExcel(){
+
+let file=document.getElementById("excelFile").files[0]
+
+if(!file)return
+
+let reader=new FileReader()
+
+reader.onload=function(e){
+
+let data=new Uint8Array(e.target.result)
+
+let workbook=XLSX.read(data,{type:"array"})
+
+let sheet=workbook.Sheets[workbook.SheetNames[0]]
+
+let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
+
+districts={}
+clearMap()
+
+let bounds=new google.maps.LatLngBounds()
+let hasValidPoint=false
+
+for(let i=1;i<rows.length;i++){
+
+let lat=parseFloat(rows[i][0])
+let lng=parseFloat(rows[i][1])
+let district=(rows[i][2]??"").toString().trim()
+let third=(rows[i][3]??"بدون تصنيف").toString().trim()
+
+if(isNaN(lat) || isNaN(lng) || !district) continue
+
+bounds.extend({lat:lat,lng:lng})
+hasValidPoint=true
+
+if(!districts[district]){
+
+districts[district]={
+points:[],
+third:{}
+}
+
+}
+
+districts[district].points.push({lat,lng})
+
+if(!districts[district].third[third]){
+districts[district].third[third]=0
+}
+
+districts[district].third[third]++
+
+}
+
+if(hasValidPoint){
+map.fitBounds(bounds)
+}
+
+prepareRanks()
+fillDistrictList()
+drawDistricts()
+
+}
+
+reader.readAsArrayBuffer(file)
+
+}
+
+function prepareRanks(){
+
+let arr=[]
+
+for(let d in districts){
+
+arr.push({
+name:d,
+count:districts[d].points.length
+})
+
+}
+
+arr.sort((a,b)=>b.count-a.count)
+
+rankedDistricts=arr
+
+}
+
+function fillDistrictList(){
+
+let sel=document.getElementById("districtList")
+sel.innerHTML='<option value="">كل الأحياء</option>'
+
+let names=Object.keys(districts).sort((a,b)=>a.localeCompare(b,'ar'))
+
+for(let name of names){
+
+let opt=document.createElement("option")
+opt.value=name
+opt.textContent=name
+sel.appendChild(opt)
+
+}
+
+sel.value=selectedDistrict || ""
+
+}
+
+function getTopGroupNames(groupNumber){
+
+let start=(groupNumber-1)*3
+let end=start+3
+
+return rankedDistricts.slice(start,end).map(x=>x.name)
+
+}
+
+function passesFilter(district,count){
+
+if(selectedDistrict && district!==selectedDistrict) return false
+
+if(currentFilter=="all") return true
+
+if(currentFilter=="top3"){
+return getTopGroupNames(1).includes(district)
+}
+
+if(currentFilter=="top3_2"){
+return getTopGroupNames(2).includes(district)
+}
+
+if(currentFilter=="top3_3"){
+return getTopGroupNames(3).includes(district)
+}
+
+if(currentFilter=="top3_4"){
+return getTopGroupNames(4).includes(district)
+}
+
+if(currentFilter=="200" && count<=200) return false
+if(currentFilter=="100_200" && (count<100 || count>200)) return false
+if(currentFilter=="100" && count>=100) return false
+
+return true
+
+}
+
+function createCountOverlay(position,count,district,data){
+
+class CustomOverlay extends google.maps.OverlayView{
+
+onAdd(){
+
+this.div=document.createElement("div")
+this.div.className="countBox"
+
+let statsHTML=""
+let max=0
+
+for(let t in data.third){
+if(data.third[t]>max) max=data.third[t]
+}
+
+for(let t in data.third){
+
+let val=data.third[t]
+let squares=max>0 ? Math.round((val/max)*10) : 0
+let bar=""
+
+for(let i=0;i<squares;i++){
+bar+="<span></span>"
+}
+
+statsHTML+=`
+<div class="statRow">
+<div class="label">${t}</div>
+<div class="bar">${bar}</div>
+<div class="count">${val}</div>
+</div>
+`
+
+}
+
+this.div.innerHTML=
+'<div class="countNumber">'+count+'</div>'+
+'<div class="countDistrict">'+district+'</div>'+
+'<div class="stats">'+statsHTML+'</div>'
+
+this.getPanes().overlayMouseTarget.appendChild(this.div)
+
+}
+
+draw(){
+
+let projection=this.getProjection()
+let pos=projection.fromLatLngToDivPixel(
+new google.maps.LatLng(position.lat,position.lng)
+)
+
+this.div.style.position="absolute"
+this.div.style.left=(pos.x-45)+"px"
+this.div.style.top=(pos.y-15)+"px"
+
+}
+
+onRemove(){
+
+if(this.div && this.div.parentNode){
+this.div.parentNode.removeChild(this.div)
+}
+this.div=null
+
+}
+
+}
+
+let overlay=new CustomOverlay()
+overlay.setMap(map)
+overlays.push(overlay)
+
+}
+
+function drawDistricts(){
+
+let index=0
+let visibleBounds=new google.maps.LatLngBounds()
+let hasVisible=false
+
+for(let district in districts){
+
+let data=districts[district]
+let count=data.points.length
+
+if(!passesFilter(district,count)) continue
+if(count<3) continue
+
+let color=COLORS[index%COLORS.length]
+index++
+
+let hull=convexHull(data.points)
+
+if(!hull || hull.length<3) continue
+
+let polygon=new google.maps.Polygon({
+paths:hull,
+strokeColor:color,
+strokeWeight:4,
+fillColor:color,
+fillOpacity:0.35,
+map:map
+})
+
+polygons.push(polygon)
+
+let lat=0
+let lng=0
+
+hull.forEach(p=>{
+lat+=p.lat
+lng+=p.lng
+visibleBounds.extend({lat:p.lat,lng:p.lng})
+hasVisible=true
+})
+
+let center={
+lat:lat/hull.length,
+lng:lng/hull.length
+}
+
+createCountOverlay(center,count,district,data)
+
+}
+
+if(hasVisible){
+map.fitBounds(visibleBounds)
+}
 
 }
 
