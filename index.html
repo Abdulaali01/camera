@@ -22,32 +22,38 @@ height:100vh;
 width:100%
 }
 
-#searchBox{
+/* الشريط العلوي */
+
+.topBar{
+
 position:absolute;
 top:10px;
 left:50%;
 transform:translateX(-50%);
-width:300px;
-padding:10px;
-border-radius:8px;
-border:1px solid #ccc;
 background:#fff;
-z-index:5
-}
-
-.panel{
-position:absolute;
-top:60px;
-right:10px;
-background:#fff;
-padding:12px;
+padding:10px 14px;
 border-radius:10px;
 box-shadow:0 0 6px rgba(0,0,0,.3);
-z-index:5
+display:flex;
+gap:10px;
+align-items:center;
+z-index:10;
+flex-wrap:wrap
+
+}
+
+#searchBox{
+width:220px;
+padding:8px;
+border-radius:6px;
+border:1px solid #ccc
+}
+
+select,input[type=file]{
+padding:6px
 }
 
 button{
-margin-top:6px;
 padding:8px 12px;
 border:none;
 border-radius:6px;
@@ -118,21 +124,28 @@ font-size:11px
 
 <body>
 
+<div class="topBar">
+
 <input id="searchBox" placeholder="ابحث عن حي أو شارع">
 
-<div class="panel">
-
 <input type="file" id="excelFile">
-<br>
-<button onclick="importExcel()">استيراد Excel</button>
 
-<br><br>
+<button onclick="importExcel()">استيراد</button>
 
-<label><input type="radio" name="filter" onclick="setFilter('all')" checked> عرض الكل</label><br>
-<label><input type="radio" name="filter" onclick="setFilter('top3')"> عرض أعلى 3</label><br>
-<label><input type="radio" name="filter" onclick="setFilter('200')"> أكثر من 200</label><br>
-<label><input type="radio" name="filter" onclick="setFilter('100_200')"> من 100 إلى 200</label><br>
-<label><input type="radio" name="filter" onclick="setFilter('100')"> أقل من 100</label>
+<select id="districtSelect" onchange="showDistrict()">
+<option value="">اختر حي</option>
+</select>
+
+<select onchange="setFilter(this.value)">
+<option value="all">عرض الكل</option>
+<option value="top3">أعلى 3</option>
+<option value="top6">ثاني أعلى 3</option>
+<option value="top9">ثالث أعلى 3</option>
+<option value="top12">رابع أعلى 3</option>
+<option value="200">أكثر من 200</option>
+<option value="100_200">100 الى 200</option>
+<option value="100">أقل من 100</option>
+</select>
 
 </div>
 
@@ -143,10 +156,13 @@ font-size:11px
 let map
 let districts={}
 let polygons=[]
-let markers=[]
 let overlays=[]
 let currentFilter="all"
-let topDistricts=[]
+
+let top3=[]
+let top6=[]
+let top9=[]
+let top12=[]
 
 const COLORS=[
 "#ff5722",
@@ -194,65 +210,19 @@ function setFilter(type){
 
 currentFilter=type
 
-polygons.forEach(p=>p.setMap(null))
-markers.forEach(m=>m.setMap(null))
-overlays.forEach(o=>o.setMap(null))
-
-polygons=[]
-markers=[]
-overlays=[]
+clearMap()
 
 drawDistricts()
 
 }
 
-function convexHull(points){
+function clearMap(){
 
-points=points.slice()
+polygons.forEach(p=>p.setMap(null))
+overlays.forEach(o=>o.setMap(null))
 
-points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
-
-const cross=(o,a,b)=>(
-(a.lng-o.lng)*(b.lat-o.lat)-
-(a.lat-o.lat)*(b.lng-o.lng)
-)
-
-let lower=[]
-
-for(let p of points){
-
-while(lower.length>=2 &&
-cross(lower[lower.length-2],lower[lower.length-1],p)<=0){
-
-lower.pop()
-
-}
-
-lower.push(p)
-
-}
-
-let upper=[]
-
-for(let i=points.length-1;i>=0;i--){
-
-let p=points[i]
-
-while(upper.length>=2 &&
-cross(upper[upper.length-2],upper[upper.length-1],p)<=0){
-
-upper.pop()
-
-}
-
-upper.push(p)
-
-}
-
-upper.pop()
-lower.pop()
-
-return lower.concat(upper)
+polygons=[]
+overlays=[]
 
 }
 
@@ -275,11 +245,6 @@ let sheet=workbook.Sheets[workbook.SheetNames[0]]
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
 districts={}
-polygons.forEach(p=>p.setMap(null))
-overlays.forEach(o=>o.setMap(null))
-
-polygons=[]
-overlays=[]
 
 let bounds=new google.maps.LatLngBounds()
 
@@ -288,30 +253,36 @@ for(let i=1;i<rows.length;i++){
 let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
 let district=rows[i][2]
-let third=rows[i][3]
 
-bounds.extend({lat:lat,lng:lng})
+bounds.extend({lat,lng})
 
 if(!districts[district]){
 
 districts[district]={
-points:[],
-third:{}
+points:[]
 }
 
 }
 
 districts[district].points.push({lat,lng})
 
-if(!districts[district].third[third]){
-districts[district].third[third]=0
-}
-
-districts[district].third[third]++
-
 }
 
 map.fitBounds(bounds)
+
+prepareRanking()
+
+fillDistrictList()
+
+drawDistricts()
+
+}
+
+reader.readAsArrayBuffer(file)
+
+}
+
+function prepareRanking(){
 
 let arr=[]
 
@@ -326,119 +297,78 @@ count:districts[d].points.length
 
 arr.sort((a,b)=>b.count-a.count)
 
-topDistricts=arr.slice(0,3).map(d=>d.name)
-
-drawDistricts()
-
-}
-
-reader.readAsArrayBuffer(file)
+top3=arr.slice(0,3).map(d=>d.name)
+top6=arr.slice(3,6).map(d=>d.name)
+top9=arr.slice(6,9).map(d=>d.name)
+top12=arr.slice(9,12).map(d=>d.name)
 
 }
 
-function createCountOverlay(position,count,district,data){
+function fillDistrictList(){
 
-class CustomOverlay extends google.maps.OverlayView{
+let select=document.getElementById("districtSelect")
 
-onAdd(){
+select.innerHTML='<option value="">اختر حي</option>'
 
-this.div=document.createElement("div")
-this.div.className="countBox"
+for(let d in districts){
 
-let statsHTML=""
+let opt=document.createElement("option")
 
-let max=0
+opt.value=d
+opt.textContent=d
 
-for(let t in data.third){
-if(data.third[t]>max) max=data.third[t]
-}
-
-for(let t in data.third){
-
-let val=data.third[t]
-
-let squares=Math.round((val/max)*10)
-
-let bar=""
-
-for(let i=0;i<squares;i++){
-bar+="<span></span>"
-}
-
-statsHTML+=`
-<div class="statRow">
-<div class="label">${t}</div>
-<div class="bar">${bar}</div>
-<div class="count">${val}</div>
-</div>
-`
-
-}
-
-this.div.innerHTML=
-'<div class="countNumber">'+count+'</div>'+
-'<div class="countDistrict">'+district+'</div>'+
-'<div class="stats">'+statsHTML+'</div>'
-
-this.getPanes().overlayMouseTarget.appendChild(this.div)
-
-}
-
-draw(){
-
-let projection=this.getProjection()
-let pos=projection.fromLatLngToDivPixel(
-new google.maps.LatLng(position.lat,position.lng)
-)
-
-this.div.style.position="absolute"
-this.div.style.left=pos.x-45+"px"
-this.div.style.top=pos.y-15+"px"
-
-}
-
-onRemove(){
-
-this.div.parentNode.removeChild(this.div)
-this.div=null
+select.appendChild(opt)
 
 }
 
 }
 
-let overlay=new CustomOverlay()
+function showDistrict(){
 
-overlay.setMap(map)
+let name=document.getElementById("districtSelect").value
 
-overlays.push(overlay)
+clearMap()
+
+if(!name)return
+
+drawOneDistrict(name)
 
 }
 
 function drawDistricts(){
 
-let index=0
+clearMap()
 
 for(let district in districts){
 
-let data=districts[district]
-let count=data.points.length
+let count=districts[district].points.length
 
-if(currentFilter=="top3" && !topDistricts.includes(district)) continue
+if(currentFilter=="top3" && !top3.includes(district)) continue
+if(currentFilter=="top6" && !top6.includes(district)) continue
+if(currentFilter=="top9" && !top9.includes(district)) continue
+if(currentFilter=="top12" && !top12.includes(district)) continue
+
 if(currentFilter=="200" && count<=200) continue
 if(currentFilter=="100_200" && (count<100 || count>200)) continue
 if(currentFilter=="100" && count>=100) continue
 
-if(count<3) continue
+drawOneDistrict(district)
 
-let color=COLORS[index%COLORS.length]
+}
 
-index++
+}
 
-let hull=convexHull(data.points)
+function drawOneDistrict(district){
+
+let data=districts[district]
+
+if(data.points.length<3)return
+
+let color=COLORS[Math.floor(Math.random()*COLORS.length)]
 
 let polygon=new google.maps.Polygon({
 
-paths:hull,
+paths:data.points,
 strokeColor:color,
 strokeWeight:4,
 fillColor:color,
@@ -448,23 +378,6 @@ map:map
 })
 
 polygons.push(polygon)
-
-let lat=0
-let lng=0
-
-hull.forEach(p=>{
-lat+=p.lat
-lng+=p.lng
-})
-
-let center={
-lat:lat/hull.length,
-lng:lng/hull.length
-}
-
-createCountOverlay(center,count,district,data)
-
-}
 
 }
 
