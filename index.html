@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>تحليل الأحياء + الرسم البياني</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -23,7 +24,6 @@ height:100vh;
 width:100%
 }
 
-/* الشريط العلوي */
 .topPanel{
 position:absolute;
 top:10px;
@@ -52,8 +52,7 @@ flex-wrap:wrap
 .topPanel .titleMini{
 font-size:12px;
 font-weight:bold;
-color:#333;
-margin-inline:2px
+color:#333
 }
 
 #searchBox{
@@ -61,8 +60,6 @@ width:240px;
 padding:10px 12px;
 border-radius:10px;
 border:1px solid #ccc;
-background:#fff;
-outline:none;
 font-size:14px
 }
 
@@ -79,10 +76,8 @@ select{
 padding:9px 10px;
 border-radius:10px;
 border:1px solid #ccc;
-background:#fff;
 font-size:13px;
-min-width:150px;
-outline:none
+min-width:150px
 }
 
 button{
@@ -94,93 +89,6 @@ color:#fff;
 cursor:pointer;
 font-size:13px;
 font-weight:bold
-}
-
-button:hover{
-opacity:.92
-}
-
-.countBox{
-background:#000;
-color:#fff;
-padding:6px 12px;
-border-radius:8px;
-font-weight:bold;
-font-size:16px;
-text-align:center;
-line-height:1.3;
-min-width:110px;
-box-shadow:0 2px 8px rgba(0,0,0,.25)
-}
-
-.countNumber{
-font-size:18px;
-font-weight:bold
-}
-
-.countDistrict{
-font-size:13px;
-margin-top:2px
-}
-
-.stats{
-font-size:12px;
-margin-top:6px;
-line-height:1.2
-}
-
-.statRow{
-display:flex;
-align-items:center;
-gap:4px;
-margin-top:2px;
-justify-content:center
-}
-
-.bar{
-display:flex;
-gap:1px
-}
-
-.bar span{
-width:6px;
-height:6px;
-background:#fff;
-display:inline-block
-}
-
-.label{
-min-width:45px;
-text-align:right;
-font-size:11px
-}
-
-.count{
-font-size:11px
-}
-
-/* للجوال */
-@media (max-width:900px){
-
-.topPanel{
-width:95%;
-padding:10px
-}
-
-#searchBox{
-width:100%
-}
-
-.topPanel .group{
-width:100%
-}
-
-.fileInput,
-select,
-button{
-width:100%
-}
-
 }
 
 </style>
@@ -220,9 +128,19 @@ width:100%
 <option value="">كل الأحياء</option>
 </select>
 </div>
+
+<div class="group">
+<span class="titleMini">شكل الصندوق</span>
+<select id="boxStyle">
+<option value="square">الصندوق الحالي</option>
+<option value="bars">الصندوق البياني</option>
+</select>
+</div>
+
 <div class="group">
 <button onclick="exportHDImage()">تصدير صورة HD</button>
 </div>
+
 </div>
 
 <div id="map"></div>
@@ -232,11 +150,11 @@ width:100%
 let map
 let districts={}
 let polygons=[]
-let markers=[]
 let overlays=[]
 let currentFilter="all"
 let selectedDistrict=""
 let rankedDistricts=[]
+let boxStyle="square"
 
 const COLORS=[
 "#ff5722",
@@ -298,7 +216,6 @@ drawDistricts()
 function selectDistrict(name){
 
 selectedDistrict=name || ""
-
 clearMap()
 drawDistricts()
 
@@ -307,11 +224,9 @@ drawDistricts()
 function clearMap(){
 
 polygons.forEach(p=>p.setMap(null))
-markers.forEach(m=>m.setMap(null))
 overlays.forEach(o=>o.setMap(null))
 
 polygons=[]
-markers=[]
 overlays=[]
 
 }
@@ -387,9 +302,6 @@ let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 districts={}
 clearMap()
 
-let bounds=new google.maps.LatLngBounds()
-let hasValidPoint=false
-
 for(let i=1;i<rows.length;i++){
 
 let lat=parseFloat(rows[i][0])
@@ -398,9 +310,6 @@ let district=(rows[i][2]??"").toString().trim()
 let third=(rows[i][3]??"بدون تصنيف").toString().trim()
 
 if(isNaN(lat) || isNaN(lng) || !district) continue
-
-bounds.extend({lat:lat,lng:lng})
-hasValidPoint=true
 
 if(!districts[district]){
 
@@ -419,10 +328,6 @@ districts[district].third[third]=0
 
 districts[district].third[third]++
 
-}
-
-if(hasValidPoint){
-map.fitBounds(bounds)
 }
 
 prepareRanks()
@@ -470,41 +375,12 @@ sel.appendChild(opt)
 
 }
 
-sel.value=selectedDistrict || ""
-
-}
-
-function getTopGroupNames(groupNumber){
-
-let start=(groupNumber-1)*3
-let end=start+3
-
-return rankedDistricts.slice(start,end).map(x=>x.name)
-
 }
 
 function passesFilter(district,count){
 
 if(selectedDistrict && district!==selectedDistrict) return false
-
 if(currentFilter=="all") return true
-
-if(currentFilter=="top3"){
-return getTopGroupNames(1).includes(district)
-}
-
-if(currentFilter=="top3_2"){
-return getTopGroupNames(2).includes(district)
-}
-
-if(currentFilter=="top3_3"){
-return getTopGroupNames(3).includes(district)
-}
-
-if(currentFilter=="top3_4"){
-return getTopGroupNames(4).includes(district)
-}
-
 if(currentFilter=="200" && count<=200) return false
 if(currentFilter=="100_200" && (count<100 || count>200)) return false
 if(currentFilter=="100" && count>=100) return false
@@ -526,11 +402,8 @@ this.div.style.background="#000"
 this.div.style.color="#fff"
 this.div.style.padding="8px 12px"
 this.div.style.borderRadius="10px"
-this.div.style.fontFamily="tahoma"
 this.div.style.fontSize="12px"
 this.div.style.textAlign="center"
-this.div.style.boxShadow="0 3px 10px rgba(0,0,0,.4)"
-this.div.style.whiteSpace="nowrap"
 
 let statsHTML=""
 let max=0
@@ -539,10 +412,12 @@ for(let t in data.third){
 if(data.third[t]>max) max=data.third[t]
 }
 
+if(boxStyle=="square"){
+
 for(let t in data.third){
 
 let val=data.third[t]
-let squares=max>0 ? Math.round((val/max)*10) : 0
+let squares=Math.round((val/max)*10)
 let bar=""
 
 for(let i=0;i<squares;i++){
@@ -551,7 +426,7 @@ bar+="<span style='width:6px;height:6px;background:#fff;display:inline-block;mar
 
 statsHTML+=`
 <div style="display:flex;align-items:center;gap:4px;justify-content:center">
-<div style="min-width:45px;text-align:right">${t}</div>
+<div style="min-width:45px">${t}</div>
 <div>${bar}</div>
 <div>${val}</div>
 </div>
@@ -559,19 +434,30 @@ statsHTML+=`
 
 }
 
+}else{
+
+for(let t in data.third){
+
+let val=data.third[t]
+let height=Math.round((val/max)*60)
+
+statsHTML+=`
+<div style="display:inline-block;margin:0 4px">
+<div style="height:${height}px;width:14px;background:#4caf50"></div>
+<div>${val}</div>
+<div>${t}</div>
+</div>
+`
+
+}
+
+}
+
 this.div.innerHTML=
 "<div style='font-size:18px;font-weight:bold'>"+count+"</div>"+
 "<div style='font-size:13px;margin-top:2px'>"+district+"</div>"+
-"<div style='margin-top:5px'>"+statsHTML+"</div>"
+"<div>"+statsHTML+"</div>"
 
-/* السهم */
-this.arrow=document.createElement("div")
-
-this.arrow.style.position="absolute"
-this.arrow.style.width="2px"
-this.arrow.style.background="#000"
-
-this.getPanes().overlayMouseTarget.appendChild(this.arrow)
 this.getPanes().overlayMouseTarget.appendChild(this.div)
 
 }
@@ -584,29 +470,8 @@ let pos=projection.fromLatLngToDivPixel(
 new google.maps.LatLng(position.lat,position.lng)
 )
 
-/* اللوحة */
 this.div.style.left=(pos.x-60)+"px"
 this.div.style.top=(pos.y-140)+"px"
-
-/* السهم */
-this.arrow.style.left=(pos.x)+"px"
-this.arrow.style.top=(pos.y-90)+"px"
-this.arrow.style.height="90px"
-
-}
-
-onRemove(){
-
-if(this.div && this.div.parentNode){
-this.div.parentNode.removeChild(this.div)
-}
-
-if(this.arrow && this.arrow.parentNode){
-this.arrow.parentNode.removeChild(this.arrow)
-}
-
-this.div=null
-this.arrow=null
 
 }
 
@@ -621,8 +486,6 @@ overlays.push(overlay)
 function drawDistricts(){
 
 let index=0
-let visibleBounds=new google.maps.LatLngBounds()
-let hasVisible=false
 
 for(let district in districts){
 
@@ -639,7 +502,6 @@ let hull=convexHull(data.points)
 
 if(!hull || hull.length<3) continue
 
-/* حد أبيض عريض */
 let polygon=new google.maps.Polygon({
 paths:hull,
 strokeColor:"#ffffff",
@@ -651,26 +513,12 @@ map:map
 
 polygons.push(polygon)
 
-/* خط اللون الأساسي فوقه */
-let polygonColor=new google.maps.Polygon({
-paths:hull,
-strokeColor:color,
-strokeWeight:4,
-fillOpacity:0,
-map:map
-})
-
-polygons.push(polygonColor)
-  
-
 let lat=0
 let lng=0
 
 hull.forEach(p=>{
 lat+=p.lat
 lng+=p.lng
-visibleBounds.extend({lat:p.lat,lng:p.lng})
-hasVisible=true
 })
 
 let center={
@@ -682,12 +530,16 @@ createCountOverlay(center,count,district,data)
 
 }
 
-if(hasVisible){
-map.fitBounds(visibleBounds)
 }
 
-}
 function exportHDImage(){
+
+boxStyle=document.getElementById("boxStyle").value
+
+clearMap()
+drawDistricts()
+
+setTimeout(function(){
 
 html2canvas(document.getElementById("map"),{
 scale:4,
@@ -701,7 +553,10 @@ link.click()
 
 })
 
+},400)
+
 }
+
 </script>
 
 <script async defer
