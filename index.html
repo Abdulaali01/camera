@@ -520,7 +520,17 @@ class CustomOverlay extends google.maps.OverlayView{
 onAdd(){
 
 this.div=document.createElement("div")
-this.div.className="countBox"
+
+this.div.style.position="absolute"
+this.div.style.background="#000"
+this.div.style.color="#fff"
+this.div.style.padding="8px 12px"
+this.div.style.borderRadius="10px"
+this.div.style.fontFamily="tahoma"
+this.div.style.fontSize="12px"
+this.div.style.textAlign="center"
+this.div.style.boxShadow="0 3px 10px rgba(0,0,0,.4)"
+this.div.style.whiteSpace="nowrap"
 
 let statsHTML=""
 let max=0
@@ -536,24 +546,32 @@ let squares=max>0 ? Math.round((val/max)*10) : 0
 let bar=""
 
 for(let i=0;i<squares;i++){
-bar+="<span></span>"
+bar+="<span style='width:6px;height:6px;background:#fff;display:inline-block;margin:1px'></span>"
 }
 
 statsHTML+=`
-<div class="statRow">
-<div class="label">${t}</div>
-<div class="bar">${bar}</div>
-<div class="count">${val}</div>
+<div style="display:flex;align-items:center;gap:4px;justify-content:center">
+<div style="min-width:45px;text-align:right">${t}</div>
+<div>${bar}</div>
+<div>${val}</div>
 </div>
 `
 
 }
 
 this.div.innerHTML=
-'<div class="countNumber">'+count+'</div>'+
-'<div class="countDistrict">'+district+'</div>'+
-'<div class="stats">'+statsHTML+'</div>'
+"<div style='font-size:18px;font-weight:bold'>"+count+"</div>"+
+"<div style='font-size:13px;margin-top:2px'>"+district+"</div>"+
+"<div style='margin-top:5px'>"+statsHTML+"</div>"
 
+/* السهم */
+this.arrow=document.createElement("div")
+
+this.arrow.style.position="absolute"
+this.arrow.style.width="2px"
+this.arrow.style.background="#000"
+
+this.getPanes().overlayMouseTarget.appendChild(this.arrow)
 this.getPanes().overlayMouseTarget.appendChild(this.div)
 
 }
@@ -561,13 +579,19 @@ this.getPanes().overlayMouseTarget.appendChild(this.div)
 draw(){
 
 let projection=this.getProjection()
+
 let pos=projection.fromLatLngToDivPixel(
 new google.maps.LatLng(position.lat,position.lng)
 )
 
-this.div.style.position="absolute"
-this.div.style.left=(pos.x-45)+"px"
-this.div.style.top=(pos.y-15)+"px"
+/* اللوحة */
+this.div.style.left=(pos.x-60)+"px"
+this.div.style.top=(pos.y-140)+"px"
+
+/* السهم */
+this.arrow.style.left=(pos.x)+"px"
+this.arrow.style.top=(pos.y-90)+"px"
+this.arrow.style.height="90px"
 
 }
 
@@ -576,7 +600,13 @@ onRemove(){
 if(this.div && this.div.parentNode){
 this.div.parentNode.removeChild(this.div)
 }
+
+if(this.arrow && this.arrow.parentNode){
+this.arrow.parentNode.removeChild(this.arrow)
+}
+
 this.div=null
+this.arrow=null
 
 }
 
