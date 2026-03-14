@@ -639,16 +639,29 @@ let hull=convexHull(data.points)
 
 if(!hull || hull.length<3) continue
 
+/* حد أبيض عريض */
 let polygon=new google.maps.Polygon({
 paths:hull,
-strokeColor:color,
-strokeWeight:4,
+strokeColor:"#ffffff",
+strokeWeight:8,
 fillColor:color,
 fillOpacity:0.35,
 map:map
 })
 
 polygons.push(polygon)
+
+/* خط اللون الأساسي فوقه */
+let polygonColor=new google.maps.Polygon({
+paths:hull,
+strokeColor:color,
+strokeWeight:4,
+fillOpacity:0,
+map:map
+})
+
+polygons.push(polygonColor)
+  
 
 let lat=0
 let lng=0
