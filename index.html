@@ -249,6 +249,9 @@ let selectedDistrict=""
 let rankedDistricts=[]
 let boxStyle="square"
 
+/* إضافة جديدة فقط لمنع التداخل */
+let overlayIndex = 0
+
 const COLORS=[
 "#ff5722",
 "#4caf50",
@@ -324,6 +327,9 @@ overlays.forEach(o=>o.setMap(null))
 polygons=[]
 markers=[]
 overlays=[]
+
+/* تصفير العداد عند إعادة الرسم */
+overlayIndex=0
 
 }
 
@@ -526,6 +532,9 @@ return true
 
 function createCountOverlay(position,count,district,data){
 
+/* إضافة جديدة فقط: رقم لكل صندوق */
+let myIndex = overlayIndex++
+
 class CustomOverlay extends google.maps.OverlayView{
 
 onAdd(){
@@ -599,7 +608,6 @@ this.div.innerHTML=
 
 /* السهم */
 this.arrow=document.createElement("div")
-
 this.arrow.style.position="absolute"
 this.arrow.style.width="2px"
 this.arrow.style.background="#000"
@@ -617,9 +625,16 @@ let pos=projection.fromLatLngToDivPixel(
 new google.maps.LatLng(position.lat,position.lng)
 )
 
+/* توزيع الصناديق حول النقطة لمنع التداخل */
+let angle = myIndex * 0.9
+let radius = 70 + ((myIndex % 4) * 18)
+
+let offsetX = Math.cos(angle) * radius
+let offsetY = Math.sin(angle) * radius
+
 /* اللوحة */
-this.div.style.left=(pos.x-60)+"px"
-this.div.style.top=(pos.y-140)+"px"
+this.div.style.left=(pos.x-60+offsetX)+"px"
+this.div.style.top=(pos.y-140+offsetY)+"px"
 
 /* السهم */
 this.arrow.style.left=(pos.x)+"px"
