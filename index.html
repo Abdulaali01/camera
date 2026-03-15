@@ -627,8 +627,7 @@ new google.maps.LatLng(position.lat,position.lng)
 
 /* توزيع الصناديق حول النقطة لمنع التداخل */
 let angle = myIndex * 0.9
-let radius = 70 + ((myIndex % 4) * 18)
-
+let radius = 180 + ((myIndex % 6) * 40)
 let offsetX = Math.cos(angle) * radius
 let offsetY = Math.sin(angle) * radius
 
