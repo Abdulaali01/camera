@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -11,6 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
+
 html,body{
 height:100%;
 margin:0;
@@ -108,7 +110,7 @@ button:hover{
 opacity:.92
 }
 
-/* لوحة الرسم البياني */
+/* صندوق الرسم البياني */
 #globalChartPanel{
 position:absolute;
 left:10px;
@@ -190,6 +192,71 @@ height:100%;
 border-radius:999px
 }
 
+/* صندوق جدول الأحياء */
+#districtPanel{
+position:absolute;
+right:10px;
+bottom:10px;
+width:360px;
+height:340px;
+max-height:80vh;
+background:rgba(0,0,0,.90);
+color:#fff;
+border-radius:16px;
+box-shadow:0 10px 28px rgba(0,0,0,.35);
+padding:14px;
+z-index:20;
+resize:both;
+overflow:auto;
+cursor:move;
+touch-action:none;
+box-sizing:border-box
+}
+
+#districtPanel h3{
+margin:0 0 10px 0;
+font-size:15px;
+text-align:center
+}
+
+#districtTable{
+background:#fff;
+border-radius:12px;
+overflow:hidden;
+color:#000
+}
+
+#districtTable table{
+width:100%;
+border-collapse:collapse
+}
+
+#districtTable th{
+background:#2d6cff;
+color:#fff;
+padding:8px 6px;
+font-size:12px;
+position:sticky;
+top:0;
+z-index:1
+}
+
+#districtTable td{
+padding:7px 6px;
+border-bottom:1px solid #eee;
+text-align:center;
+font-size:12px
+}
+
+.colorBox{
+width:18px;
+height:18px;
+border-radius:4px;
+margin:auto;
+border:1px solid rgba(0,0,0,.15)
+}
+
+/* للجوال */
 @media (max-width:900px){
 
 .topPanel{
@@ -217,7 +284,17 @@ left:8px;
 right:8px;
 width:auto;
 bottom:8px;
-max-height:40vh;
+max-height:38vh;
+padding:10px
+}
+
+#districtPanel{
+left:8px;
+right:8px;
+width:auto;
+top:8px;
+bottom:auto;
+max-height:34vh;
 padding:10px
 }
 
@@ -280,6 +357,11 @@ height:220px !important
 <div id="globalStats"></div>
 </div>
 
+<div id="districtPanel">
+<h3>جدول الأحياء</h3>
+<div id="districtTable"></div>
+</div>
+
 <script>
 let map
 let districts={}
@@ -289,6 +371,7 @@ let currentFilter="all"
 let selectedDistrict=""
 let rankedDistricts=[]
 let globalChart=null
+let districtColorMap={}
 
 const COLORS=[
 "#ff5722",
@@ -351,6 +434,7 @@ selectedDistrict=document.getElementById("districtList").value || ""
 clearMap()
 drawDistricts()
 updateGlobalChart()
+updateDistrictTable()
 }
 
 function selectDistrict(name){
@@ -358,6 +442,7 @@ selectedDistrict=name || ""
 clearMap()
 drawDistricts()
 updateGlobalChart()
+updateDistrictTable()
 }
 
 function clearMap(){
@@ -422,6 +507,7 @@ let sheet=workbook.Sheets[workbook.SheetNames[0]]
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
 districts={}
+districtColorMap={}
 clearMap()
 
 let bounds=new google.maps.LatLngBounds()
@@ -461,14 +547,16 @@ districts[district].third[category]=0
 districts[district].third[category]++
 }
 
-if(hasValidPoint){
-map.fitBounds(bounds)
-}
-
 prepareRanks()
+assignDistrictColors()
 fillDistrictList()
 drawDistricts()
 updateGlobalChart()
+updateDistrictTable()
+
+if(hasValidPoint){
+map.fitBounds(bounds)
+}
 
 }
 
@@ -487,6 +575,13 @@ count:districts[d].points.length
 
 arr.sort((a,b)=>b.count-a.count)
 rankedDistricts=arr
+}
+
+function assignDistrictColors(){
+let names=Object.keys(districts).sort((a,b)=>a.localeCompare(b,'ar'))
+names.forEach((name,index)=>{
+districtColorMap[name]=COLORS[index % COLORS.length]
+})
 }
 
 function fillDistrictList(){
@@ -541,25 +636,8 @@ if(currentFilter=="100" && count>=100) return false
 return true
 }
 
-function getPolygonCenter(path){
-
-let lat=0
-let lng=0
-
-for(let i=0;i<path.length;i++){
-lat+=path[i].lat
-lng+=path[i].lng
-}
-
-return {
-lat:lat/path.length,
-lng:lng/path.length
-}
-}
-
 function drawDistricts(){
 
-let index=0
 let visibleBounds=new google.maps.LatLngBounds()
 let hasVisible=false
 
@@ -571,9 +649,7 @@ let count=data.points.length
 if(!passesFilter(district,count)) continue
 if(count<1) continue
 
-let color=COLORS[index%COLORS.length]
-index++
-
+let color=districtColorMap[district] || COLORS[0]
 let hull=data.points.length >= 3 ? convexHull(data.points) : data.points.slice()
 
 if(!hull || hull.length===0) continue
@@ -628,25 +704,6 @@ hull.forEach(p=>{
 visibleBounds.extend({lat:p.lat,lng:p.lng})
 hasVisible=true
 })
-
-let center=getPolygonCenter(hull)
-
-let labelMarker=new google.maps.Marker({
-position:center,
-map:map,
-icon:{
-path:google.maps.SymbolPath.CIRCLE,
-scale:0
-},
-label:{
-text:district + " (" + count + ")",
-color:"#000000",
-fontSize:"18px",
-fontWeight:"bold"
-}
-})
-
-markers.push(labelMarker)
 }
 
 if(hasVisible){
@@ -709,7 +766,7 @@ return
 globalChart=new Chart(canvas,{
 type:"bar",
 data:{
-labels:labels,
+labels:labels.map(t=>t.split(" ")),
 datasets:[{
 label:"عدد البلاغات",
 data:values,
@@ -734,10 +791,7 @@ scales:{
 x:{
 ticks:{
 color:"#000",
-font:{
-family:"Tahoma",
-size:11
-},
+font:{family:"Tahoma",size:11},
 maxRotation:45,
 minRotation:30
 },
@@ -779,11 +833,52 @@ html+=`
 statsBox.innerHTML=html
 }
 
+function updateDistrictTable(){
+
+let html=`
+<table>
+<tr>
+<th>اللون</th>
+<th>اسم الحي</th>
+<th>عدد البلاغات</th>
+</tr>
+`
+
+let visibleList=[]
+
+for(let district in districts){
+let count=districts[district].points.length
+if(!passesFilter(district,count)) continue
+visibleList.push({
+name:district,
+count:count,
+color:districtColorMap[district] || COLORS[0]
+})
+}
+
+visibleList.sort((a,b)=>b.count-a.count)
+
+for(let item of visibleList){
+html+=`
+<tr>
+<td><div class="colorBox" style="background:${item.color}"></div></td>
+<td>${item.name}</td>
+<td>${item.count}</td>
+</tr>
+`
+}
+
+html+=`</table>`
+
+document.getElementById("districtTable").innerHTML=html
+}
+
 function exportHDImage(){
 
 clearMap()
 drawDistricts()
 updateGlobalChart()
+updateDistrictTable()
 
 setTimeout(function(){
 
@@ -805,48 +900,94 @@ link.click()
 
 /* تحريك صندوق الرسم البياني */
 let chartPanel=document.getElementById("globalChartPanel")
-let dragging=false
-let offsetX=0
-let offsetY=0
+let draggingChart=false
+let chartOffsetX=0
+let chartOffsetY=0
 
 chartPanel.addEventListener("mousedown",function(e){
-dragging=true
-offsetX=e.clientX-chartPanel.offsetLeft
-offsetY=e.clientY-chartPanel.offsetTop
+draggingChart=true
+chartOffsetX=e.clientX-chartPanel.offsetLeft
+chartOffsetY=e.clientY-chartPanel.offsetTop
 })
 
 document.addEventListener("mousemove",function(e){
-if(!dragging)return
-chartPanel.style.left=(e.clientX-offsetX)+"px"
-chartPanel.style.top=(e.clientY-offsetY)+"px"
+if(!draggingChart)return
+chartPanel.style.left=(e.clientX-chartOffsetX)+"px"
+chartPanel.style.top=(e.clientY-chartOffsetY)+"px"
 chartPanel.style.right="auto"
 chartPanel.style.bottom="auto"
 })
 
 document.addEventListener("mouseup",function(){
-dragging=false
+draggingChart=false
 })
 
 chartPanel.addEventListener("touchstart",function(e){
-dragging=true
+draggingChart=true
 let touch=e.touches[0]
-offsetX=touch.clientX-chartPanel.offsetLeft
-offsetY=touch.clientY-chartPanel.offsetTop
+chartOffsetX=touch.clientX-chartPanel.offsetLeft
+chartOffsetY=touch.clientY-chartPanel.offsetTop
 e.preventDefault()
 },{passive:false})
 
 document.addEventListener("touchmove",function(e){
-if(!dragging)return
+if(!draggingChart)return
 let touch=e.touches[0]
-chartPanel.style.left=(touch.clientX-offsetX)+"px"
-chartPanel.style.top=(touch.clientY-offsetY)+"px"
+chartPanel.style.left=(touch.clientX-chartOffsetX)+"px"
+chartPanel.style.top=(touch.clientY-chartOffsetY)+"px"
 chartPanel.style.right="auto"
 chartPanel.style.bottom="auto"
 e.preventDefault()
 },{passive:false})
 
 document.addEventListener("touchend",function(){
-dragging=false
+draggingChart=false
+})
+
+/* تحريك صندوق جدول الأحياء */
+let districtPanel=document.getElementById("districtPanel")
+let draggingDistrict=false
+let districtOffsetX=0
+let districtOffsetY=0
+
+districtPanel.addEventListener("mousedown",function(e){
+draggingDistrict=true
+districtOffsetX=e.clientX-districtPanel.offsetLeft
+districtOffsetY=e.clientY-districtPanel.offsetTop
+})
+
+document.addEventListener("mousemove",function(e){
+if(!draggingDistrict)return
+districtPanel.style.left=(e.clientX-districtOffsetX)+"px"
+districtPanel.style.top=(e.clientY-districtOffsetY)+"px"
+districtPanel.style.right="auto"
+districtPanel.style.bottom="auto"
+})
+
+document.addEventListener("mouseup",function(){
+draggingDistrict=false
+})
+
+districtPanel.addEventListener("touchstart",function(e){
+draggingDistrict=true
+let touch=e.touches[0]
+districtOffsetX=touch.clientX-districtPanel.offsetLeft
+districtOffsetY=touch.clientY-districtPanel.offsetTop
+e.preventDefault()
+},{passive:false})
+
+document.addEventListener("touchmove",function(e){
+if(!draggingDistrict)return
+let touch=e.touches[0]
+districtPanel.style.left=(touch.clientX-districtOffsetX)+"px"
+districtPanel.style.top=(touch.clientY-districtOffsetY)+"px"
+districtPanel.style.right="auto"
+districtPanel.style.bottom="auto"
+e.preventDefault()
+},{passive:false})
+
+document.addEventListener("touchend",function(){
+draggingDistrict=false
 })
 </script>
 
