@@ -663,25 +663,21 @@ let pos=projection.fromLatLngToDivPixel(
 new google.maps.LatLng(position.lat,position.lng)
 )
 
-/* توزيع دائري حسب عدد الصناديق + الزوم */
+/* الصناديق تحت بعض */
 let index = overlays.indexOf(this)
 if(index < 0) index = 0
 
-let zoom = map.getZoom()
-let radius = 80 + (zoom * 12)
-let angle = index * 0.8
-
-let offsetX = Math.cos(angle) * radius
-let offsetY = Math.sin(angle) * radius
+let offsetX = 0
+let offsetY = index * 120
 
 /* اللوحة الأساسية */
-this.div.style.left=(pos.x-60 + offsetX)+"px"
+this.div.style.left=(pos.x-60)+"px"
 this.div.style.top=(pos.y-140 + offsetY)+"px"
 
 /* السهم من المركز إلى الصندوق */
 let x1 = pos.x
 let y1 = pos.y
-let x2 = pos.x + offsetX
+let x2 = pos.x
 let y2 = pos.y + offsetY
 
 let dx = x2 - x1
@@ -697,7 +693,7 @@ this.arrow.style.transformOrigin = "0 0"
 
 /* الرسم البياني خارج الصندوق */
 if(this.chart){
-this.chart.style.left=(pos.x-85 + offsetX)+"px"
+this.chart.style.left=(pos.x-85)+"px"
 this.chart.style.top=(pos.y-58 + offsetY)+"px"
 }
 
@@ -791,6 +787,24 @@ let center={
 lat:lat/hull.length,
 lng:lng/hull.length
 }
+
+/* اسم الحي داخل المضلع */
+let labelMarker = new google.maps.Marker({
+position:center,
+map:map,
+icon:{
+path:google.maps.SymbolPath.CIRCLE,
+scale:0
+},
+label:{
+text:district,
+color:"#ffffff",
+fontSize:"16px",
+fontWeight:"bold"
+}
+})
+
+markers.push(labelMarker)
 
 createCountOverlay(center,count,district,data)
 
