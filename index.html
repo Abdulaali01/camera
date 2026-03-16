@@ -126,6 +126,7 @@ resize:both;
 overflow:auto;
 cursor:move;
 touch-action:none;
+box-sizing:border-box
 }
 
 #globalChartPanel h3{
@@ -189,7 +190,6 @@ height:100%;
 border-radius:999px
 }
 
-/* للجوال */
 @media (max-width:900px){
 
 .topPanel{
@@ -273,7 +273,7 @@ height:220px !important
 <div id="map"></div>
 
 <div id="globalChartPanel">
-<h3>الرسم البياني للتصنيفات الظاهرة</h3>
+<h3>الرسم البياني لتصنيفات العمود الرابع</h3>
 <div id="globalChartWrap">
 <canvas id="globalChart"></canvas>
 </div>
@@ -332,7 +332,6 @@ autocomplete.bindTo("bounds",map)
 autocomplete.addListener("place_changed",function(){
 
 const place=autocomplete.getPlace()
-
 if(!place.geometry)return
 
 if(place.geometry.viewport){
@@ -433,7 +432,13 @@ for(let i=1;i<rows.length;i++){
 let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
 let district=(rows[i][2]??"").toString().trim()
-let category=(rows[i][3]??"بدون تصنيف").toString().trim()
+
+let category=rows[i][3]
+if(!category || category.toString().trim()==""){
+category="بدون تصنيف"
+}else{
+category=category.toString().trim()
+}
 
 if(isNaN(lat) || isNaN(lng) || !district) continue
 
@@ -464,6 +469,7 @@ prepareRanks()
 fillDistrictList()
 drawDistricts()
 updateGlobalChart()
+
 }
 
 reader.readAsArrayBuffer(file)
@@ -568,7 +574,7 @@ if(count<1) continue
 let color=COLORS[index%COLORS.length]
 index++
 
-let hull = data.points.length >= 3 ? convexHull(data.points) : data.points.slice()
+let hull=data.points.length >= 3 ? convexHull(data.points) : data.points.slice()
 
 if(!hull || hull.length===0) continue
 
@@ -625,7 +631,7 @@ hasVisible=true
 
 let center=getPolygonCenter(hull)
 
-let labelMarker = new google.maps.Marker({
+let labelMarker=new google.maps.Marker({
 position:center,
 map:map,
 icon:{
@@ -633,7 +639,7 @@ path:google.maps.SymbolPath.CIRCLE,
 scale:0
 },
 label:{
-text: district + " (" + count + ")",
+text:district + " (" + count + ")",
 color:"#000000",
 fontSize:"18px",
 fontWeight:"bold"
@@ -792,8 +798,7 @@ link.click()
 }
 
 /* تحريك صندوق الرسم البياني */
-
-let chartPanel = document.getElementById("globalChartPanel")
+let chartPanel=document.getElementById("globalChartPanel")
 let dragging=false
 let offsetX=0
 let offsetY=0
