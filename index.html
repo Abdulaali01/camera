@@ -115,14 +115,19 @@ position:absolute;
 right:10px;
 bottom:10px;
 width:460px;
-max-height:72vh;
-overflow:auto;
+height:340px;
+max-height:80vh;
 background:rgba(0,0,0,.90);
 color:#fff;
 border-radius:16px;
 box-shadow:0 10px 28px rgba(0,0,0,.35);
 padding:14px;
-z-index:20
+z-index:20;
+
+/* الجديد */
+resize:both;
+overflow:auto;
+cursor:move;
 }
 
 #globalChartPanel h3{
@@ -737,7 +742,7 @@ bodyFont:{family:"Tahoma"},
 titleFont:{family:"Tahoma"}
 }
 },
-  scales:{
+scales:{
 x:{
 ticks:{
 display:false
@@ -803,6 +808,90 @@ link.click()
 
 },600)
 }
+
+/* تحريك صندوق الرسم البياني */
+
+let chartPanel = document.getElementById("globalChartPanel")
+
+let dragging=false
+let offsetX=0
+let offsetY=0
+
+/* الماوس */
+
+chartPanel.addEventListener("mousedown",function(e){
+
+dragging=true
+offsetX=e.clientX-chartPanel.offsetLeft
+offsetY=e.clientY-chartPanel.offsetTop
+
+})
+
+document.addEventListener("mousemove",function(e){
+
+if(!dragging)return
+
+chartPanel.style.left=(e.clientX-offsetX)+"px"
+chartPanel.style.top=(e.clientY-offsetY)+"px"
+
+})
+
+document.addEventListener("mouseup",function(){
+
+dragging=false
+
+})
+
+/* اللمس */
+
+chartPanel.addEventListener("touchstart",function(e){
+
+dragging=true
+
+let touch=e.touches[0]
+
+offsetX=touch.clientX-chartPanel.offsetLeft
+offsetY=touch.clientY-chartPanel.offsetTop
+
+})
+
+document.addEventListener("touchmove",function(e){
+
+if(!dragging)return
+
+let touch=e.touches[0]
+
+chartPanel.style.left=(touch.clientX-offsetX)+"px"
+chartPanel.style.top=(touch.clientY-offsetY)+"px"
+
+})
+
+document.addEventListener("touchend",function(){
+
+dragging=false
+
+})
+
+dragging = true
+offsetX = e.clientX - chartPanel.offsetLeft
+offsetY = e.clientY - chartPanel.offsetTop
+
+})
+
+document.addEventListener("mousemove",function(e){
+
+if(!dragging) return
+
+chartPanel.style.left = (e.clientX - offsetX) + "px"
+chartPanel.style.top = (e.clientY - offsetY) + "px"
+
+})
+
+document.addEventListener("mouseup",function(){
+
+dragging = false
+
+})
 
 </script>
 
