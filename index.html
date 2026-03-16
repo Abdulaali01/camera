@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>تحليل الأحياء</title>
-
+<title>تحليل الأحياء + الرسم البياني</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -21,16 +19,20 @@ font-family:tahoma;
 background:#f5f7fb
 }
 
+body{
+overflow:hidden
+}
+
 #map{
 position:absolute;
 top:0;
 left:0;
 width:100%;
-height:100%
+height:100%;
+z-index:1
 }
 
-/* اللوحة العلوية */
-
+/* الشريط العلوي */
 .topPanel{
 position:absolute;
 top:10px;
@@ -40,7 +42,7 @@ background:#fff;
 border-radius:14px;
 box-shadow:0 6px 18px rgba(0,0,0,.18);
 padding:10px 12px;
-z-index:10;
+z-index:20;
 display:flex;
 align-items:center;
 gap:8px;
@@ -49,76 +51,180 @@ min-width:320px;
 max-width:95%
 }
 
-.group{
+.topPanel .group{
 display:flex;
 align-items:center;
 gap:6px;
 flex-wrap:wrap
 }
 
-.titleMini{
+.topPanel .titleMini{
 font-size:12px;
-font-weight:bold
+font-weight:bold;
+color:#333;
+margin-inline:2px
 }
 
 #searchBox{
-width:230px;
-padding:10px;
+width:240px;
+padding:10px 12px;
 border-radius:10px;
-border:1px solid #ccc
+border:1px solid #ccc;
+background:#fff;
+outline:none;
+font-size:14px
 }
 
 .fileInput{
 padding:8px;
-border-radius:8px;
-border:1px solid #ddd
+border:1px solid #ddd;
+border-radius:10px;
+background:#fff;
+font-size:13px;
+max-width:180px
 }
 
 select{
-padding:8px;
-border-radius:8px;
-border:1px solid #ccc
+padding:9px 10px;
+border-radius:10px;
+border:1px solid #ccc;
+background:#fff;
+font-size:13px;
+min-width:150px;
+outline:none
 }
 
 button{
-padding:8px 12px;
+padding:9px 14px;
 border:none;
 border-radius:10px;
 background:#2d6cff;
 color:#fff;
-font-weight:bold;
-cursor:pointer
+cursor:pointer;
+font-size:13px;
+font-weight:bold
 }
 
-/* الرسم البياني */
+button:hover{
+opacity:.92
+}
 
-#chartPanel{
+/* لوحة الرسم البياني */
+#globalChartPanel{
 position:absolute;
-bottom:10px;
 right:10px;
-width:420px;
-background:#111;
+bottom:10px;
+width:460px;
+max-height:72vh;
+overflow:auto;
+background:rgba(0,0,0,.90);
 color:#fff;
-padding:12px;
-border-radius:14px;
-box-shadow:0 6px 20px rgba(0,0,0,.4);
+border-radius:16px;
+box-shadow:0 10px 28px rgba(0,0,0,.35);
+padding:14px;
 z-index:20
 }
 
-#chartPanel h3{
+#globalChartPanel h3{
 margin:0 0 10px 0;
-text-align:center;
-font-size:14px
+font-size:15px;
+text-align:center
 }
 
-#chartBox{
+#globalChartWrap{
 background:#fff;
-border-radius:10px;
-padding:8px
+border-radius:12px;
+padding:10px
 }
 
-</style>
+#globalChart{
+width:100% !important;
+height:300px !important
+}
 
+#globalStats{
+margin-top:10px;
+display:flex;
+flex-direction:column;
+gap:6px
+}
+
+.globalRow{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:8px;
+padding:6px 8px;
+background:rgba(255,255,255,.08);
+border-radius:8px;
+font-size:12px
+}
+
+.globalRow .name{
+font-weight:bold;
+flex:1;
+white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis
+}
+
+.globalRow .value{
+font-weight:bold;
+min-width:38px;
+text-align:center
+}
+
+.globalRow .barWrap{
+flex:1.4;
+height:10px;
+background:rgba(255,255,255,.15);
+border-radius:999px;
+overflow:hidden
+}
+
+.globalRow .barFill{
+height:100%;
+border-radius:999px
+}
+
+/* للجوال */
+@media (max-width:900px){
+
+.topPanel{
+width:95%;
+padding:10px;
+top:8px
+}
+
+#searchBox{
+width:100%
+}
+
+.topPanel .group{
+width:100%
+}
+
+.fileInput,
+select,
+button{
+width:100%
+}
+
+#globalChartPanel{
+right:8px;
+left:8px;
+width:auto;
+bottom:8px;
+max-height:40vh;
+padding:10px
+}
+
+#globalChart{
+height:220px !important
+}
+
+}
+</style>
 </head>
 
 <body>
@@ -131,23 +237,22 @@ padding:8px
 
 <div class="group">
 <span class="titleMini">الملف</span>
-<input type="file" id="excelFile" class="fileInput">
+<input type="file" id="excelFile" class="fileInput" accept=".xlsx,.xls">
 <button onclick="importExcel()">استيراد Excel</button>
 </div>
 
 <div class="group">
 <span class="titleMini">الفلترة</span>
-
 <select id="filterSelect" onchange="setFilter(this.value)">
-
 <option value="all">عرض الكل</option>
 <option value="top3">أعلى 3</option>
+<option value="top3_2">ثاني أعلى 3</option>
+<option value="top3_3">ثالث أعلى 3</option>
+<option value="top3_4">رابع أعلى 3</option>
 <option value="200">أكثر من 200</option>
-<option value="100_200">100 - 200</option>
+<option value="100_200">من 100 إلى 200</option>
 <option value="100">أقل من 100</option>
-
 </select>
-
 </div>
 
 <div class="group">
@@ -165,14 +270,12 @@ padding:8px
 
 <div id="map"></div>
 
-<div id="chartPanel">
-
-<h3>الرسم البياني للأحياء</h3>
-
-<div id="chartBox">
-<canvas id="chart"></canvas>
+<div id="globalChartPanel">
+<h3>الرسم البياني للتصنيفات الظاهرة</h3>
+<div id="globalChartWrap">
+<canvas id="globalChart"></canvas>
 </div>
-
+<div id="globalStats"></div>
 </div>
 
 <script>
@@ -181,10 +284,10 @@ let map
 let districts={}
 let polygons=[]
 let markers=[]
-let rankedDistricts=[]
-let chart=null
 let currentFilter="all"
 let selectedDistrict=""
+let rankedDistricts=[]
+let globalChart=null
 
 const COLORS=[
 "#ff5722",
@@ -194,7 +297,15 @@ const COLORS=[
 "#ffc107",
 "#00bcd4",
 "#8bc34a",
-"#e91e63"
+"#e91e63",
+"#795548",
+"#673ab7",
+"#3f51b5",
+"#009688",
+"#ff9800",
+"#607d8b",
+"#cddc39",
+"#f44336"
 ]
 
 function initMap(){
@@ -204,9 +315,49 @@ document.getElementById("map"),
 {
 center:{lat:21.4373,lng:40.5127},
 zoom:12,
-mapTypeId:"hybrid"
+mapTypeId:"hybrid",
+gestureHandling:"greedy"
 })
 
+const input=document.getElementById("searchBox")
+
+const autocomplete=new google.maps.places.Autocomplete(
+input,
+{componentRestrictions:{country:"sa"}}
+)
+
+autocomplete.bindTo("bounds",map)
+
+autocomplete.addListener("place_changed",function(){
+
+const place=autocomplete.getPlace()
+
+if(!place.geometry)return
+
+if(place.geometry.viewport){
+map.fitBounds(place.geometry.viewport)
+}else{
+map.setCenter(place.geometry.location)
+map.setZoom(16)
+}
+
+})
+
+}
+
+function setFilter(type){
+currentFilter=type
+selectedDistrict=document.getElementById("districtList").value || ""
+clearMap()
+drawDistricts()
+updateGlobalChart()
+}
+
+function selectDistrict(name){
+selectedDistrict=name || ""
+clearMap()
+drawDistricts()
+updateGlobalChart()
 }
 
 function clearMap(){
@@ -219,10 +370,54 @@ markers=[]
 
 }
 
+function convexHull(points){
+
+points=points.slice()
+
+if(points.length < 3) return points
+
+points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
+
+const cross=(o,a,b)=>(
+(a.lng-o.lng)*(b.lat-o.lat)-
+(a.lat-o.lat)*(b.lng-o.lng)
+)
+
+let lower=[]
+
+for(let p of points){
+
+while(lower.length>=2 &&
+cross(lower[lower.length-2],lower[lower.length-1],p)<=0){
+lower.pop()
+}
+
+lower.push(p)
+}
+
+let upper=[]
+
+for(let i=points.length-1;i>=0;i--){
+
+let p=points[i]
+
+while(upper.length>=2 &&
+cross(upper[upper.length-2],upper[upper.length-1],p)<=0){
+upper.pop()
+}
+
+upper.push(p)
+}
+
+upper.pop()
+lower.pop()
+
+return lower.concat(upper)
+}
+
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
-
 if(!file)return
 
 let reader=new FileReader()
@@ -230,42 +425,57 @@ let reader=new FileReader()
 reader.onload=function(e){
 
 let data=new Uint8Array(e.target.result)
-
 let workbook=XLSX.read(data,{type:"array"})
-
 let sheet=workbook.Sheets[workbook.SheetNames[0]]
-
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
 districts={}
+clearMap()
+
+let bounds=new google.maps.LatLngBounds()
+let hasValidPoint=false
 
 for(let i=1;i<rows.length;i++){
 
 let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
-let district=(rows[i][2]??"").trim()
+let district=(rows[i][2]??"").toString().trim()
+let category=(rows[i][3]??"بدون تصنيف").toString().trim()
 
-if(isNaN(lat)||isNaN(lng)||!district)continue
+if(isNaN(lat) || isNaN(lng) || !district) continue
+
+bounds.extend({lat:lat,lng:lng})
+hasValidPoint=true
 
 if(!districts[district]){
 districts[district]={
-points:[]
+points:[],
+third:{}
 }
 }
 
 districts[district].points.push({lat,lng})
 
+if(!districts[district].third[category]){
+districts[district].third[category]=0
+}
+
+districts[district].third[category]++
+
+}
+
+if(hasValidPoint){
+map.fitBounds(bounds)
 }
 
 prepareRanks()
 fillDistrictList()
 drawDistricts()
-updateChart()
+updateGlobalChart()
 
 }
 
 reader.readAsArrayBuffer(file)
-
 }
 
 function prepareRanks(){
@@ -273,186 +483,325 @@ function prepareRanks(){
 let arr=[]
 
 for(let d in districts){
-
 arr.push({
 name:d,
 count:districts[d].points.length
 })
-
 }
 
 arr.sort((a,b)=>b.count-a.count)
-
 rankedDistricts=arr
-
 }
 
 function fillDistrictList(){
 
 let sel=document.getElementById("districtList")
-
 sel.innerHTML='<option value="">كل الأحياء</option>'
 
-for(let d in districts){
+let names=Object.keys(districts).sort((a,b)=>a.localeCompare(b,'ar'))
 
+for(let name of names){
 let opt=document.createElement("option")
-opt.value=d
-opt.textContent=d
-
+opt.value=name
+opt.textContent=name
 sel.appendChild(opt)
-
 }
 
+sel.value=selectedDistrict || ""
+}
+
+function getTopGroupNames(groupNumber){
+let start=(groupNumber-1)*3
+let end=start+3
+return rankedDistricts.slice(start,end).map(x=>x.name)
 }
 
 function passesFilter(district,count){
 
 if(selectedDistrict && district!==selectedDistrict) return false
 
+if(currentFilter=="all") return true
+
+if(currentFilter=="top3"){
+return getTopGroupNames(1).includes(district)
+}
+
+if(currentFilter=="top3_2"){
+return getTopGroupNames(2).includes(district)
+}
+
+if(currentFilter=="top3_3"){
+return getTopGroupNames(3).includes(district)
+}
+
+if(currentFilter=="top3_4"){
+return getTopGroupNames(4).includes(district)
+}
+
 if(currentFilter=="200" && count<=200) return false
-
 if(currentFilter=="100_200" && (count<100 || count>200)) return false
-
 if(currentFilter=="100" && count>=100) return false
 
 return true
-
 }
 
-function setFilter(v){
+function getPolygonCenter(path){
 
-currentFilter=v
+let lat=0
+let lng=0
 
-clearMap()
-drawDistricts()
-updateChart()
-
+for(let i=0;i<path.length;i++){
+lat+=path[i].lat
+lng+=path[i].lng
 }
 
-function selectDistrict(v){
-
-selectedDistrict=v
-
-clearMap()
-drawDistricts()
-updateChart()
-
+return {
+lat:lat/path.length,
+lng:lng/path.length
+}
 }
 
 function drawDistricts(){
 
-let i=0
+let index=0
+let visibleBounds=new google.maps.LatLngBounds()
+let hasVisible=false
 
 for(let district in districts){
 
-let pts=districts[district].points
+let data=districts[district]
+let count=data.points.length
 
-let count=pts.length
+if(!passesFilter(district,count)) continue
+if(count<1) continue
 
-if(!passesFilter(district,count))continue
+let color=COLORS[index%COLORS.length]
+index++
 
-let color=COLORS[i%COLORS.length]
+let hull = data.points.length >= 3 ? convexHull(data.points) : data.points.slice()
 
-i++
+if(!hull || hull.length===0) continue
 
-let polygon=new google.maps.Polygon({
+if(hull.length >= 3){
 
-paths:pts,
+let polygonWhite=new google.maps.Polygon({
+paths:hull,
+strokeColor:"#ffffff",
+strokeWeight:8,
+fillColor:color,
+fillOpacity:0.35,
+map:map
+})
+polygons.push(polygonWhite)
+
+let polygonColor=new google.maps.Polygon({
+paths:hull,
+strokeColor:color,
+strokeWeight:4,
+fillOpacity:0,
+map:map
+})
+polygons.push(polygonColor)
+
+}else if(hull.length===2){
+
+let line=new google.maps.Polyline({
+path:hull,
+strokeColor:color,
+strokeWeight:5,
+map:map
+})
+polygons.push(line)
+
+}else if(hull.length===1){
+
+let circle=new google.maps.Circle({
 strokeColor:color,
 strokeWeight:3,
 fillColor:color,
 fillOpacity:0.35,
-map:map
+map:map,
+center:hull[0],
+radius:20
+})
+polygons.push(circle)
 
+}
+
+hull.forEach(p=>{
+visibleBounds.extend({lat:p.lat,lng:p.lng})
+hasVisible=true
 })
 
-polygons.push(polygon)
+let center=getPolygonCenter(hull)
 
-let center=pts[0]
-
-let marker=new google.maps.Marker({
-
+let labelMarker = new google.maps.Marker({
 position:center,
 map:map,
-
 icon:{
 path:google.maps.SymbolPath.CIRCLE,
 scale:0
 },
-
 label:{
-text:district+" ("+count+")",
-color:"#000",
-fontWeight:"bold",
-fontSize:"18px"
+text: district + " (" + count + ")",
+color:"#000000",
+fontSize:"18px",
+fontWeight:"bold"
 }
-
 })
 
-markers.push(marker)
+markers.push(labelMarker)
 
+}
+
+if(hasVisible){
+map.fitBounds(visibleBounds)
+}
+}
+
+function getVisibleCategoryEntries(){
+
+let categoryCount={}
+
+for(let district in districts){
+
+let data=districts[district]
+let count=data.points.length
+
+if(!passesFilter(district,count)) continue
+
+for(let cat in data.third){
+
+if(!categoryCount[cat]){
+categoryCount[cat]=0
+}
+
+categoryCount[cat]+=data.third[cat]
 }
 
 }
 
-function updateChart(){
+let arr=[]
 
-let labels=[]
-let values=[]
-
-for(let d in districts){
-
-let c=districts[d].points.length
-
-if(!passesFilter(d,c))continue
-
-labels.push(d)
-values.push(c)
-
+for(let k in categoryCount){
+arr.push({
+name:k,
+count:categoryCount[k]
+})
 }
 
-if(chart){
-chart.destroy()
+arr.sort((a,b)=>b.count-a.count)
+return arr
 }
 
-chart=new Chart(
+function updateGlobalChart(){
 
-document.getElementById("chart"),
+let entries=getVisibleCategoryEntries()
+let labels=entries.map(x=>x.name)
+let values=entries.map(x=>x.count)
 
-{
+let canvas=document.getElementById("globalChart")
+let statsBox=document.getElementById("globalStats")
 
+if(globalChart){
+globalChart.destroy()
+globalChart=null
+}
+
+if(entries.length===0){
+statsBox.innerHTML='<div class="globalRow"><div class="name">لا توجد بيانات مطابقة للفلترة</div></div>'
+return
+}
+
+globalChart=new Chart(canvas,{
 type:"bar",
-
 data:{
 labels:labels,
 datasets:[{
+label:"عدد البلاغات",
 data:values,
-backgroundColor:COLORS
+backgroundColor:labels.map((_,i)=>COLORS[i%COLORS.length]),
+borderRadius:6
 }]
 },
-
 options:{
-plugins:{legend:{display:false}},
-responsive:true
+responsive:true,
+maintainAspectRatio:false,
+plugins:{
+legend:{
+display:false
+},
+tooltip:{
+rtl:true,
+bodyFont:{family:"Tahoma"},
+titleFont:{family:"Tahoma"}
+}
+},
+scales:{
+x:{
+ticks:{
+color:"#000",
+font:{family:"Tahoma",size:11},
+maxRotation:45,
+minRotation:0
+}
+},
+y:{
+beginAtZero:true,
+ticks:{
+color:"#000",
+font:{family:"Tahoma",size:11}
+}
+}
+}
+}
+})
+
+let max=Math.max(...values)
+let html=""
+
+for(let i=0;i<entries.length;i++){
+
+let item=entries[i]
+let percent=max>0 ? (item.count/max)*100 : 0
+let color=COLORS[i%COLORS.length]
+
+html+=`
+<div class="globalRow">
+<div class="name">${item.name}</div>
+<div class="barWrap">
+<div class="barFill" style="width:${percent}%;background:${color}"></div>
+</div>
+<div class="value">${item.count}</div>
+</div>
+`
 }
 
-}
-
-)
-
+statsBox.innerHTML=html
 }
 
 function exportHDImage(){
 
-html2canvas(document.body,{scale:4}).then(canvas=>{
+clearMap()
+drawDistricts()
+updateGlobalChart()
 
-let a=document.createElement("a")
-a.href=canvas.toDataURL()
-a.download="map.png"
-a.click()
+setTimeout(function(){
+
+html2canvas(document.body,{
+scale:4,
+useCORS:true,
+backgroundColor:null
+}).then(canvas=>{
+
+let link=document.createElement("a")
+link.download="map_hd.png"
+link.href=canvas.toDataURL("image/png")
+link.click()
 
 })
 
+},600)
 }
 
 </script>
