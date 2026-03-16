@@ -249,9 +249,6 @@ let selectedDistrict=""
 let rankedDistricts=[]
 let boxStyle="square"
 
-/* إضافة جديدة فقط لمنع التداخل */
-let overlayIndex = 0
-
 const COLORS=[
 "#ff5722",
 "#4caf50",
@@ -303,6 +300,7 @@ function setFilter(type){
 
 currentFilter=type
 selectedDistrict=document.getElementById("districtList").value || ""
+boxStyle=document.getElementById("boxStyle").value || "square"
 
 clearMap()
 drawDistricts()
@@ -312,6 +310,7 @@ drawDistricts()
 function selectDistrict(name){
 
 selectedDistrict=name || ""
+boxStyle=document.getElementById("boxStyle").value || "square"
 
 clearMap()
 drawDistricts()
@@ -327,9 +326,6 @@ overlays.forEach(o=>o.setMap(null))
 polygons=[]
 markers=[]
 overlays=[]
-
-/* تصفير العداد عند إعادة الرسم */
-overlayIndex=0
 
 }
 
@@ -532,9 +528,6 @@ return true
 
 function createCountOverlay(position,count,district,data){
 
-/* إضافة جديدة فقط: رقم لكل صندوق */
-let myIndex = overlayIndex++
-
 class CustomOverlay extends google.maps.OverlayView{
 
 onAdd(){
@@ -551,23 +544,26 @@ this.div.style.fontSize="12px"
 this.div.style.textAlign="center"
 this.div.style.boxShadow="0 3px 10px rgba(0,0,0,.4)"
 this.div.style.whiteSpace="nowrap"
+this.div.style.zIndex="20"
 
 let statsHTML=""
 let max=0
+const entries=Object.entries(data.third)
 
-for(let t in data.third){
-if(data.third[t]>max) max=data.third[t]
+for(let i=0;i<entries.length;i++){
+if(entries[i][1]>max) max=entries[i][1]
 }
 
 if(boxStyle=="square"){
 
-for(let t in data.third){
+for(let i=0;i<entries.length;i++){
 
-let val=data.third[t]
+let t=entries[i][0]
+let val=entries[i][1]
 let squares=max>0 ? Math.round((val/max)*10) : 0
 let bar=""
 
-for(let i=0;i<squares;i++){
+for(let j=0;j<squares;j++){
 bar+="<span style='width:6px;height:6px;background:#fff;display:inline-block;margin:1px'></span>"
 }
 
@@ -581,36 +577,78 @@ statsHTML+=`
 
 }
 
+this.div.innerHTML=
+"<div style='font-size:18px;font-weight:bold'>"+count+"</div>"+
+"<div style='font-size:13px;margin-top:2px'>"+district+"</div>"+
+"<div style='margin-top:5px'>"+statsHTML+"</div>"
+
 }else{
 
-for(let t in data.third){
+this.div.innerHTML=
+"<div style='font-size:18px;font-weight:bold'>"+count+"</div>"+
+"<div style='font-size:13px;margin-top:2px'>"+district+"</div>"
 
-let val=data.third[t]
+let barsHTML=""
+let legendHTML=""
+
+for(let i=0;i<entries.length;i++){
+
+let t=entries[i][0]
+let val=entries[i][1]
+let color=COLORS[i%COLORS.length]
 let height=max>0 ? Math.round((val/max)*60) : 0
 
-statsHTML+=`
-<div style="display:flex;flex-direction:column;align-items:center;margin:0 4px">
-<div style="height:${height}px;width:14px;background:#4caf50;border-radius:3px 3px 0 0;"></div>
-<div style="font-size:10px;margin-top:2px">${val}</div>
-<div style="font-size:10px">${t}</div>
+barsHTML+=`
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin:0 4px">
+<div style="height:${height}px;width:14px;background:${color};border-radius:3px 3px 0 0;"></div>
+<div style="font-size:10px;margin-top:3px;color:#fff;font-weight:bold">${val}</div>
+</div>
+`
+
+legendHTML+=`
+<div style="display:flex;align-items:center;gap:5px;justify-content:flex-start;font-size:11px;color:#fff;white-space:nowrap">
+<span style="width:8px;height:8px;background:${color};display:inline-block;border-radius:2px"></span>
+<span>${t}</span>
 </div>
 `
 
 }
 
-statsHTML=`<div style="display:flex;align-items:flex-end;justify-content:center;gap:6px;margin-top:6px">${statsHTML}</div>`
-}
+statsHTML=`
+<div style="display:flex;align-items:flex-end;justify-content:center;gap:10px;margin-top:0">
+<div style="display:flex;align-items:flex-end;justify-content:center;gap:6px">
+${barsHTML}
+</div>
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding-right:6px">
+${legendHTML}
+</div>
+</div>
+`
 
-this.div.innerHTML=
-"<div style='font-size:18px;font-weight:bold'>"+count+"</div>"+
-"<div style='font-size:13px;margin-top:2px'>"+district+"</div>"+
-"<div style='margin-top:5px'>"+statsHTML+"</div>"
+this.chart=document.createElement("div")
+this.chart.style.position="absolute"
+this.chart.style.background="rgba(0,0,0,.88)"
+this.chart.style.color="#fff"
+this.chart.style.padding="8px 10px"
+this.chart.style.borderRadius="10px"
+this.chart.style.boxShadow="0 3px 10px rgba(0,0,0,.35)"
+this.chart.style.fontFamily="tahoma"
+this.chart.style.fontSize="12px"
+this.chart.style.textAlign="center"
+this.chart.style.whiteSpace="nowrap"
+this.chart.style.zIndex="19"
+this.chart.innerHTML=statsHTML
+
+this.getPanes().overlayMouseTarget.appendChild(this.chart)
+
+}
 
 /* السهم */
 this.arrow=document.createElement("div")
 this.arrow.style.position="absolute"
 this.arrow.style.width="2px"
 this.arrow.style.background="#000"
+this.arrow.style.zIndex="18"
 
 this.getPanes().overlayMouseTarget.appendChild(this.arrow)
 this.getPanes().overlayMouseTarget.appendChild(this.div)
@@ -625,20 +663,26 @@ let pos=projection.fromLatLngToDivPixel(
 new google.maps.LatLng(position.lat,position.lng)
 )
 
-/* توزيع الصناديق حول النقطة لمنع التداخل */
-let angle = myIndex * 0.9
-let radius = 180 + ((myIndex % 6) * 40)
-let offsetX = Math.cos(angle) * radius
-let offsetY = Math.sin(angle) * radius
-
-/* اللوحة */
-this.div.style.left=(pos.x-60+offsetX)+"px"
-this.div.style.top=(pos.y-140+offsetY)+"px"
+/* اللوحة الأساسية */
+this.div.style.left=(pos.x-60)+"px"
+this.div.style.top=(pos.y-140)+"px"
 
 /* السهم */
-this.arrow.style.left=(pos.x+offsetX)+"px"
-this.arrow.style.top=(pos.y+offsetY-90)+"px"
+if(boxStyle=="square"){
+this.arrow.style.left=(pos.x)+"px"
+this.arrow.style.top=(pos.y-90)+"px"
 this.arrow.style.height="90px"
+}else{
+this.arrow.style.left=(pos.x)+"px"
+this.arrow.style.top=(pos.y-76)+"px"
+this.arrow.style.height="76px"
+}
+
+/* الرسم البياني خارج الصندوق */
+if(this.chart){
+this.chart.style.left=(pos.x-85)+"px"
+this.chart.style.top=(pos.y-58)+"px"
+}
 
 }
 
@@ -652,8 +696,13 @@ if(this.arrow && this.arrow.parentNode){
 this.arrow.parentNode.removeChild(this.arrow)
 }
 
+if(this.chart && this.chart.parentNode){
+this.chart.parentNode.removeChild(this.chart)
+}
+
 this.div=null
 this.arrow=null
+this.chart=null
 
 }
 
@@ -670,6 +719,8 @@ function drawDistricts(){
 let index=0
 let visibleBounds=new google.maps.LatLngBounds()
 let hasVisible=false
+
+boxStyle=document.getElementById("boxStyle").value || "square"
 
 for(let district in districts){
 
