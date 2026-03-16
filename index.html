@@ -663,25 +663,32 @@ let pos=projection.fromLatLngToDivPixel(
 new google.maps.LatLng(position.lat,position.lng)
 )
 
+/* حل تداخل المربعات */
+let index = overlays.indexOf(this)
+if(index < 0) index = 0
+
+let offsetX = (index % 4) * 90
+let offsetY = Math.floor(index / 4) * 90
+
 /* اللوحة الأساسية */
-this.div.style.left=(pos.x-60)+"px"
-this.div.style.top=(pos.y-140)+"px"
+this.div.style.left=(pos.x-60 + offsetX)+"px"
+this.div.style.top=(pos.y-140 + offsetY)+"px"
 
 /* السهم */
 if(boxStyle=="square"){
-this.arrow.style.left=(pos.x)+"px"
-this.arrow.style.top=(pos.y-90)+"px"
+this.arrow.style.left=(pos.x + offsetX)+"px"
+this.arrow.style.top=(pos.y-90 + offsetY)+"px"
 this.arrow.style.height="90px"
 }else{
-this.arrow.style.left=(pos.x)+"px"
-this.arrow.style.top=(pos.y-76)+"px"
+this.arrow.style.left=(pos.x + offsetX)+"px"
+this.arrow.style.top=(pos.y-76 + offsetY)+"px"
 this.arrow.style.height="76px"
 }
 
 /* الرسم البياني خارج الصندوق */
 if(this.chart){
-this.chart.style.left=(pos.x-85)+"px"
-this.chart.style.top=(pos.y-58)+"px"
+this.chart.style.left=(pos.x-85 + offsetX)+"px"
+this.chart.style.top=(pos.y-58 + offsetY)+"px"
 }
 
 }
