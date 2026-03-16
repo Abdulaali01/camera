@@ -663,27 +663,37 @@ let pos=projection.fromLatLngToDivPixel(
 new google.maps.LatLng(position.lat,position.lng)
 )
 
-/* حل تداخل المربعات */
+/* توزيع دائري حسب عدد الصناديق + الزوم */
 let index = overlays.indexOf(this)
 if(index < 0) index = 0
 
-let offsetX = (index % 4) * 90
-let offsetY = Math.floor(index / 4) * 90
+let zoom = map.getZoom()
+let radius = 80 + (zoom * 12)
+let angle = index * 0.8
+
+let offsetX = Math.cos(angle) * radius
+let offsetY = Math.sin(angle) * radius
 
 /* اللوحة الأساسية */
 this.div.style.left=(pos.x-60 + offsetX)+"px"
 this.div.style.top=(pos.y-140 + offsetY)+"px"
 
-/* السهم */
-if(boxStyle=="square"){
-this.arrow.style.left=(pos.x + offsetX)+"px"
-this.arrow.style.top=(pos.y-90 + offsetY)+"px"
-this.arrow.style.height="90px"
-}else{
-this.arrow.style.left=(pos.x + offsetX)+"px"
-this.arrow.style.top=(pos.y-76 + offsetY)+"px"
-this.arrow.style.height="76px"
-}
+/* السهم من المركز إلى الصندوق */
+let x1 = pos.x
+let y1 = pos.y
+let x2 = pos.x + offsetX
+let y2 = pos.y + offsetY
+
+let dx = x2 - x1
+let dy = y2 - y1
+let length = Math.sqrt(dx*dx + dy*dy)
+let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
+
+this.arrow.style.left = x1 + "px"
+this.arrow.style.top = y1 + "px"
+this.arrow.style.height = length + "px"
+this.arrow.style.transform = "rotate(" + angleDeg + "deg)"
+this.arrow.style.transformOrigin = "0 0"
 
 /* الرسم البياني خارج الصندوق */
 if(this.chart){
