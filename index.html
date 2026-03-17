@@ -9,22 +9,160 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
 
 body{
 margin:0;
 font-family:tahoma;
-background:#f5f7fb
+background:#f5f7fb;
+overflow:hidden
+}
+
+/* ===== تقسيم الصفحة ===== */
+.mainLayout{
+display:flex;
+width:100%;
+height:100vh
+}
+
+/* ===== لوحة المعلومات يسار ===== */
+.sidePanel{
+width:360px;
+min-width:360px;
+max-width:360px;
+height:100vh;
+background:#ffffff;
+border-left:1px solid #e3e8f0;
+box-shadow:0 0 20px rgba(0,0,0,.06);
+display:flex;
+flex-direction:column;
+overflow:hidden
+}
+
+.sideHeader{
+padding:16px 16px 10px;
+border-bottom:1px solid #eef2f7;
+background:linear-gradient(180deg,#ffffff,#f8fbff)
+}
+
+.sideTitle{
+font-size:18px;
+font-weight:bold;
+color:#1f2937;
+margin-bottom:6px
+}
+
+.sideSub{
+font-size:12px;
+color:#6b7280;
+line-height:1.6
+}
+
+.sideBody{
+padding:12px;
+overflow:auto;
+display:flex;
+flex-direction:column;
+gap:12px
+}
+
+.statGrid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px
+}
+
+.statCard{
+background:#f8fbff;
+border:1px solid #e6eef9;
+border-radius:14px;
+padding:12px
+}
+
+.statLabel{
+font-size:12px;
+color:#6b7280;
+margin-bottom:5px
+}
+
+.statValue{
+font-size:22px;
+font-weight:bold;
+color:#111827
+}
+
+.chartCard,
+.listCard{
+background:#ffffff;
+border:1px solid #e8edf5;
+border-radius:14px;
+padding:12px
+}
+
+.cardTitle{
+font-size:13px;
+font-weight:bold;
+color:#374151;
+margin-bottom:10px
+}
+
+#sideChart{
+width:100% !important;
+height:210px !important
+}
+
+.summaryList{
+display:flex;
+flex-direction:column;
+gap:7px
+}
+
+.summaryRow{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:10px;
+padding:8px 10px;
+background:#f9fbff;
+border:1px dashed #dbe4f1;
+border-radius:10px
+}
+
+.summaryName{
+font-size:12px;
+color:#1f2937;
+word-break:break-word
+}
+
+.summaryVal{
+font-size:13px;
+font-weight:bold;
+color:#0f172a;
+min-width:32px;
+text-align:left
+}
+
+.emptyBox{
+font-size:13px;
+color:#6b7280;
+line-height:1.8
+}
+
+/* ===== جهة الخريطة ===== */
+.mapSection{
+position:relative;
+flex:1;
+height:100vh;
+overflow:hidden
 }
 
 #map{
-height:100vh;
+height:100%;
 width:100%
 }
 
-/* الشريط العلوي */
+/* ===== الشريط العلوي ===== */
 .topPanel{
 position:absolute;
 top:10px;
@@ -101,157 +239,29 @@ button:hover{
 opacity:.92
 }
 
-#printBtn{
-background:#111
+/* ===== للجوال ===== */
+@media (max-width:1100px){
+
+.mainLayout{
+flex-direction:column
 }
 
-#pdfBtn{
-background:#0b8f55
+.sidePanel{
+width:100%;
+min-width:unset;
+max-width:none;
+height:42vh;
+border-left:none;
+border-bottom:1px solid #e3e8f0
 }
 
-/* ===== داشبورد يسار ===== */
-.dashboard{
-position:absolute;
-top:88px;
-left:10px;
-width:320px;
-max-height:78vh;
-overflow:auto;
-background:#ffffff;
-border-radius:18px;
-box-shadow:0 10px 30px rgba(0,0,0,.22);
-padding:14px;
-z-index:10;
-display:flex;
-flex-direction:column;
-gap:10px;
-border:1px solid #e9eef7
+.mapSection{
+height:58vh
 }
-
-.dashboardHeader{
-display:flex;
-align-items:center;
-justify-content:space-between;
-gap:8px
-}
-
-.dashboardTitle{
-font-size:16px;
-font-weight:bold;
-color:#1f2937
-}
-
-.dashboardBadge{
-font-size:11px;
-font-weight:bold;
-color:#fff;
-background:#2d6cff;
-padding:5px 9px;
-border-radius:999px
-}
-
-.statsGrid{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:8px
-}
-
-.statCard{
-background:#f7f9fd;
-border:1px solid #e9eef7;
-border-radius:14px;
-padding:10px
-}
-
-.statLabel{
-font-size:12px;
-color:#6b7280;
-margin-bottom:4px
-}
-
-.statValue{
-font-size:20px;
-font-weight:bold;
-color:#111827
-}
-
-.chartWrap{
-background:#fff;
-border:1px solid #e9eef7;
-border-radius:14px;
-padding:10px
-}
-
-.chartTitle{
-font-size:13px;
-font-weight:bold;
-color:#374151;
-margin-bottom:8px
-}
-
-#districtChart{
-width:100% !important;
-height:170px !important
-}
-
-.summaryWrap{
-background:#fff;
-border:1px solid #e9eef7;
-border-radius:14px;
-padding:10px
-}
-
-.summaryTitle{
-font-size:13px;
-font-weight:bold;
-color:#374151;
-margin-bottom:8px
-}
-
-.summaryList{
-display:flex;
-flex-direction:column;
-gap:6px
-}
-
-.summaryItem{
-display:flex;
-align-items:center;
-justify-content:space-between;
-gap:8px;
-padding:7px 8px;
-background:#f9fbff;
-border:1px dashed #dbe4f1;
-border-radius:10px
-}
-
-.summaryName{
-font-size:12px;
-color:#1f2937;
-word-break:break-word
-}
-
-.summaryVal{
-font-size:13px;
-font-weight:bold;
-color:#0f172a;
-min-width:30px;
-text-align:left
-}
-
-.emptyDash{
-font-size:13px;
-color:#6b7280;
-line-height:1.8
-}
-
-/* للجوال */
-@media (max-width:900px){
 
 .topPanel{
 width:95%;
-padding:10px;
-top:8px
+padding:10px
 }
 
 #searchBox{
@@ -268,77 +278,6 @@ button{
 width:100%
 }
 
-.dashboard{
-top:auto;
-bottom:10px;
-left:10px;
-right:10px;
-width:auto;
-max-height:42vh;
-padding:12px
-}
-
-.statsGrid{
-grid-template-columns:1fr 1fr
-}
-
-}
-
-/* ===== الطباعة ===== */
-@page{
-size:A4 portrait;
-margin:0
-}
-
-@media print{
-
-html,body{
-width:100%;
-height:100%;
-margin:0;
-padding:0;
-background:#fff !important;
--webkit-print-color-adjust:exact !important;
-print-color-adjust:exact !important;
-overflow:hidden !important
-}
-
-.topPanel,
-.dashboard{
-display:none !important
-}
-
-#map{
-position:fixed !important;
-top:0 !important;
-left:0 !important;
-width:100vw !important;
-height:100vh !important;
-transform:none !important;
-border-radius:0 !important;
-box-shadow:none !important
-}
-
-}
-
-body.print-mode{
-background:#fff !important
-}
-
-body.print-mode .topPanel,
-body.print-mode .dashboard{
-display:none !important
-}
-
-body.print-mode #map{
-position:fixed !important;
-top:0 !important;
-left:0 !important;
-width:100vw !important;
-height:100vh !important;
-transform:none !important;
-border-radius:0 !important;
-box-shadow:none !important
 }
 
 </style>
@@ -346,77 +285,85 @@ box-shadow:none !important
 
 <body>
 
-<div class="topPanel">
+<div class="mainLayout">
 
-<div class="group">
-<input id="searchBox" placeholder="ابحث عن حي أو شارع">
-</div>
-
-<div class="group">
-<span class="titleMini">الملف</span>
-<input type="file" id="excelFile" class="fileInput" accept=".xlsx,.xls">
-<button onclick="importExcel()">استيراد Excel</button>
-</div>
-
-<div class="group">
-<span class="titleMini">الفلترة</span>
-<select id="filterSelect" onchange="setFilter(this.value)">
-<option value="all">عرض الكل</option>
-<option value="top3">أعلى 3</option>
-<option value="top3_2">ثاني أعلى 3</option>
-<option value="top3_3">ثالث أعلى 3</option>
-<option value="top3_4">رابع أعلى 3</option>
-<option value="200">أكثر من 200</option>
-<option value="100_200">من 100 إلى 200</option>
-<option value="100">أقل من 100</option>
-</select>
-</div>
-
-<div class="group">
-<span class="titleMini">الأحياء</span>
-<select id="districtList" onchange="selectDistrict(this.value)">
-<option value="">كل الأحياء</option>
-</select>
-</div>
-
-<div class="group">
-<button id="printBtn" onclick="printMapView()">طباعة</button>
-<button id="pdfBtn" onclick="exportDistrictPDF()">PDF الحي</button>
-</div>
-
-</div>
-
-<div id="map"></div>
-
-<!-- ===== الداشبورد ===== -->
-<div class="dashboard" id="dashboard">
-  <div class="dashboardHeader">
-    <div class="dashboardTitle" id="dashDistrictName">اختر حي</div>
-    <div class="dashboardBadge" id="dashBadge">Dashboard</div>
-  </div>
-
-  <div class="statsGrid">
-    <div class="statCard">
-      <div class="statLabel">عدد البلاغات</div>
-      <div class="statValue" id="dashCount">0</div>
+  <!-- ===== لوحة المعلومات ===== -->
+  <div class="sidePanel">
+    <div class="sideHeader">
+      <div class="sideTitle" id="panelTitle">ملخص حسب الفلتر</div>
+      <div class="sideSub" id="panelSubTitle">استورد ملف Excel ثم اختر فلترة أو اضغط على حي في الخريطة.</div>
     </div>
-    <div class="statCard">
-      <div class="statLabel">إجمالي العمود الرابع</div>
-      <div class="statValue" id="dashTotal">0</div>
+
+    <div class="sideBody">
+
+      <div class="statGrid">
+        <div class="statCard">
+          <div class="statLabel">عدد البلاغات</div>
+          <div class="statValue" id="totalCount">0</div>
+        </div>
+
+        <div class="statCard">
+          <div class="statLabel">إجمالي العمود الرابع</div>
+          <div class="statValue" id="totalTypes">0</div>
+        </div>
+      </div>
+
+      <div class="chartCard">
+        <div class="cardTitle">الرسم البياني</div>
+        <canvas id="sideChart"></canvas>
+      </div>
+
+      <div class="listCard">
+        <div class="cardTitle">ملخص العمود الرابع</div>
+        <div class="summaryList" id="detailsList">
+          <div class="emptyBox">لا توجد بيانات حتى الآن.</div>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <div class="chartWrap">
-    <div class="chartTitle">أعلى التصنيفات</div>
-    <canvas id="districtChart"></canvas>
+  <!-- ===== جهة الخريطة ===== -->
+  <div class="mapSection">
+
+    <div class="topPanel">
+
+      <div class="group">
+        <input id="searchBox" placeholder="ابحث عن حي أو شارع">
+      </div>
+
+      <div class="group">
+        <span class="titleMini">الملف</span>
+        <input type="file" id="excelFile" class="fileInput" accept=".xlsx,.xls">
+        <button onclick="importExcel()">استيراد Excel</button>
+      </div>
+
+      <div class="group">
+        <span class="titleMini">الفلترة</span>
+        <select id="filterSelect" onchange="setFilter(this.value)">
+          <option value="all">عرض الكل</option>
+          <option value="top3">أعلى 3</option>
+          <option value="top3_2">ثاني أعلى 3</option>
+          <option value="top3_3">ثالث أعلى 3</option>
+          <option value="top3_4">رابع أعلى 3</option>
+          <option value="200">أكثر من 200</option>
+          <option value="100_200">من 100 إلى 200</option>
+          <option value="100">أقل من 100</option>
+        </select>
+      </div>
+
+      <div class="group">
+        <span class="titleMini">الأحياء</span>
+        <select id="districtList" onchange="selectDistrict(this.value)">
+          <option value="">كل الأحياء</option>
+        </select>
+      </div>
+
+    </div>
+
+    <div id="map"></div>
   </div>
 
-  <div class="summaryWrap">
-    <div class="summaryTitle">ملخص العمود الرابع</div>
-    <div class="summaryList" id="dashSummaryList">
-      <div class="emptyDash">اضغط على أي حي في الخريطة لعرض الاسم، عدد البلاغات، وإجمالي النصوص في العمود الرابع.</div>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -431,9 +378,8 @@ let infoWindows=[]
 let currentFilter="all"
 let selectedDistrict=""
 let rankedDistricts=[]
-let dashChart=null
-let dashboardDistrictName=""
-let dashboardDistrictData=null
+let sideChart=null
+let lastPanelMode="filter" // filter | district
 
 const COLORS=[
 "#ff5722",
@@ -487,6 +433,7 @@ map.setZoom(16)
 
 map.addListener("click",()=>{
 closeAllInfoWindows()
+updatePanelForCurrentView()
 })
 
 }
@@ -496,18 +443,14 @@ currentFilter=type
 selectedDistrict=document.getElementById("districtList").value || ""
 clearMap()
 drawDistricts()
+updatePanelForCurrentView()
 }
 
 function selectDistrict(name){
 selectedDistrict=name || ""
 clearMap()
 drawDistricts()
-
-if(selectedDistrict && districts[selectedDistrict]){
-updateDashboard(selectedDistrict,districts[selectedDistrict])
-}else if(!selectedDistrict){
-resetDashboard()
-}
+updatePanelForCurrentView()
 }
 
 function closeAllInfoWindows(){
@@ -587,7 +530,6 @@ let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
 districts={}
 clearMap()
-resetDashboard()
 
 let bounds=new google.maps.LatLngBounds()
 let hasValidPoint=false
@@ -628,6 +570,7 @@ map.fitBounds(bounds)
 prepareRanks()
 fillDistrictList()
 drawDistricts()
+updatePanelForCurrentView()
 
 }
 
@@ -714,34 +657,6 @@ function getColumnColor(count){
 if(count>200) return "#ff3d00"
 if(count>100) return "#ffc107"
 return "#4caf50"
-}
-
-function getColumnHeight(count){
-
-if(rankedDistricts.length===0) return 50
-
-let maxCount=rankedDistricts[0]?.count || 1
-let minHeight=30
-let maxHeight=105
-
-let h=minHeight + ((count/maxCount)*(maxHeight-minHeight))
-return Math.max(minHeight,Math.min(maxHeight,h))
-
-}
-
-function hexToRgba(hex,alpha){
-
-let c=hex.replace("#","")
-if(c.length===3){
-c=c.split("").map(x=>x+x).join("")
-}
-
-let r=parseInt(c.substring(0,2),16)
-let g=parseInt(c.substring(2,4),16)
-let b=parseInt(c.substring(4,6),16)
-
-return `rgba(${r},${g},${b},${alpha})`
-
 }
 
 function createPointMarkers(points,color,isStrong){
@@ -868,12 +783,8 @@ this.div.appendChild(this.dot)
 this.div.addEventListener("click",(e)=>{
 e.stopPropagation()
 closeAllInfoWindows()
-infoWindow.open({
-map:map
-})
-if(districts[district]){
-updateDashboard(district,districts[district])
-}
+infoWindow.open({map:map})
+updatePanelDistrict(district,dataOrDistrict(district))
 })
 
 this.getPanes().overlayMouseTarget.appendChild(this.div)
@@ -899,6 +810,11 @@ this.div.parentNode.removeChild(this.div)
 this.div=null
 }
 
+}
+
+const self=this
+function dataOrDistrict(name){
+return districts[name]
 }
 
 let overlay=new ElegantOverlay()
@@ -960,10 +876,8 @@ count,
 data,
 baseColor
 )
-infoWindow.open({
-map:map
-})
-updateDashboard(district,data)
+infoWindow.open({map:map})
+updatePanelDistrict(district,data)
 })
 
 hull.forEach(p=>{
@@ -992,7 +906,7 @@ strokeWeight:2
 })
 
 marker.addListener("click",()=>{
-updateDashboard(district,data)
+updatePanelDistrict(district,data)
 })
 
 markers.push(marker)
@@ -1018,83 +932,131 @@ map.fitBounds(visibleBounds)
 
 }
 
-/* ===== الداشبورد ===== */
+/* ===== لوحة المعلومات ===== */
 
-function resetDashboard(){
+function resetPanel(){
+document.getElementById("panelTitle").textContent="ملخص حسب الفلتر"
+document.getElementById("panelSubTitle").textContent="استورد ملف Excel ثم اختر فلترة أو اضغط على حي في الخريطة."
+document.getElementById("totalCount").textContent="0"
+document.getElementById("totalTypes").textContent="0"
+document.getElementById("detailsList").innerHTML='<div class="emptyBox">لا توجد بيانات حتى الآن.</div>'
 
-dashboardDistrictName=""
-dashboardDistrictData=null
-
-document.getElementById("dashDistrictName").textContent="اختر حي"
-document.getElementById("dashBadge").textContent="Dashboard"
-document.getElementById("dashCount").textContent="0"
-document.getElementById("dashTotal").textContent="0"
-document.getElementById("dashSummaryList").innerHTML=
-'<div class="emptyDash">اضغط على أي حي في الخريطة لعرض الاسم، عدد البلاغات، وإجمالي النصوص في العمود الرابع.</div>'
-
-if(dashChart){
-dashChart.destroy()
-dashChart=null
+if(sideChart){
+sideChart.destroy()
+sideChart=null
+}
 }
 
-}
+function updatePanelDistrict(name,data){
 
-function updateDashboard(district,data){
-
-if(!district || !data){
-resetDashboard()
+if(!name || !data){
+resetPanel()
 return
 }
 
-dashboardDistrictName=district
-dashboardDistrictData=data
+lastPanelMode="district"
 
 let count=data.points.length
-let sorted=Object.entries(data.third).sort((a,b)=>b[1]-a[1])
+let entries=Object.entries(data.third).sort((a,b)=>b[1]-a[1])
 
 let total=0
-let listHTML=""
 let labels=[]
 let values=[]
+let html=""
 
-for(let i=0;i<sorted.length;i++){
-let name=sorted[i][0]
-let val=sorted[i][1]
-total+=val
-
-listHTML+=`
-<div class="summaryItem">
-  <div class="summaryName">${name}</div>
-  <div class="summaryVal">${val}</div>
+entries.forEach(([k,v],i)=>{
+total+=v
+html+=`
+<div class="summaryRow">
+  <div class="summaryName">${k}</div>
+  <div class="summaryVal">${v}</div>
 </div>
 `
+if(i<10){
+labels.push(k)
+values.push(v)
+}
+})
 
-if(i<8){
-labels.push(name)
-values.push(val)
+document.getElementById("panelTitle").textContent=name
+document.getElementById("panelSubTitle").textContent="عرض حي محدد"
+document.getElementById("totalCount").textContent=count
+document.getElementById("totalTypes").textContent=total
+document.getElementById("detailsList").innerHTML=html || '<div class="emptyBox">لا توجد بيانات.</div>'
+
+drawSideChart(labels,values)
+}
+
+function updatePanelSummary(){
+
+lastPanelMode="filter"
+
+let totalCount=0
+let totalTypes=0
+let merged={}
+let districtCounter=0
+
+for(let district in districts){
+
+let data=districts[district]
+let count=data.points.length
+
+if(!passesFilter(district,count)) continue
+districtCounter++
+totalCount+=count
+
+for(let key in data.third){
+merged[key]=(merged[key] || 0) + data.third[key]
 }
 }
 
-document.getElementById("dashDistrictName").textContent=district
-document.getElementById("dashBadge").textContent="حي محدد"
-document.getElementById("dashCount").textContent=count
-document.getElementById("dashTotal").textContent=total
-document.getElementById("dashSummaryList").innerHTML=listHTML || '<div class="emptyDash">لا توجد بيانات</div>'
+let entries=Object.entries(merged).sort((a,b)=>b[1]-a[1])
+let labels=[]
+let values=[]
+let html=""
 
-const ctx=document.getElementById("districtChart").getContext("2d")
+entries.forEach(([k,v],i)=>{
+totalTypes+=v
+html+=`
+<div class="summaryRow">
+  <div class="summaryName">${k}</div>
+  <div class="summaryVal">${v}</div>
+</div>
+`
+if(i<10){
+labels.push(k)
+values.push(v)
+}
+})
 
-if(dashChart){
-dashChart.destroy()
+let filterText=document.getElementById("filterSelect").options[document.getElementById("filterSelect").selectedIndex].text
+
+document.getElementById("panelTitle").textContent="ملخص حسب الفلتر"
+document.getElementById("panelSubTitle").textContent=`عدد الأحياء المعروضة: ${districtCounter} | الفلترة: ${filterText}`
+document.getElementById("totalCount").textContent=totalCount
+document.getElementById("totalTypes").textContent=totalTypes
+document.getElementById("detailsList").innerHTML=html || '<div class="emptyBox">لا توجد بيانات مطابقة للفلترة الحالية.</div>'
+
+drawSideChart(labels,values)
 }
 
-dashChart=new Chart(ctx,{
+function drawSideChart(labels,values){
+
+const ctx=document.getElementById("sideChart").getContext("2d")
+
+if(sideChart){
+sideChart.destroy()
+}
+
+sideChart=new Chart(ctx,{
 type:"bar",
 data:{
 labels:labels,
 datasets:[{
 data:values,
 backgroundColor:"#2d6cff",
-borderRadius:6
+borderRadius:6,
+maxBarThickness:28
 }]
 },
 options:{
@@ -1105,21 +1067,13 @@ legend:{display:false}
 },
 scales:{
 x:{
-ticks:{
-display:false
-},
-grid:{
-display:false
-}
+ticks:{display:false},
+grid:{display:false}
 },
 y:{
 beginAtZero:true,
-ticks:{
-display:false
-},
-grid:{
-color:"rgba(0,0,0,.06)"
-}
+ticks:{display:false},
+grid:{color:"rgba(0,0,0,.06)"}
 }
 }
 }
@@ -1127,171 +1081,14 @@ color:"rgba(0,0,0,.06)"
 
 }
 
-/* ===== تصدير PDF للحي ===== */
+function updatePanelForCurrentView(){
 
-function exportDistrictPDF(){
-
-if(!dashboardDistrictName || !dashboardDistrictData){
-alert("اختر حي أولاً من الخريطة")
+if(selectedDistrict && districts[selectedDistrict]){
+updatePanelDistrict(selectedDistrict,districts[selectedDistrict])
 return
 }
 
-closeAllInfoWindows()
-
-const oldCenter=map.getCenter()
-const oldZoom=map.getZoom()
-
-const bounds=new google.maps.LatLngBounds()
-dashboardDistrictData.points.forEach(p=>{
-bounds.extend(new google.maps.LatLng(p.lat,p.lng))
-})
-
-map.fitBounds(bounds)
-
-setTimeout(()=>{
-
-const wrap=document.createElement("div")
-wrap.style.position="fixed"
-wrap.style.top="0"
-wrap.style.left="0"
-wrap.style.width="794px"
-wrap.style.minHeight="1123px"
-wrap.style.background="#ffffff"
-wrap.style.zIndex="999999"
-wrap.style.padding="24px"
-wrap.style.boxSizing="border-box"
-wrap.style.direction="rtl"
-wrap.style.fontFamily="Tahoma"
-
-const sorted=Object.entries(dashboardDistrictData.third).sort((a,b)=>b[1]-a[1])
-let total=0
-let rowsHTML=""
-
-sorted.forEach(item=>{
-total+=item[1]
-rowsHTML+=`
-<tr>
-  <td style="border:1px solid #d8dee9;padding:8px">${item[0]}</td>
-  <td style="border:1px solid #d8dee9;padding:8px;text-align:center">${item[1]}</td>
-</tr>
-`
-})
-
-wrap.innerHTML=`
-<div style="font-size:24px;font-weight:bold;margin-bottom:12px;color:#111827">تقرير الحي</div>
-<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-  <div style="background:#f3f6fb;padding:10px 14px;border-radius:12px;font-size:14px">اسم الحي: <b>${dashboardDistrictName}</b></div>
-  <div style="background:#f3f6fb;padding:10px 14px;border-radius:12px;font-size:14px">عدد البلاغات: <b>${dashboardDistrictData.points.length}</b></div>
-  <div style="background:#f3f6fb;padding:10px 14px;border-radius:12px;font-size:14px">إجمالي العمود الرابع: <b>${total}</b></div>
-</div>
-<div id="pdfMapBox" style="width:100%;height:420px;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;background:#eef2f7"></div>
-<div style="margin-top:18px;font-size:16px;font-weight:bold;color:#111827">ملخص العمود الرابع</div>
-<table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:14px">
-<thead>
-<tr style="background:#eef4ff">
-  <th style="border:1px solid #d8dee9;padding:8px">النص</th>
-  <th style="border:1px solid #d8dee9;padding:8px;width:120px">العدد</th>
-</tr>
-</thead>
-<tbody>
-${rowsHTML}
-</tbody>
-</table>
-`
-
-document.body.appendChild(wrap)
-
-html2canvas(document.getElementById("map"),{
-useCORS:true,
-backgroundColor:"#ffffff",
-scale:2
-}).then(canvas=>{
-
-document.getElementById("pdfMapBox").appendChild(canvas)
-canvas.style.width="100%"
-canvas.style.height="100%"
-canvas.style.display="block"
-
-html2canvas(wrap,{
-useCORS:true,
-backgroundColor:"#ffffff",
-scale:2
-}).then(finalCanvas=>{
-
-const link=document.createElement("a")
-link.download=`${dashboardDistrictName}.png`
-link.href=finalCanvas.toDataURL("image/png")
-link.click()
-
-document.body.removeChild(wrap)
-
-map.setCenter(oldCenter)
-map.setZoom(oldZoom)
-
-})
-
-})
-
-},800)
-
-}
-
-/* ===== زر الطباعة ===== */
-
-function printMapView(){
-
-closeAllInfoWindows()
-
-document.body.classList.add("print-mode")
-
-setTimeout(()=>{
-
-google.maps.event.trigger(map,"resize")
-
-let bounds=new google.maps.LatLngBounds()
-let hasVisible=false
-
-for(let district in districts){
-
-let data=districts[district]
-let count=data.points.length
-
-if(!passesFilter(district,count)) continue
-if(count<1) continue
-
-for(let p of data.points){
-bounds.extend(new google.maps.LatLng(p.lat,p.lng))
-hasVisible=true
-}
-}
-
-if(hasVisible){
-map.fitBounds(bounds)
-}
-
-setTimeout(()=>{
-
-google.maps.event.trigger(map,"resize")
-
-setTimeout(()=>{
-
-window.print()
-
-},500)
-
-},500)
-
-},300)
-
-}
-
-window.onafterprint=function(){
-document.body.classList.remove("print-mode")
-setTimeout(()=>{
-google.maps.event.trigger(map,"resize")
-clearMap()
-drawDistricts()
-},300)
+updatePanelSummary()
 }
 
 </script>
