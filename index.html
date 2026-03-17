@@ -9,6 +9,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
 
@@ -104,12 +105,153 @@ opacity:.92
 background:#111
 }
 
+#pdfBtn{
+background:#0b8f55
+}
+
+/* ===== داشبورد يسار ===== */
+.dashboard{
+position:absolute;
+top:88px;
+left:10px;
+width:320px;
+max-height:78vh;
+overflow:auto;
+background:#ffffff;
+border-radius:18px;
+box-shadow:0 10px 30px rgba(0,0,0,.22);
+padding:14px;
+z-index:10;
+display:flex;
+flex-direction:column;
+gap:10px;
+border:1px solid #e9eef7
+}
+
+.dashboardHeader{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:8px
+}
+
+.dashboardTitle{
+font-size:16px;
+font-weight:bold;
+color:#1f2937
+}
+
+.dashboardBadge{
+font-size:11px;
+font-weight:bold;
+color:#fff;
+background:#2d6cff;
+padding:5px 9px;
+border-radius:999px
+}
+
+.statsGrid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:8px
+}
+
+.statCard{
+background:#f7f9fd;
+border:1px solid #e9eef7;
+border-radius:14px;
+padding:10px
+}
+
+.statLabel{
+font-size:12px;
+color:#6b7280;
+margin-bottom:4px
+}
+
+.statValue{
+font-size:20px;
+font-weight:bold;
+color:#111827
+}
+
+.chartWrap{
+background:#fff;
+border:1px solid #e9eef7;
+border-radius:14px;
+padding:10px
+}
+
+.chartTitle{
+font-size:13px;
+font-weight:bold;
+color:#374151;
+margin-bottom:8px
+}
+
+#districtChart{
+width:100% !important;
+height:170px !important
+}
+
+.summaryWrap{
+background:#fff;
+border:1px solid #e9eef7;
+border-radius:14px;
+padding:10px
+}
+
+.summaryTitle{
+font-size:13px;
+font-weight:bold;
+color:#374151;
+margin-bottom:8px
+}
+
+.summaryList{
+display:flex;
+flex-direction:column;
+gap:6px
+}
+
+.summaryItem{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:8px;
+padding:7px 8px;
+background:#f9fbff;
+border:1px dashed #dbe4f1;
+border-radius:10px
+}
+
+.summaryName{
+font-size:12px;
+color:#1f2937;
+word-break:break-word
+}
+
+.summaryVal{
+font-size:13px;
+font-weight:bold;
+color:#0f172a;
+min-width:30px;
+text-align:left
+}
+
+.emptyDash{
+font-size:13px;
+color:#6b7280;
+line-height:1.8
+}
+
 /* للجوال */
 @media (max-width:900px){
 
 .topPanel{
 width:95%;
-padding:10px
+padding:10px;
+top:8px
 }
 
 #searchBox{
@@ -124,6 +266,20 @@ width:100%
 select,
 button{
 width:100%
+}
+
+.dashboard{
+top:auto;
+bottom:10px;
+left:10px;
+right:10px;
+width:auto;
+max-height:42vh;
+padding:12px
+}
+
+.statsGrid{
+grid-template-columns:1fr 1fr
 }
 
 }
@@ -147,7 +303,8 @@ print-color-adjust:exact !important;
 overflow:hidden !important
 }
 
-.topPanel{
+.topPanel,
+.dashboard{
 display:none !important
 }
 
@@ -164,12 +321,12 @@ box-shadow:none !important
 
 }
 
-/* تحسين إضافي عند وضع الطباعة قبل أمر print */
 body.print-mode{
 background:#fff !important
 }
 
-body.print-mode .topPanel{
+body.print-mode .topPanel,
+body.print-mode .dashboard{
 display:none !important
 }
 
@@ -224,11 +381,43 @@ box-shadow:none !important
 
 <div class="group">
 <button id="printBtn" onclick="printMapView()">طباعة</button>
+<button id="pdfBtn" onclick="exportDistrictPDF()">PDF الحي</button>
 </div>
 
 </div>
 
 <div id="map"></div>
+
+<!-- ===== الداشبورد ===== -->
+<div class="dashboard" id="dashboard">
+  <div class="dashboardHeader">
+    <div class="dashboardTitle" id="dashDistrictName">اختر حي</div>
+    <div class="dashboardBadge" id="dashBadge">Dashboard</div>
+  </div>
+
+  <div class="statsGrid">
+    <div class="statCard">
+      <div class="statLabel">عدد البلاغات</div>
+      <div class="statValue" id="dashCount">0</div>
+    </div>
+    <div class="statCard">
+      <div class="statLabel">إجمالي العمود الرابع</div>
+      <div class="statValue" id="dashTotal">0</div>
+    </div>
+  </div>
+
+  <div class="chartWrap">
+    <div class="chartTitle">أعلى التصنيفات</div>
+    <canvas id="districtChart"></canvas>
+  </div>
+
+  <div class="summaryWrap">
+    <div class="summaryTitle">ملخص العمود الرابع</div>
+    <div class="summaryList" id="dashSummaryList">
+      <div class="emptyDash">اضغط على أي حي في الخريطة لعرض الاسم، عدد البلاغات، وإجمالي النصوص في العمود الرابع.</div>
+    </div>
+  </div>
+</div>
 
 <script>
 
@@ -242,6 +431,9 @@ let infoWindows=[]
 let currentFilter="all"
 let selectedDistrict=""
 let rankedDistricts=[]
+let dashChart=null
+let dashboardDistrictName=""
+let dashboardDistrictData=null
 
 const COLORS=[
 "#ff5722",
@@ -310,6 +502,12 @@ function selectDistrict(name){
 selectedDistrict=name || ""
 clearMap()
 drawDistricts()
+
+if(selectedDistrict && districts[selectedDistrict]){
+updateDashboard(selectedDistrict,districts[selectedDistrict])
+}else if(!selectedDistrict){
+resetDashboard()
+}
 }
 
 function closeAllInfoWindows(){
@@ -389,6 +587,7 @@ let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
 districts={}
 clearMap()
+resetDashboard()
 
 let bounds=new google.maps.LatLngBounds()
 let hasValidPoint=false
@@ -672,6 +871,9 @@ closeAllInfoWindows()
 infoWindow.open({
 map:map
 })
+if(districts[district]){
+updateDashboard(district,districts[district])
+}
 })
 
 this.getPanes().overlayMouseTarget.appendChild(this.div)
@@ -761,6 +963,7 @@ baseColor
 infoWindow.open({
 map:map
 })
+updateDashboard(district,data)
 })
 
 hull.forEach(p=>{
@@ -788,6 +991,10 @@ strokeWeight:2
 }
 })
 
+marker.addListener("click",()=>{
+updateDashboard(district,data)
+})
+
 markers.push(marker)
 visibleBounds.extend(center1)
 hasVisible=true
@@ -811,7 +1018,226 @@ map.fitBounds(visibleBounds)
 
 }
 
+/* ===== الداشبورد ===== */
+
+function resetDashboard(){
+
+dashboardDistrictName=""
+dashboardDistrictData=null
+
+document.getElementById("dashDistrictName").textContent="اختر حي"
+document.getElementById("dashBadge").textContent="Dashboard"
+document.getElementById("dashCount").textContent="0"
+document.getElementById("dashTotal").textContent="0"
+document.getElementById("dashSummaryList").innerHTML=
+'<div class="emptyDash">اضغط على أي حي في الخريطة لعرض الاسم، عدد البلاغات، وإجمالي النصوص في العمود الرابع.</div>'
+
+if(dashChart){
+dashChart.destroy()
+dashChart=null
+}
+
+}
+
+function updateDashboard(district,data){
+
+if(!district || !data){
+resetDashboard()
+return
+}
+
+dashboardDistrictName=district
+dashboardDistrictData=data
+
+let count=data.points.length
+let sorted=Object.entries(data.third).sort((a,b)=>b[1]-a[1])
+
+let total=0
+let listHTML=""
+let labels=[]
+let values=[]
+
+for(let i=0;i<sorted.length;i++){
+let name=sorted[i][0]
+let val=sorted[i][1]
+total+=val
+
+listHTML+=`
+<div class="summaryItem">
+  <div class="summaryName">${name}</div>
+  <div class="summaryVal">${val}</div>
+</div>
+`
+
+if(i<8){
+labels.push(name)
+values.push(val)
+}
+}
+
+document.getElementById("dashDistrictName").textContent=district
+document.getElementById("dashBadge").textContent="حي محدد"
+document.getElementById("dashCount").textContent=count
+document.getElementById("dashTotal").textContent=total
+document.getElementById("dashSummaryList").innerHTML=listHTML || '<div class="emptyDash">لا توجد بيانات</div>'
+
+const ctx=document.getElementById("districtChart").getContext("2d")
+
+if(dashChart){
+dashChart.destroy()
+}
+
+dashChart=new Chart(ctx,{
+type:"bar",
+data:{
+labels:labels,
+datasets:[{
+data:values,
+backgroundColor:"#2d6cff",
+borderRadius:6
+}]
+},
+options:{
+responsive:true,
+maintainAspectRatio:false,
+plugins:{
+legend:{display:false}
+},
+scales:{
+x:{
+ticks:{
+display:false
+},
+grid:{
+display:false
+}
+},
+y:{
+beginAtZero:true,
+ticks:{
+display:false
+},
+grid:{
+color:"rgba(0,0,0,.06)"
+}
+}
+}
+}
+})
+
+}
+
+/* ===== تصدير PDF للحي ===== */
+
+function exportDistrictPDF(){
+
+if(!dashboardDistrictName || !dashboardDistrictData){
+alert("اختر حي أولاً من الخريطة")
+return
+}
+
+closeAllInfoWindows()
+
+const oldCenter=map.getCenter()
+const oldZoom=map.getZoom()
+
+const bounds=new google.maps.LatLngBounds()
+dashboardDistrictData.points.forEach(p=>{
+bounds.extend(new google.maps.LatLng(p.lat,p.lng))
+})
+
+map.fitBounds(bounds)
+
+setTimeout(()=>{
+
+const wrap=document.createElement("div")
+wrap.style.position="fixed"
+wrap.style.top="0"
+wrap.style.left="0"
+wrap.style.width="794px"
+wrap.style.minHeight="1123px"
+wrap.style.background="#ffffff"
+wrap.style.zIndex="999999"
+wrap.style.padding="24px"
+wrap.style.boxSizing="border-box"
+wrap.style.direction="rtl"
+wrap.style.fontFamily="Tahoma"
+
+const sorted=Object.entries(dashboardDistrictData.third).sort((a,b)=>b[1]-a[1])
+let total=0
+let rowsHTML=""
+
+sorted.forEach(item=>{
+total+=item[1]
+rowsHTML+=`
+<tr>
+  <td style="border:1px solid #d8dee9;padding:8px">${item[0]}</td>
+  <td style="border:1px solid #d8dee9;padding:8px;text-align:center">${item[1]}</td>
+</tr>
+`
+})
+
+wrap.innerHTML=`
+<div style="font-size:24px;font-weight:bold;margin-bottom:12px;color:#111827">تقرير الحي</div>
+<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+  <div style="background:#f3f6fb;padding:10px 14px;border-radius:12px;font-size:14px">اسم الحي: <b>${dashboardDistrictName}</b></div>
+  <div style="background:#f3f6fb;padding:10px 14px;border-radius:12px;font-size:14px">عدد البلاغات: <b>${dashboardDistrictData.points.length}</b></div>
+  <div style="background:#f3f6fb;padding:10px 14px;border-radius:12px;font-size:14px">إجمالي العمود الرابع: <b>${total}</b></div>
+</div>
+<div id="pdfMapBox" style="width:100%;height:420px;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;background:#eef2f7"></div>
+<div style="margin-top:18px;font-size:16px;font-weight:bold;color:#111827">ملخص العمود الرابع</div>
+<table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:14px">
+<thead>
+<tr style="background:#eef4ff">
+  <th style="border:1px solid #d8dee9;padding:8px">النص</th>
+  <th style="border:1px solid #d8dee9;padding:8px;width:120px">العدد</th>
+</tr>
+</thead>
+<tbody>
+${rowsHTML}
+</tbody>
+</table>
+`
+
+document.body.appendChild(wrap)
+
+html2canvas(document.getElementById("map"),{
+useCORS:true,
+backgroundColor:"#ffffff",
+scale:2
+}).then(canvas=>{
+
+document.getElementById("pdfMapBox").appendChild(canvas)
+canvas.style.width="100%"
+canvas.style.height="100%"
+canvas.style.display="block"
+
+html2canvas(wrap,{
+useCORS:true,
+backgroundColor:"#ffffff",
+scale:2
+}).then(finalCanvas=>{
+
+const link=document.createElement("a")
+link.download=`${dashboardDistrictName}.png`
+link.href=finalCanvas.toDataURL("image/png")
+link.click()
+
+document.body.removeChild(wrap)
+
+map.setCenter(oldCenter)
+map.setZoom(oldZoom)
+
+})
+
+})
+
+},800)
+
+}
+
 /* ===== زر الطباعة ===== */
+
 function printMapView(){
 
 closeAllInfoWindows()
