@@ -346,21 +346,23 @@ width:100%
   <div class="sidePanel">
     <div class="sideHeader">
       <div class="sideTitle" id="panelTitle">ملخص حسب الفلتر</div>
-      <div class="sideSub" id="panelSubTitle">استورد ملف Excel ثم اختر فلترة أو اضغط على حي في الخريطة.</div>
+      <div class="sideSub" id="panelSubTitle">استورد ملف Excel ثم اختر البلدية والفلترة أو اضغط على حي في الخريطة.</div>
     </div>
 
     <div class="sideBody">
 
-      <div class="statCard">
-          <div class="statLabel">إجمالي عدد التصنيفات </div>
-          <div class="statValue" id="totalTypes">0</div>
-        </div>
-    </div>
       <div class="statGrid">
         <div class="statCard">
           <div class="statLabel">عدد البلاغات</div>
           <div class="statValue" id="totalCount">0</div>
         </div>
+
+        <div class="statCard">
+          <div class="statLabel">إجمالي العمود الرابع</div>
+          <div class="statValue" id="totalTypes">0</div>
+        </div>
+      </div>
+
       <div class="chartCard">
         <div class="cardTitle">الرسم البياني</div>
         <canvas id="sideChart"></canvas>
@@ -389,6 +391,13 @@ width:100%
         <span class="titleMini">الملف</span>
         <input type="file" id="excelFile" class="fileInput" accept=".xlsx,.xls">
         <button onclick="importExcel()">استيراد Excel</button>
+      </div>
+
+      <div class="group">
+        <span class="titleMini">البلدية</span>
+        <select id="municipalityList" onchange="setMunicipalityFilter(this.value)">
+          <option value="">كل البلديات</option>
+        </select>
       </div>
 
       <div class="group">
@@ -434,9 +443,8 @@ let overlays=[]
 let infoWindows=[]
 let currentFilter="all"
 let selectedDistrict=""
-let rankedDistricts=[]
+let selectedMunicipality=""
 let sideChart=null
-let lastPanelMode="filter" // filter | district
 
 const COLORS=[
 "#ff5722",
@@ -495,6 +503,152 @@ updatePanelForCurrentView()
 
 }
 
+function normalizeHeader(v){
+return (v ?? "")
+.toString()
+.trim()
+.replace(/\s+/g,"")
+.replace(/[أإآ]/g,"ا")
+.replace(/ة/g,"ه")
+.toLowerCase()
+}
+
+function findColumnIndex(headers,candidates,fallbackIndex){
+for(const candidate of candidates){
+const idx=headers.findIndex(h=>h.includes(candidate))
+if(idx!==-1) return idx
+}
+return fallbackIndex
+}
+
+function importExcel(){
+
+let file=document.getElementById("excelFile").files[0]
+if(!file)return
+
+let reader=new FileReader()
+
+reader.onload=function(e){
+
+let data=new Uint8Array(e.target.result)
+let workbook=XLSX.read(data,{type:"array"})
+let sheet=workbook.Sheets[workbook.SheetNames[0]]
+let rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:""})
+
+if(!rows.length) return
+
+let headerRow=rows[0].map(normalizeHeader)
+
+let latCol=findColumnIndex(headerRow,["lat","latitude","خطالعرض","الاحداثيx","y"],0)
+let lngCol=findColumnIndex(headerRow,["lng","lon","longitude","خطالطول","الاحداثيy","x"],1)
+let districtCol=findColumnIndex(headerRow,["الحي","اسم الحي","district","neighborhood"],2)
+let thirdCol=findColumnIndex(headerRow,["التصنيف","التصنيفالتخصصي","العمودالرابع","category","third"],3)
+let municipalityCol=findColumnIndex(headerRow,["البلديهالفرعيه","البلديه","بلديهفرعيه","municipality"],4)
+
+districts={}
+clearMap()
+resetPanel()
+
+let bounds=new google.maps.LatLngBounds()
+let hasValidPoint=false
+
+for(let i=1;i<rows.length;i++){
+
+let row=rows[i]
+
+let lat=parseFloat(row[latCol])
+let lng=parseFloat(row[lngCol])
+let district=(row[districtCol]??"").toString().trim()
+let third=(row[thirdCol]??"بدون تصنيف").toString().trim() || "بدون تصنيف"
+let municipality=(row[municipalityCol]??"غير محددة").toString().trim() || "غير محددة"
+
+if(isNaN(lat) || isNaN(lng) || !district) continue
+
+const districtKey=`${municipality}|||${district}`
+
+bounds.extend({lat:lat,lng:lng})
+hasValidPoint=true
+
+if(!districts[districtKey]){
+districts[districtKey]={
+key:districtKey,
+name:district,
+municipality:municipality,
+points:[],
+third:{}
+}
+}
+
+districts[districtKey].points.push({lat,lng})
+
+if(!districts[districtKey].third[third]){
+districts[districtKey].third[third]=0
+}
+
+districts[districtKey].third[third]++
+
+}
+
+if(hasValidPoint){
+map.fitBounds(bounds)
+}
+
+fillMunicipalityList()
+fillDistrictList()
+drawDistricts()
+updatePanelForCurrentView()
+
+}
+
+reader.readAsArrayBuffer(file)
+
+}
+
+function fillMunicipalityList(){
+
+let sel=document.getElementById("municipalityList")
+sel.innerHTML='<option value="">كل البلديات</option>'
+
+let names=[...new Set(Object.values(districts).map(d=>d.municipality))].sort((a,b)=>a.localeCompare(b,'ar'))
+
+for(let name of names){
+let opt=document.createElement("option")
+opt.value=name
+opt.textContent=name
+sel.appendChild(opt)
+}
+
+sel.value=selectedMunicipality || ""
+}
+
+function fillDistrictList(){
+
+let sel=document.getElementById("districtList")
+sel.innerHTML='<option value="">كل الأحياء</option>'
+
+let items=Object.values(districts)
+.filter(d=>!selectedMunicipality || d.municipality===selectedMunicipality)
+.sort((a,b)=>a.name.localeCompare(b.name,'ar'))
+
+for(let item of items){
+let opt=document.createElement("option")
+opt.value=item.key
+opt.textContent=item.name
+sel.appendChild(opt)
+}
+
+sel.value=selectedDistrict || ""
+}
+
+function setMunicipalityFilter(name){
+selectedMunicipality=name || ""
+selectedDistrict=""
+fillDistrictList()
+clearMap()
+drawDistricts()
+updatePanelForCurrentView()
+}
+
 function setFilter(type){
 currentFilter=type
 selectedDistrict=document.getElementById("districtList").value || ""
@@ -503,8 +657,8 @@ drawDistricts()
 updatePanelForCurrentView()
 }
 
-function selectDistrict(name){
-selectedDistrict=name || ""
+function selectDistrict(key){
+selectedDistrict=key || ""
 clearMap()
 drawDistricts()
 updatePanelForCurrentView()
@@ -571,119 +725,35 @@ return lower.concat(upper)
 
 }
 
-function importExcel(){
+function getRankedDistrictKeysForCurrentMunicipality(){
+let arr=Object.values(districts)
+.filter(d=>!selectedMunicipality || d.municipality===selectedMunicipality)
+.map(d=>({key:d.key,count:d.points.length}))
+.sort((a,b)=>b.count-a.count)
 
-let file=document.getElementById("excelFile").files[0]
-if(!file)return
-
-let reader=new FileReader()
-
-reader.onload=function(e){
-
-let data=new Uint8Array(e.target.result)
-let workbook=XLSX.read(data,{type:"array"})
-let sheet=workbook.Sheets[workbook.SheetNames[0]]
-let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
-
-districts={}
-clearMap()
-
-let bounds=new google.maps.LatLngBounds()
-let hasValidPoint=false
-
-for(let i=1;i<rows.length;i++){
-
-let lat=parseFloat(rows[i][0])
-let lng=parseFloat(rows[i][1])
-let district=(rows[i][2]??"").toString().trim()
-let third=(rows[i][3]??"بدون تصنيف").toString().trim()
-
-if(isNaN(lat) || isNaN(lng) || !district) continue
-
-bounds.extend({lat:lat,lng:lng})
-hasValidPoint=true
-
-if(!districts[district]){
-districts[district]={
-points:[],
-third:{}
-}
+return arr.map(x=>x.key)
 }
 
-districts[district].points.push({lat,lng})
-
-if(!districts[district].third[third]){
-districts[district].third[third]=0
-}
-
-districts[district].third[third]++
-
-}
-
-if(hasValidPoint){
-map.fitBounds(bounds)
-}
-
-prepareRanks()
-fillDistrictList()
-drawDistricts()
-updatePanelForCurrentView()
-
-}
-
-reader.readAsArrayBuffer(file)
-
-}
-
-function prepareRanks(){
-
-let arr=[]
-
-for(let d in districts){
-arr.push({
-name:d,
-count:districts[d].points.length
-})
-}
-
-arr.sort((a,b)=>b.count-a.count)
-rankedDistricts=arr
-
-}
-
-function fillDistrictList(){
-
-let sel=document.getElementById("districtList")
-sel.innerHTML='<option value="">كل الأحياء</option>'
-
-let names=Object.keys(districts).sort((a,b)=>a.localeCompare(b,'ar'))
-
-for(let name of names){
-let opt=document.createElement("option")
-opt.value=name
-opt.textContent=name
-sel.appendChild(opt)
-}
-
-sel.value=selectedDistrict || ""
-
-}
-
-function getTopGroupNames(groupNumber){
+function getTopGroupKeys(groupNumber){
+let rankedKeys=getRankedDistrictKeysForCurrentMunicipality()
 let start=(groupNumber-1)*3
 let end=start+3
-return rankedDistricts.slice(start,end).map(x=>x.name)
+return rankedKeys.slice(start,end)
 }
 
-function passesFilter(district,count){
+function passesFilter(districtKey,count){
 
-if(selectedDistrict && district!==selectedDistrict) return false
+let data=districts[districtKey]
+if(!data) return false
+
+if(selectedMunicipality && data.municipality!==selectedMunicipality) return false
+if(selectedDistrict && districtKey!==selectedDistrict) return false
 if(currentFilter=="all") return true
 
-if(currentFilter=="top3") return getTopGroupNames(1).includes(district)
-if(currentFilter=="top3_2") return getTopGroupNames(2).includes(district)
-if(currentFilter=="top3_3") return getTopGroupNames(3).includes(district)
-if(currentFilter=="top3_4") return getTopGroupNames(4).includes(district)
+if(currentFilter=="top3") return getTopGroupKeys(1).includes(districtKey)
+if(currentFilter=="top3_2") return getTopGroupKeys(2).includes(districtKey)
+if(currentFilter=="top3_3") return getTopGroupKeys(3).includes(districtKey)
+if(currentFilter=="top3_4") return getTopGroupKeys(4).includes(districtKey)
 
 if(currentFilter=="200" && count<=200) return false
 if(currentFilter=="100_200" && (count<100 || count>200)) return false
@@ -740,7 +810,7 @@ pointMarkers.push(marker)
 
 }
 
-function createDistrictInfoWindow(position,district,count,data,color){
+function createDistrictInfoWindow(position,districtName,count,data,color){
 
 let sortedThird=Object.entries(data.third).sort((a,b)=>b[1]-a[1])
 let smallLines=""
@@ -752,7 +822,8 @@ smallLines+=`<div style="margin-top:4px">${sortedThird[i][0]} : <b>${sortedThird
 let html=
 `
 <div style="font-family:tahoma;min-width:180px;max-width:240px">
-  <div style="font-weight:bold;font-size:14px;color:${color};margin-bottom:6px">${district}</div>
+  <div style="font-weight:bold;font-size:14px;color:${color};margin-bottom:6px">${districtName}</div>
+  <div style="margin-bottom:4px">البلدية: <b>${data.municipality}</b></div>
   <div>عدد البلاغات: <b>${count}</b></div>
   <div style="margin-top:8px;border-top:1px solid #eee;padding-top:6px">
     ${smallLines || "لا توجد تصنيفات"}
@@ -770,11 +841,13 @@ return win
 
 }
 
-function createElegantOverlay(position,count,district,color,infoWindow){
+function createElegantOverlay(position,count,districtKey,color,infoWindow){
 
 class ElegantOverlay extends google.maps.OverlayView{
 
 onAdd(){
+
+const data=districts[districtKey]
 
 this.div=document.createElement("div")
 this.div.style.position="absolute"
@@ -814,7 +887,7 @@ this.nameChip.style.fontWeight="bold"
 this.nameChip.style.boxShadow="0 3px 10px rgba(0,0,0,.18)"
 this.nameChip.style.border=`2px solid ${color}`
 this.nameChip.style.whiteSpace="nowrap"
-this.nameChip.innerHTML=district
+this.nameChip.innerHTML=data.name
 
 this.stem=document.createElement("div")
 this.stem.style.width="2px"
@@ -841,7 +914,7 @@ this.div.addEventListener("click",(e)=>{
 e.stopPropagation()
 closeAllInfoWindows()
 infoWindow.open({map:map})
-updatePanelDistrict(district,dataOrDistrict(district))
+updatePanelDistrict(districtKey,districts[districtKey])
 })
 
 this.getPanes().overlayMouseTarget.appendChild(this.div)
@@ -869,10 +942,6 @@ this.div=null
 
 }
 
-function dataOrDistrict(name){
-return districts[name]
-}
-
 let overlay=new ElegantOverlay()
 overlay.setMap(map)
 overlays.push(overlay)
@@ -885,18 +954,18 @@ let index=0
 let visibleBounds=new google.maps.LatLngBounds()
 let hasVisible=false
 
-for(let district in districts){
+for(let districtKey in districts){
 
-let data=districts[district]
+let data=districts[districtKey]
 let count=data.points.length
 
-if(!passesFilter(district,count)) continue
+if(!passesFilter(districtKey,count)) continue
 if(count<1) continue
 
 let baseColor=COLORS[index%COLORS.length]
 let columnColor=getColumnColor(count)
-let isSelected=(selectedDistrict && district===selectedDistrict)
-let isFilteredView=(currentFilter!=="all" || selectedDistrict!=="")
+let isSelected=(selectedDistrict && districtKey===selectedDistrict)
+let isFilteredView=(currentFilter!=="all" || selectedDistrict!=="" || selectedMunicipality!=="")
 index++
 
 let polygonFillOpacity=isSelected ? 0.42 : (isFilteredView ? 0.34 : 0.22)
@@ -927,13 +996,13 @@ polygon.addListener("click",(e)=>{
 closeAllInfoWindows()
 let infoWindow=createDistrictInfoWindow(
 e.latLng || getDistrictCenter(data.points),
-district,
+data.name,
 count,
 data,
 baseColor
 )
 infoWindow.open({map:map})
-updatePanelDistrict(district,data)
+updatePanelDistrict(districtKey,data)
 })
 
 hull.forEach(p=>{
@@ -962,7 +1031,7 @@ strokeWeight:2
 })
 
 marker.addListener("click",()=>{
-updatePanelDistrict(district,data)
+updatePanelDistrict(districtKey,data)
 })
 
 markers.push(marker)
@@ -977,8 +1046,8 @@ let center=getDistrictCenter(data.points)
 visibleBounds.extend(center)
 hasVisible=true
 
-let infoWindow=createDistrictInfoWindow(center,district,count,data,baseColor)
-createElegantOverlay(center,count,district,columnColor,infoWindow)
+let infoWindow=createDistrictInfoWindow(center,data.name,count,data,baseColor)
+createElegantOverlay(center,count,districtKey,columnColor,infoWindow)
 
 }
 
@@ -992,7 +1061,7 @@ map.fitBounds(visibleBounds)
 
 function resetPanel(){
 document.getElementById("panelTitle").textContent="ملخص حسب الفلتر"
-document.getElementById("panelSubTitle").textContent="استورد ملف Excel ثم اختر فلترة أو اضغط على حي في الخريطة."
+document.getElementById("panelSubTitle").textContent="استورد ملف Excel ثم اختر البلدية والفلترة أو اضغط على حي في الخريطة."
 document.getElementById("totalCount").textContent="0"
 document.getElementById("totalTypes").textContent="0"
 document.getElementById("detailsList").innerHTML='<div class="emptyBox">لا توجد بيانات حتى الآن.</div>'
@@ -1003,14 +1072,12 @@ sideChart=null
 }
 }
 
-function updatePanelDistrict(name,data){
+function updatePanelDistrict(key,data){
 
-if(!name || !data){
+if(!key || !data){
 resetPanel()
 return
 }
-
-lastPanelMode="district"
 
 let count=data.points.length
 let entries=Object.entries(data.third).sort((a,b)=>b[1]-a[1])
@@ -1034,8 +1101,8 @@ values.push(v)
 }
 })
 
-document.getElementById("panelTitle").textContent=name
-document.getElementById("panelSubTitle").textContent="عرض حي محدد"
+document.getElementById("panelTitle").textContent=data.name
+document.getElementById("panelSubTitle").textContent=`البلدية: ${data.municipality}`
 document.getElementById("totalCount").textContent=count
 document.getElementById("totalTypes").textContent=total
 document.getElementById("detailsList").innerHTML=html || '<div class="emptyBox">لا توجد بيانات.</div>'
@@ -1045,19 +1112,17 @@ drawSideChart(labels,values)
 
 function updatePanelSummary(){
 
-lastPanelMode="filter"
-
 let totalCount=0
 let totalTypes=0
 let merged={}
 let districtCounter=0
 
-for(let district in districts){
+for(let districtKey in districts){
 
-let data=districts[district]
+let data=districts[districtKey]
 let count=data.points.length
 
-if(!passesFilter(district,count)) continue
+if(!passesFilter(districtKey,count)) continue
 districtCounter++
 totalCount+=count
 
@@ -1086,9 +1151,10 @@ values.push(v)
 })
 
 let filterText=document.getElementById("filterSelect").options[document.getElementById("filterSelect").selectedIndex].text
+let municipalityText=selectedMunicipality || "كل البلديات"
 
 document.getElementById("panelTitle").textContent="ملخص حسب الفلتر"
-document.getElementById("panelSubTitle").textContent=`عدد الأحياء المعروضة: ${districtCounter} | الفلترة: ${filterText}`
+document.getElementById("panelSubTitle").textContent=`البلدية: ${municipalityText} | الأحياء المعروضة: ${districtCounter} | الفلترة: ${filterText}`
 document.getElementById("totalCount").textContent=totalCount
 document.getElementById("totalTypes").textContent=totalTypes
 document.getElementById("detailsList").innerHTML=html || '<div class="emptyBox">لا توجد بيانات مطابقة للفلترة الحالية.</div>'
