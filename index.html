@@ -100,6 +100,14 @@ button:hover{
 opacity:.92
 }
 
+#printBtn{
+background:#111
+}
+
+.printHeader{
+display:none
+}
+
 /* للجوال */
 @media (max-width:900px){
 
@@ -124,10 +132,130 @@ width:100%
 
 }
 
+/* وضع الطباعة */
+body.print-mode{
+background:#000 !important
+}
+
+body.print-mode .topPanel{
+display:none !important
+}
+
+body.print-mode #map{
+position:fixed;
+left:50%;
+bottom:35mm;
+transform:translateX(-50%);
+width:92vw !important;
+height:95mm !important;
+border-radius:18px;
+overflow:hidden;
+box-shadow:0 0 0 6px #fff, 0 12px 40px rgba(0,0,0,.45)
+}
+
+body.print-mode .printHeader{
+display:flex !important;
+position:fixed;
+top:16mm;
+left:50%;
+transform:translateX(-50%);
+width:88vw;
+max-width:1100px;
+justify-content:center;
+z-index:99999
+}
+
+body.print-mode .printHeaderBox{
+background:linear-gradient(180deg,#2e2e2e,#1f1f1f);
+color:#fff;
+border-radius:28px;
+padding:16px 28px;
+box-shadow:0 8px 24px rgba(0,0,0,.35);
+display:flex;
+align-items:center;
+gap:14px;
+min-width:300px;
+max-width:90vw
+}
+
+body.print-mode .printHeaderText{
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+text-align:center
+}
+
+body.print-mode .printSub{
+font-size:18px;
+opacity:.78;
+line-height:1.2
+}
+
+body.print-mode .printMain{
+font-size:30px;
+font-weight:bold;
+line-height:1.2;
+margin-top:4px
+}
+
+body.print-mode .printBadge{
+width:34px;
+height:34px;
+border-radius:10px;
+background:#ff7a00;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:18px;
+font-weight:bold;
+color:#111;
+box-shadow:0 4px 10px rgba(0,0,0,.25)
+}
+
+@page{
+size:A4 landscape;
+margin:0
+}
+
+@media print{
+
+html,body{
+width:100%;
+height:100%;
+background:#000 !important;
+-webkit-print-color-adjust:exact !important;
+print-color-adjust:exact !important
+}
+
+.topPanel{
+display:none !important
+}
+
+.printHeader{
+display:flex !important
+}
+
+#printBtn{
+display:none !important
+}
+
+}
+
 </style>
 </head>
 
 <body>
+
+<div class="printHeader" id="printHeader">
+  <div class="printHeaderBox">
+    <div class="printHeaderText">
+      <div class="printSub" id="printSubTitle">Google Maps Report</div>
+      <div class="printMain" id="printMainTitle">تحليل الأحياء على الخريطة</div>
+    </div>
+    <div class="printBadge">🗺</div>
+  </div>
+</div>
 
 <div class="topPanel">
 
@@ -160,6 +288,10 @@ width:100%
 <select id="districtList" onchange="selectDistrict(this.value)">
 <option value="">كل الأحياء</option>
 </select>
+</div>
+
+<div class="group">
+<button id="printBtn" onclick="printMapView()">طباعة</button>
 </div>
 
 </div>
@@ -745,6 +877,60 @@ if(hasVisible){
 map.fitBounds(visibleBounds)
 }
 
+}
+
+/* ===== زر الطباعة ===== */
+function getFilterLabel(){
+const sel=document.getElementById("filterSelect")
+return sel.options[sel.selectedIndex]?.text || "عرض الكل"
+}
+
+function printMapView(){
+
+let titleMain="تحليل الأحياء على الخريطة"
+let titleSub="Google Maps Report"
+
+if(selectedDistrict){
+titleMain=selectedDistrict
+titleSub="حي محدد"
+}else{
+titleSub=getFilterLabel()
+}
+
+document.getElementById("printMainTitle").textContent=titleMain
+document.getElementById("printSubTitle").textContent=titleSub
+
+closeAllInfoWindows()
+
+google.maps.event.trigger(map,"resize")
+
+setTimeout(()=>{
+document.body.classList.add("print-mode")
+
+setTimeout(()=>{
+google.maps.event.trigger(map,"resize")
+
+setTimeout(()=>{
+window.print()
+
+setTimeout(()=>{
+document.body.classList.remove("print-mode")
+google.maps.event.trigger(map,"resize")
+},700)
+
+},500)
+
+},300)
+
+},100)
+
+}
+
+window.onafterprint=function(){
+document.body.classList.remove("print-mode")
+setTimeout(()=>{
+google.maps.event.trigger(map,"resize")
+},200)
 }
 
 </script>
