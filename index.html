@@ -6,31 +6,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>تحليل الأحياء + الرسم البياني</title>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
 
-html,body{
-height:100%;
+body{
 margin:0;
 font-family:tahoma;
 background:#f5f7fb
 }
 
-body{
-overflow:hidden
-}
-
 #map{
-position:absolute;
-top:0;
-left:0;
-width:100%;
-height:100%;
-z-index:1
+height:100vh;
+width:100%
 }
 
 /* الشريط العلوي */
@@ -43,7 +33,7 @@ background:#fff;
 border-radius:14px;
 box-shadow:0 6px 18px rgba(0,0,0,.18);
 padding:10px 12px;
-z-index:30;
+z-index:10;
 display:flex;
 align-items:center;
 gap:8px;
@@ -110,150 +100,63 @@ button:hover{
 opacity:.92
 }
 
-/* صندوق الرسم البياني */
-#globalChartPanel{
-position:absolute;
-left:10px;
-bottom:10px;
-width:460px;
-height:360px;
-max-height:80vh;
-background:rgba(0,0,0,.90);
+.countBox{
+background:#000;
 color:#fff;
-border-radius:16px;
-box-shadow:0 10px 28px rgba(0,0,0,.35);
-padding:14px;
-z-index:25;
-resize:both;
-overflow:auto;
-cursor:move;
-touch-action:none;
-box-sizing:border-box
+padding:6px 12px;
+border-radius:8px;
+font-weight:bold;
+font-size:16px;
+text-align:center;
+line-height:1.3;
+min-width:110px;
+box-shadow:0 2px 8px rgba(0,0,0,.25)
 }
 
-#globalChartPanel h3{
-margin:0 0 10px 0;
-font-size:15px;
-text-align:center
+.countNumber{
+font-size:18px;
+font-weight:bold
 }
 
-#globalChartWrap{
-background:#fff;
-border-radius:12px;
-padding:10px
+.countDistrict{
+font-size:13px;
+margin-top:2px
 }
 
-#globalChart{
-width:100% !important;
-height:260px !important
+.stats{
+font-size:12px;
+margin-top:6px;
+line-height:1.2
 }
 
-#globalStats{
-margin-top:10px;
-display:flex;
-flex-direction:column;
-gap:6px
-}
-
-.globalRow{
+.statRow{
 display:flex;
 align-items:center;
-justify-content:space-between;
-gap:8px;
-padding:6px 8px;
-background:rgba(255,255,255,.08);
-border-radius:8px;
-font-size:12px
+gap:4px;
+margin-top:2px;
+justify-content:center
 }
 
-.globalRow .name{
-font-weight:bold;
-flex:1;
-white-space:normal;
-line-height:1.5
+.bar{
+display:flex;
+gap:1px
 }
 
-.globalRow .value{
-font-weight:bold;
-min-width:38px;
-text-align:center
-}
-
-.globalRow .barWrap{
-flex:1.4;
-height:10px;
-background:rgba(255,255,255,.15);
-border-radius:999px;
-overflow:hidden
-}
-
-.globalRow .barFill{
-height:100%;
-border-radius:999px
-}
-
-/* صندوق جدول الأحياء */
-#districtPanel{
-position:absolute;
-right:10px;
-bottom:10px;
-width:380px;
-height:360px;
-max-height:80vh;
-background:rgba(0,0,0,.90);
-color:#fff;
-border-radius:16px;
-box-shadow:0 10px 28px rgba(0,0,0,.35);
-padding:14px;
-z-index:25;
-resize:both;
-overflow:auto;
-cursor:move;
-touch-action:none;
-box-sizing:border-box
-}
-
-#districtPanel h3{
-margin:0 0 10px 0;
-font-size:15px;
-text-align:center
-}
-
-#districtTable{
+.bar span{
+width:6px;
+height:6px;
 background:#fff;
-border-radius:12px;
-overflow:hidden;
-color:#000
+display:inline-block
 }
 
-#districtTable table{
-width:100%;
-border-collapse:collapse
+.label{
+min-width:45px;
+text-align:right;
+font-size:11px
 }
 
-#districtTable th{
-background:#2d6cff;
-color:#fff;
-padding:8px 6px;
-font-size:12px;
-position:sticky;
-top:0;
-z-index:1
-}
-
-#districtTable td{
-padding:7px 6px;
-border-bottom:1px solid #eee;
-text-align:center;
-font-size:12px
-}
-
-.colorBox{
-width:18px;
-height:18px;
-border-radius:4px;
-margin:auto;
-border:1px solid rgba(0,0,0,.15)
+.count{
+font-size:11px
 }
 
 /* للجوال */
@@ -261,8 +164,7 @@ border:1px solid rgba(0,0,0,.15)
 
 .topPanel{
 width:95%;
-padding:10px;
-top:8px
+padding:10px
 }
 
 #searchBox{
@@ -279,30 +181,8 @@ button{
 width:100%
 }
 
-#globalChartPanel{
-left:8px;
-right:8px;
-width:auto;
-bottom:8px;
-max-height:38vh;
-padding:10px
 }
 
-#districtPanel{
-left:8px;
-right:8px;
-width:auto;
-top:8px;
-bottom:auto;
-max-height:34vh;
-padding:10px
-}
-
-#globalChart{
-height:220px !important
-}
-
-}
 </style>
 </head>
 
@@ -340,38 +220,23 @@ height:220px !important
 <option value="">كل الأحياء</option>
 </select>
 </div>
-
 <div class="group">
 <button onclick="exportHDImage()">تصدير صورة HD</button>
 </div>
-
 </div>
 
 <div id="map"></div>
-
-<div id="globalChartPanel">
-<h3>الرسم البياني لتصنيفات العمود الرابع</h3>
-<div id="globalChartWrap">
-<canvas id="globalChart"></canvas>
-</div>
-<div id="globalStats"></div>
-</div>
-
-<div id="districtPanel">
-<h3>جدول الأحياء</h3>
-<div id="districtTable"></div>
-</div>
 
 <script>
 
 let map
 let districts={}
 let polygons=[]
+let markers=[]
+let overlays=[]
 let currentFilter="all"
 let selectedDistrict=""
 let rankedDistricts=[]
-let globalChart=null
-let districtColorMap={}
 
 const COLORS=[
 "#ff5722",
@@ -381,15 +246,7 @@ const COLORS=[
 "#ffc107",
 "#00bcd4",
 "#8bc34a",
-"#e91e63",
-"#795548",
-"#673ab7",
-"#3f51b5",
-"#009688",
-"#ff9800",
-"#607d8b",
-"#cddc39",
-"#f44336"
+"#e91e63"
 ]
 
 function initMap(){
@@ -399,8 +256,7 @@ document.getElementById("map"),
 {
 center:{lat:21.4373,lng:40.5127},
 zoom:12,
-mapTypeId:"hybrid",
-gestureHandling:"greedy"
+mapTypeId:"hybrid"
 })
 
 const input=document.getElementById("searchBox")
@@ -430,32 +286,39 @@ map.setZoom(16)
 }
 
 function setFilter(type){
+
 currentFilter=type
 selectedDistrict=document.getElementById("districtList").value || ""
+
 clearMap()
 drawDistricts()
-updateGlobalChart()
-updateDistrictTable()
+
 }
 
 function selectDistrict(name){
+
 selectedDistrict=name || ""
+
 clearMap()
 drawDistricts()
-updateGlobalChart()
-updateDistrictTable()
+
 }
 
 function clearMap(){
+
 polygons.forEach(p=>p.setMap(null))
+markers.forEach(m=>m.setMap(null))
+overlays.forEach(o=>o.setMap(null))
+
 polygons=[]
+markers=[]
+overlays=[]
+
 }
 
 function convexHull(points){
 
 points=points.slice()
-
-if(points.length < 3) return points
 
 points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
 
@@ -467,33 +330,46 @@ const cross=(o,a,b)=>(
 let lower=[]
 
 for(let p of points){
+
 while(lower.length>=2 &&
 cross(lower[lower.length-2],lower[lower.length-1],p)<=0){
+
 lower.pop()
+
 }
+
 lower.push(p)
+
 }
 
 let upper=[]
 
 for(let i=points.length-1;i>=0;i--){
+
 let p=points[i]
+
 while(upper.length>=2 &&
 cross(upper[upper.length-2],upper[upper.length-1],p)<=0){
+
 upper.pop()
+
 }
+
 upper.push(p)
+
 }
 
 upper.pop()
 lower.pop()
 
 return lower.concat(upper)
+
 }
 
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
+
 if(!file)return
 
 let reader=new FileReader()
@@ -501,12 +377,14 @@ let reader=new FileReader()
 reader.onload=function(e){
 
 let data=new Uint8Array(e.target.result)
+
 let workbook=XLSX.read(data,{type:"array"})
+
 let sheet=workbook.Sheets[workbook.SheetNames[0]]
+
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
 districts={}
-districtColorMap={}
 clearMap()
 
 let bounds=new google.maps.LatLngBounds()
@@ -517,13 +395,7 @@ for(let i=1;i<rows.length;i++){
 let lat=parseFloat(rows[i][0])
 let lng=parseFloat(rows[i][1])
 let district=(rows[i][2]??"").toString().trim()
-
-let category=rows[i][3]
-if(!category || category.toString().trim()==""){
-category="بدون تصنيف"
-}else{
-category=category.toString().trim()
-}
+let third=(rows[i][3]??"بدون تصنيف").toString().trim()
 
 if(isNaN(lat) || isNaN(lng) || !district) continue
 
@@ -531,35 +403,36 @@ bounds.extend({lat:lat,lng:lng})
 hasValidPoint=true
 
 if(!districts[district]){
+
 districts[district]={
 points:[],
 third:{}
 }
+
 }
 
 districts[district].points.push({lat,lng})
 
-if(!districts[district].third[category]){
-districts[district].third[category]=0
+if(!districts[district].third[third]){
+districts[district].third[third]=0
 }
 
-districts[district].third[category]++
-}
+districts[district].third[third]++
 
-prepareRanks()
-assignDistrictColors()
-fillDistrictList()
-drawDistricts()
-updateGlobalChart()
-updateDistrictTable()
+}
 
 if(hasValidPoint){
 map.fitBounds(bounds)
 }
 
+prepareRanks()
+fillDistrictList()
+drawDistricts()
+
 }
 
 reader.readAsArrayBuffer(file)
+
 }
 
 function prepareRanks(){
@@ -567,23 +440,18 @@ function prepareRanks(){
 let arr=[]
 
 for(let d in districts){
+
 arr.push({
 name:d,
 count:districts[d].points.length
 })
+
 }
 
 arr.sort((a,b)=>b.count-a.count)
+
 rankedDistricts=arr
-}
 
-function assignDistrictColors(){
-
-let names=Object.keys(districts).sort((a,b)=>a.localeCompare(b,'ar'))
-
-names.forEach((name,index)=>{
-districtColorMap[name]=COLORS[index % COLORS.length]
-})
 }
 
 function fillDistrictList(){
@@ -594,19 +462,25 @@ sel.innerHTML='<option value="">كل الأحياء</option>'
 let names=Object.keys(districts).sort((a,b)=>a.localeCompare(b,'ar'))
 
 for(let name of names){
+
 let opt=document.createElement("option")
 opt.value=name
 opt.textContent=name
 sel.appendChild(opt)
+
 }
 
 sel.value=selectedDistrict || ""
+
 }
 
 function getTopGroupNames(groupNumber){
+
 let start=(groupNumber-1)*3
 let end=start+3
+
 return rankedDistricts.slice(start,end).map(x=>x.name)
+
 }
 
 function passesFilter(district,count){
@@ -636,10 +510,117 @@ if(currentFilter=="100_200" && (count<100 || count>200)) return false
 if(currentFilter=="100" && count>=100) return false
 
 return true
+
+}
+
+function createCountOverlay(position,count,district,data){
+
+class CustomOverlay extends google.maps.OverlayView{
+
+onAdd(){
+
+this.div=document.createElement("div")
+
+this.div.style.position="absolute"
+this.div.style.background="#000"
+this.div.style.color="#fff"
+this.div.style.padding="8px 12px"
+this.div.style.borderRadius="10px"
+this.div.style.fontFamily="tahoma"
+this.div.style.fontSize="12px"
+this.div.style.textAlign="center"
+this.div.style.boxShadow="0 3px 10px rgba(0,0,0,.4)"
+this.div.style.whiteSpace="nowrap"
+
+let statsHTML=""
+let max=0
+
+for(let t in data.third){
+if(data.third[t]>max) max=data.third[t]
+}
+
+for(let t in data.third){
+
+let val=data.third[t]
+let squares=max>0 ? Math.round((val/max)*10) : 0
+let bar=""
+
+for(let i=0;i<squares;i++){
+bar+="<span style='width:6px;height:6px;background:#fff;display:inline-block;margin:1px'></span>"
+}
+
+statsHTML+=`
+<div style="display:flex;align-items:center;gap:4px;justify-content:center">
+<div style="min-width:45px;text-align:right">${t}</div>
+<div>${bar}</div>
+<div>${val}</div>
+</div>
+`
+
+}
+
+this.div.innerHTML=
+"<div style='font-size:18px;font-weight:bold'>"+count+"</div>"+
+"<div style='font-size:13px;margin-top:2px'>"+district+"</div>"+
+"<div style='margin-top:5px'>"+statsHTML+"</div>"
+
+/* السهم */
+this.arrow=document.createElement("div")
+
+this.arrow.style.position="absolute"
+this.arrow.style.width="2px"
+this.arrow.style.background="#000"
+
+this.getPanes().overlayMouseTarget.appendChild(this.arrow)
+this.getPanes().overlayMouseTarget.appendChild(this.div)
+
+}
+
+draw(){
+
+let projection=this.getProjection()
+
+let pos=projection.fromLatLngToDivPixel(
+new google.maps.LatLng(position.lat,position.lng)
+)
+
+/* اللوحة */
+this.div.style.left=(pos.x-60)+"px"
+this.div.style.top=(pos.y-140)+"px"
+
+/* السهم */
+this.arrow.style.left=(pos.x)+"px"
+this.arrow.style.top=(pos.y-90)+"px"
+this.arrow.style.height="90px"
+
+}
+
+onRemove(){
+
+if(this.div && this.div.parentNode){
+this.div.parentNode.removeChild(this.div)
+}
+
+if(this.arrow && this.arrow.parentNode){
+this.arrow.parentNode.removeChild(this.arrow)
+}
+
+this.div=null
+this.arrow=null
+
+}
+
+}
+
+let overlay=new CustomOverlay()
+overlay.setMap(map)
+overlays.push(overlay)
+
 }
 
 function drawDistricts(){
 
+let index=0
 let visibleBounds=new google.maps.LatLngBounds()
 let hasVisible=false
 
@@ -649,16 +630,17 @@ let data=districts[district]
 let count=data.points.length
 
 if(!passesFilter(district,count)) continue
-if(count<1) continue
+if(count<3) continue
 
-let color=districtColorMap[district] || COLORS[0]
-let hull=data.points.length >= 3 ? convexHull(data.points) : data.points.slice()
+let color=COLORS[index%COLORS.length]
+index++
 
-if(!hull || hull.length===0) continue
+let hull=convexHull(data.points)
 
-if(hull.length >= 3){
+if(!hull || hull.length<3) continue
 
-let polygonWhite=new google.maps.Polygon({
+/* حد أبيض عريض */
+let polygon=new google.maps.Polygon({
 paths:hull,
 strokeColor:"#ffffff",
 strokeWeight:8,
@@ -666,8 +648,10 @@ fillColor:color,
 fillOpacity:0.35,
 map:map
 })
-polygons.push(polygonWhite)
 
+polygons.push(polygon)
+
+/* خط اللون الأساسي فوقه */
 let polygonColor=new google.maps.Polygon({
 paths:hull,
 strokeColor:color,
@@ -675,222 +659,39 @@ strokeWeight:4,
 fillOpacity:0,
 map:map
 })
+
 polygons.push(polygonColor)
+  
 
-}else if(hull.length===2){
-
-let line=new google.maps.Polyline({
-path:hull,
-strokeColor:color,
-strokeWeight:5,
-map:map
-})
-polygons.push(line)
-
-}else if(hull.length===1){
-
-let circle=new google.maps.Circle({
-strokeColor:color,
-strokeWeight:3,
-fillColor:color,
-fillOpacity:0.35,
-map:map,
-center:hull[0],
-radius:20
-})
-polygons.push(circle)
-
-}
+let lat=0
+let lng=0
 
 hull.forEach(p=>{
+lat+=p.lat
+lng+=p.lng
 visibleBounds.extend({lat:p.lat,lng:p.lng})
 hasVisible=true
 })
+
+let center={
+lat:lat/hull.length,
+lng:lng/hull.length
+}
+
+createCountOverlay(center,count,district,data)
+
 }
 
 if(hasVisible){
 map.fitBounds(visibleBounds)
 }
-}
-
-function getVisibleCategoryEntries(){
-
-let categoryCount={}
-
-for(let district in districts){
-
-let data=districts[district]
-let count=data.points.length
-
-if(!passesFilter(district,count)) continue
-
-for(let cat in data.third){
-if(!categoryCount[cat]){
-categoryCount[cat]=0
-}
-categoryCount[cat]+=data.third[cat]
-}
 
 }
-
-let arr=[]
-
-for(let k in categoryCount){
-arr.push({
-name:k,
-count:categoryCount[k]
-})
-}
-
-arr.sort((a,b)=>b.count-a.count)
-return arr
-}
-
-function updateGlobalChart(){
-
-let entries=getVisibleCategoryEntries()
-let labels=entries.map(x=>x.name)
-let values=entries.map(x=>x.count)
-
-let canvas=document.getElementById("globalChart")
-let statsBox=document.getElementById("globalStats")
-
-if(globalChart){
-globalChart.destroy()
-globalChart=null
-}
-
-if(entries.length===0){
-statsBox.innerHTML='<div class="globalRow"><div class="name">لا توجد بيانات مطابقة للفلترة</div></div>'
-return
-}
-
-globalChart=new Chart(canvas,{
-type:"bar",
-data:{
-labels:labels.map(t=>t.split(" ")),
-datasets:[{
-label:"عدد البلاغات",
-data:values,
-backgroundColor:labels.map((_,i)=>COLORS[i%COLORS.length]),
-borderRadius:6
-}]
-},
-options:{
-responsive:true,
-maintainAspectRatio:false,
-plugins:{
-legend:{
-display:false
-},
-tooltip:{
-rtl:true,
-bodyFont:{family:"Tahoma"},
-titleFont:{family:"Tahoma"}
-}
-},
-scales:{
-x:{
-ticks:{
-color:"#000",
-font:{family:"Tahoma",size:11},
-maxRotation:45,
-minRotation:30
-},
-grid:{
-display:false
-}
-},
-y:{
-beginAtZero:true,
-ticks:{
-color:"#000",
-font:{family:"Tahoma",size:11}
-}
-}
-}
-}
-})
-
-let max=Math.max(...values)
-let html=""
-
-for(let i=0;i<entries.length;i++){
-
-let item=entries[i]
-let percent=max>0 ? (item.count/max)*100 : 0
-let color=COLORS[i%COLORS.length]
-
-html+=`
-<div class="globalRow">
-<div class="name">${item.name}</div>
-<div class="barWrap">
-<div class="barFill" style="width:${percent}%;background:${color}"></div>
-</div>
-<div class="value">${item.count}</div>
-</div>
-`
-}
-
-statsBox.innerHTML=html
-}
-
-function updateDistrictTable(){
-
-let html=`
-<table>
-<tr>
-<th>اللون</th>
-<th>اسم الحي</th>
-<th>عدد البلاغات</th>
-</tr>
-`
-
-let visibleList=[]
-
-for(let district in districts){
-
-let count=districts[district].points.length
-
-if(!passesFilter(district,count)) continue
-
-visibleList.push({
-name:district,
-count:count,
-color:districtColorMap[district] || COLORS[0]
-})
-}
-
-visibleList.sort((a,b)=>b.count-a.count)
-
-for(let item of visibleList){
-html+=`
-<tr>
-<td><div class="colorBox" style="background:${item.color}"></div></td>
-<td>${item.name}</td>
-<td>${item.count}</td>
-</tr>
-`
-}
-
-html+=`</table>`
-
-document.getElementById("districtTable").innerHTML=html
-}
-
 function exportHDImage(){
 
-clearMap()
-drawDistricts()
-updateGlobalChart()
-updateDistrictTable()
-
-setTimeout(function(){
-
-html2canvas(document.body,{
+html2canvas(document.getElementById("map"),{
 scale:4,
-useCORS:true,
-backgroundColor:null
+useCORS:true
 }).then(canvas=>{
 
 let link=document.createElement("a")
@@ -900,60 +701,7 @@ link.click()
 
 })
 
-},600)
 }
-
-function makePanelDraggable(panelId){
-
-let panel=document.getElementById(panelId)
-let dragging=false
-let offsetX=0
-let offsetY=0
-
-panel.addEventListener("mousedown",function(e){
-dragging=true
-offsetX=e.clientX-panel.offsetLeft
-offsetY=e.clientY-panel.offsetTop
-})
-
-document.addEventListener("mousemove",function(e){
-if(!dragging)return
-panel.style.left=(e.clientX-offsetX)+"px"
-panel.style.top=(e.clientY-offsetY)+"px"
-panel.style.right="auto"
-panel.style.bottom="auto"
-})
-
-document.addEventListener("mouseup",function(){
-dragging=false
-})
-
-panel.addEventListener("touchstart",function(e){
-dragging=true
-let touch=e.touches[0]
-offsetX=touch.clientX-panel.offsetLeft
-offsetY=touch.clientY-panel.offsetTop
-e.preventDefault()
-},{passive:false})
-
-document.addEventListener("touchmove",function(e){
-if(!dragging)return
-let touch=e.touches[0]
-panel.style.left=(touch.clientX-offsetX)+"px"
-panel.style.top=(touch.clientY-offsetY)+"px"
-panel.style.right="auto"
-panel.style.bottom="auto"
-e.preventDefault()
-},{passive:false})
-
-document.addEventListener("touchend",function(){
-dragging=false
-})
-}
-
-makePanelDraggable("globalChartPanel")
-makePanelDraggable("districtPanel")
-
 </script>
 
 <script async defer
