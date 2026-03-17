@@ -43,7 +43,7 @@ background:#fff;
 border-radius:14px;
 box-shadow:0 6px 18px rgba(0,0,0,.18);
 padding:10px 12px;
-z-index:20;
+z-index:30;
 display:flex;
 align-items:center;
 gap:8px;
@@ -116,14 +116,14 @@ position:absolute;
 left:10px;
 bottom:10px;
 width:460px;
-height:340px;
+height:360px;
 max-height:80vh;
 background:rgba(0,0,0,.90);
 color:#fff;
 border-radius:16px;
 box-shadow:0 10px 28px rgba(0,0,0,.35);
 padding:14px;
-z-index:20;
+z-index:25;
 resize:both;
 overflow:auto;
 cursor:move;
@@ -145,7 +145,7 @@ padding:10px
 
 #globalChart{
 width:100% !important;
-height:300px !important
+height:260px !important
 }
 
 #globalStats{
@@ -197,15 +197,15 @@ border-radius:999px
 position:absolute;
 right:10px;
 bottom:10px;
-width:360px;
-height:340px;
+width:380px;
+height:360px;
 max-height:80vh;
 background:rgba(0,0,0,.90);
 color:#fff;
 border-radius:16px;
 box-shadow:0 10px 28px rgba(0,0,0,.35);
 padding:14px;
-z-index:20;
+z-index:25;
 resize:both;
 overflow:auto;
 cursor:move;
@@ -363,10 +363,10 @@ height:220px !important
 </div>
 
 <script>
+
 let map
 let districts={}
 let polygons=[]
-let markers=[]
 let currentFilter="all"
 let selectedDistrict=""
 let rankedDistricts=[]
@@ -415,6 +415,7 @@ autocomplete.bindTo("bounds",map)
 autocomplete.addListener("place_changed",function(){
 
 const place=autocomplete.getPlace()
+
 if(!place.geometry)return
 
 if(place.geometry.viewport){
@@ -447,9 +448,7 @@ updateDistrictTable()
 
 function clearMap(){
 polygons.forEach(p=>p.setMap(null))
-markers.forEach(m=>m.setMap(null))
 polygons=[]
-markers=[]
 }
 
 function convexHull(points){
@@ -564,6 +563,7 @@ reader.readAsArrayBuffer(file)
 }
 
 function prepareRanks(){
+
 let arr=[]
 
 for(let d in districts){
@@ -578,7 +578,9 @@ rankedDistricts=arr
 }
 
 function assignDistrictColors(){
+
 let names=Object.keys(districts).sort((a,b)=>a.localeCompare(b,'ar'))
+
 names.forEach((name,index)=>{
 districtColorMap[name]=COLORS[index % COLORS.length]
 })
@@ -847,8 +849,11 @@ let html=`
 let visibleList=[]
 
 for(let district in districts){
+
 let count=districts[district].points.length
+
 if(!passesFilter(district,count)) continue
+
 visibleList.push({
 name:district,
 count:count,
@@ -898,97 +903,57 @@ link.click()
 },600)
 }
 
-/* تحريك صندوق الرسم البياني */
-let chartPanel=document.getElementById("globalChartPanel")
-let draggingChart=false
-let chartOffsetX=0
-let chartOffsetY=0
+function makePanelDraggable(panelId){
 
-chartPanel.addEventListener("mousedown",function(e){
-draggingChart=true
-chartOffsetX=e.clientX-chartPanel.offsetLeft
-chartOffsetY=e.clientY-chartPanel.offsetTop
+let panel=document.getElementById(panelId)
+let dragging=false
+let offsetX=0
+let offsetY=0
+
+panel.addEventListener("mousedown",function(e){
+dragging=true
+offsetX=e.clientX-panel.offsetLeft
+offsetY=e.clientY-panel.offsetTop
 })
 
 document.addEventListener("mousemove",function(e){
-if(!draggingChart)return
-chartPanel.style.left=(e.clientX-chartOffsetX)+"px"
-chartPanel.style.top=(e.clientY-chartOffsetY)+"px"
-chartPanel.style.right="auto"
-chartPanel.style.bottom="auto"
+if(!dragging)return
+panel.style.left=(e.clientX-offsetX)+"px"
+panel.style.top=(e.clientY-offsetY)+"px"
+panel.style.right="auto"
+panel.style.bottom="auto"
 })
 
 document.addEventListener("mouseup",function(){
-draggingChart=false
+dragging=false
 })
 
-chartPanel.addEventListener("touchstart",function(e){
-draggingChart=true
+panel.addEventListener("touchstart",function(e){
+dragging=true
 let touch=e.touches[0]
-chartOffsetX=touch.clientX-chartPanel.offsetLeft
-chartOffsetY=touch.clientY-chartPanel.offsetTop
+offsetX=touch.clientX-panel.offsetLeft
+offsetY=touch.clientY-panel.offsetTop
 e.preventDefault()
 },{passive:false})
 
 document.addEventListener("touchmove",function(e){
-if(!draggingChart)return
+if(!dragging)return
 let touch=e.touches[0]
-chartPanel.style.left=(touch.clientX-chartOffsetX)+"px"
-chartPanel.style.top=(touch.clientY-chartOffsetY)+"px"
-chartPanel.style.right="auto"
-chartPanel.style.bottom="auto"
+panel.style.left=(touch.clientX-offsetX)+"px"
+panel.style.top=(touch.clientY-offsetY)+"px"
+panel.style.right="auto"
+panel.style.bottom="auto"
 e.preventDefault()
 },{passive:false})
 
 document.addEventListener("touchend",function(){
-draggingChart=false
+dragging=false
 })
+}
 
-/* تحريك صندوق جدول الأحياء */
-let districtPanel=document.getElementById("districtPanel")
-let draggingDistrict=false
-let districtOffsetX=0
-let districtOffsetY=0
+makePanelDraggable("globalChartPanel")
+makePanelDraggable("districtPanel")
 
-districtPanel.addEventListener("mousedown",function(e){
-draggingDistrict=true
-districtOffsetX=e.clientX-districtPanel.offsetLeft
-districtOffsetY=e.clientY-districtPanel.offsetTop
-})
-
-document.addEventListener("mousemove",function(e){
-if(!draggingDistrict)return
-districtPanel.style.left=(e.clientX-districtOffsetX)+"px"
-districtPanel.style.top=(e.clientY-districtOffsetY)+"px"
-districtPanel.style.right="auto"
-districtPanel.style.bottom="auto"
-})
-
-document.addEventListener("mouseup",function(){
-draggingDistrict=false
-})
-
-districtPanel.addEventListener("touchstart",function(e){
-draggingDistrict=true
-let touch=e.touches[0]
-districtOffsetX=touch.clientX-districtPanel.offsetLeft
-districtOffsetY=touch.clientY-districtPanel.offsetTop
-e.preventDefault()
-},{passive:false})
-
-document.addEventListener("touchmove",function(e){
-if(!draggingDistrict)return
-let touch=e.touches[0]
-districtPanel.style.left=(touch.clientX-districtOffsetX)+"px"
-districtPanel.style.top=(touch.clientY-districtOffsetY)+"px"
-districtPanel.style.right="auto"
-districtPanel.style.bottom="auto"
-e.preventDefault()
-},{passive:false})
-
-document.addEventListener("touchend",function(){
-draggingDistrict=false
-})
 </script>
 
 <script async defer
