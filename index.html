@@ -239,6 +239,61 @@ button:hover{
 opacity:.92
 }
 
+#printBtn{
+background:#111
+}
+
+/* ===== الطباعة ===== */
+@media print {
+
+body{
+overflow:visible !important;
+background:#fff !important
+}
+
+.topPanel{
+display:none !important
+}
+
+@page{
+size:A4 landscape;
+margin:8mm;
+}
+
+.mainLayout{
+display:flex !important;
+flex-direction:row !important;
+height:auto !important;
+min-height:0 !important
+}
+
+.sidePanel{
+width:30% !important;
+min-width:30% !important;
+max-width:30% !important;
+height:auto !important;
+box-shadow:none !important;
+border:none !important;
+overflow:visible !important
+}
+
+.mapSection{
+width:70% !important;
+height:auto !important;
+overflow:visible !important
+}
+
+#map{
+height:720px !important;
+width:100% !important
+}
+
+html,body{
+height:auto !important
+}
+
+}
+
 /* ===== للجوال ===== */
 @media (max-width:1100px){
 
@@ -357,6 +412,10 @@ width:100%
         <select id="districtList" onchange="selectDistrict(this.value)">
           <option value="">كل الأحياء</option>
         </select>
+      </div>
+
+      <div class="group">
+        <button id="printBtn" onclick="printPage()">🖨️ طباعة</button>
       </div>
 
     </div>
@@ -812,7 +871,6 @@ this.div=null
 
 }
 
-const self=this
 function dataOrDistrict(name){
 return districts[name]
 }
@@ -1089,6 +1147,33 @@ return
 }
 
 updatePanelSummary()
+}
+
+/* ===== الطباعة ===== */
+function printPage(){
+
+const topPanel=document.querySelector(".topPanel")
+const center=map.getCenter()
+const zoom=map.getZoom()
+
+topPanel.style.display="none"
+
+setTimeout(()=>{
+
+google.maps.event.trigger(map,"resize")
+map.setCenter(center)
+map.setZoom(zoom)
+
+setTimeout(()=>{
+window.print()
+topPanel.style.display="flex"
+google.maps.event.trigger(map,"resize")
+map.setCenter(center)
+map.setZoom(zoom)
+},500)
+
+},400)
+
 }
 
 </script>
