@@ -172,7 +172,9 @@ let map
 let districts={}
 let polygons=[]
 let markers=[]
+let pointMarkers=[]
 let overlays=[]
+let infoWindows=[]
 let currentFilter="all"
 let selectedDistrict=""
 let rankedDistricts=[]
@@ -185,7 +187,11 @@ const COLORS=[
 "#ffc107",
 "#00bcd4",
 "#8bc34a",
-"#e91e63"
+"#e91e63",
+"#795548",
+"#3f51b5",
+"#009688",
+"#c2185b"
 ]
 
 function initMap(){
@@ -223,42 +229,50 @@ map.setZoom(16)
 
 })
 
+map.addListener("click",()=>{
+closeAllInfoWindows()
+})
+
 }
 
 function setFilter(type){
-
 currentFilter=type
 selectedDistrict=document.getElementById("districtList").value || ""
-
 clearMap()
 drawDistricts()
-
 }
 
 function selectDistrict(name){
-
 selectedDistrict=name || ""
-
 clearMap()
 drawDistricts()
+}
 
+function closeAllInfoWindows(){
+infoWindows.forEach(w=>w.close())
 }
 
 function clearMap(){
 
 polygons.forEach(p=>p.setMap(null))
 markers.forEach(m=>m.setMap(null))
+pointMarkers.forEach(m=>m.setMap(null))
 overlays.forEach(o=>o.setMap(null))
+infoWindows.forEach(w=>w.close())
 
 polygons=[]
 markers=[]
+pointMarkers=[]
 overlays=[]
+infoWindows=[]
 
 }
 
 function convexHull(points){
 
 points=points.slice()
+
+if(points.length<3)return points
 
 points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
 
@@ -270,29 +284,22 @@ const cross=(o,a,b)=>(
 let lower=[]
 
 for(let p of points){
-
 while(lower.length>=2 &&
 cross(lower[lower.length-2],lower[lower.length-1],p)<=0){
 lower.pop()
 }
-
 lower.push(p)
-
 }
 
 let upper=[]
 
 for(let i=points.length-1;i>=0;i--){
-
 let p=points[i]
-
 while(upper.length>=2 &&
 cross(upper[upper.length-2],upper[upper.length-1],p)<=0){
 upper.pop()
 }
-
 upper.push(p)
-
 }
 
 upper.pop()
@@ -305,7 +312,6 @@ return lower.concat(upper)
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
-
 if(!file)return
 
 let reader=new FileReader()
@@ -313,11 +319,8 @@ let reader=new FileReader()
 reader.onload=function(e){
 
 let data=new Uint8Array(e.target.result)
-
 let workbook=XLSX.read(data,{type:"array"})
-
 let sheet=workbook.Sheets[workbook.SheetNames[0]]
-
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1})
 
 districts={}
@@ -339,12 +342,10 @@ bounds.extend({lat:lat,lng:lng})
 hasValidPoint=true
 
 if(!districts[district]){
-
 districts[district]={
 points:[],
 third:{}
 }
-
 }
 
 districts[district].points.push({lat,lng})
@@ -376,12 +377,10 @@ function prepareRanks(){
 let arr=[]
 
 for(let d in districts){
-
 arr.push({
 name:d,
 count:districts[d].points.length
 })
-
 }
 
 arr.sort((a,b)=>b.count-a.count)
@@ -397,12 +396,10 @@ sel.innerHTML='<option value="">كل الأحياء</option>'
 let names=Object.keys(districts).sort((a,b)=>a.localeCompare(b,'ar'))
 
 for(let name of names){
-
 let opt=document.createElement("option")
 opt.value=name
 opt.textContent=name
 sel.appendChild(opt)
-
 }
 
 sel.value=selectedDistrict || ""
@@ -410,35 +407,20 @@ sel.value=selectedDistrict || ""
 }
 
 function getTopGroupNames(groupNumber){
-
 let start=(groupNumber-1)*3
 let end=start+3
-
 return rankedDistricts.slice(start,end).map(x=>x.name)
-
 }
 
 function passesFilter(district,count){
 
 if(selectedDistrict && district!==selectedDistrict) return false
-
 if(currentFilter=="all") return true
 
-if(currentFilter=="top3"){
-return getTopGroupNames(1).includes(district)
-}
-
-if(currentFilter=="top3_2"){
-return getTopGroupNames(2).includes(district)
-}
-
-if(currentFilter=="top3_3"){
-return getTopGroupNames(3).includes(district)
-}
-
-if(currentFilter=="top3_4"){
-return getTopGroupNames(4).includes(district)
-}
+if(currentFilter=="top3") return getTopGroupNames(1).includes(district)
+if(currentFilter=="top3_2") return getTopGroupNames(2).includes(district)
+if(currentFilter=="top3_3") return getTopGroupNames(3).includes(district)
+if(currentFilter=="top3_4") return getTopGroupNames(4).includes(district)
 
 if(currentFilter=="200" && count<=200) return false
 if(currentFilter=="100_200" && (count<100 || count>200)) return false
@@ -466,11 +448,9 @@ lng:lng/points.length
 }
 
 function getColumnColor(count){
-
 if(count>200) return "#ff3d00"
 if(count>100) return "#ffc107"
 return "#4caf50"
-
 }
 
 function getColumnHeight(count){
@@ -478,17 +458,86 @@ function getColumnHeight(count){
 if(rankedDistricts.length===0) return 50
 
 let maxCount=rankedDistricts[0]?.count || 1
-let minHeight=35
-let maxHeight=130
+let minHeight=30
+let maxHeight=105
 
 let h=minHeight + ((count/maxCount)*(maxHeight-minHeight))
 return Math.max(minHeight,Math.min(maxHeight,h))
 
 }
 
-function createColumnOverlay(position,count,district,color,data){
+function hexToRgba(hex,alpha){
 
-class ColumnOverlay extends google.maps.OverlayView{
+let c=hex.replace("#","")
+if(c.length===3){
+c=c.split("").map(x=>x+x).join("")
+}
+
+let r=parseInt(c.substring(0,2),16)
+let g=parseInt(c.substring(2,4),16)
+let b=parseInt(c.substring(4,6),16)
+
+return `rgba(${r},${g},${b},${alpha})`
+
+}
+
+function createPointMarkers(points,color,isStrong){
+
+for(let p of points){
+
+let marker=new google.maps.Marker({
+position:p,
+map:map,
+zIndex:isStrong ? 300 : 120,
+icon:{
+path:google.maps.SymbolPath.CIRCLE,
+scale:isStrong ? 5.5 : 4.2,
+fillColor:color,
+fillOpacity:1,
+strokeColor:"#ffffff",
+strokeWeight:isStrong ? 2.2 : 1.6
+}
+})
+
+pointMarkers.push(marker)
+
+}
+
+}
+
+function createDistrictInfoWindow(position,district,count,data,color){
+
+let sortedThird=Object.entries(data.third).sort((a,b)=>b[1]-a[1])
+let smallLines=""
+
+for(let i=0;i<sortedThird.length && i<5;i++){
+smallLines+=`<div style="margin-top:4px">${sortedThird[i][0]} : <b>${sortedThird[i][1]}</b></div>`
+}
+
+let html=
+`
+<div style="font-family:tahoma;min-width:180px;max-width:240px">
+  <div style="font-weight:bold;font-size:14px;color:${color};margin-bottom:6px">${district}</div>
+  <div>عدد البلاغات: <b>${count}</b></div>
+  <div style="margin-top:8px;border-top:1px solid #eee;padding-top:6px">
+    ${smallLines || "لا توجد تصنيفات"}
+  </div>
+</div>
+`
+
+let win=new google.maps.InfoWindow({
+content:html,
+position:position
+})
+
+infoWindows.push(win)
+return win
+
+}
+
+function createElegantOverlay(position,count,district,color,infoWindow){
+
+class ElegantOverlay extends google.maps.OverlayView{
 
 onAdd(){
 
@@ -500,112 +549,68 @@ this.div.style.display="flex"
 this.div.style.flexDirection="column"
 this.div.style.alignItems="center"
 this.div.style.userSelect="none"
+this.div.style.cursor="pointer"
+this.div.style.zIndex="250"
 
-this.label=document.createElement("div")
-this.label.style.background="rgba(0,0,0,.78)"
-this.label.style.color="#fff"
-this.label.style.borderRadius="10px"
-this.label.style.padding="6px 8px"
-this.label.style.fontFamily="tahoma"
-this.label.style.fontSize="12px"
-this.label.style.fontWeight="bold"
-this.label.style.boxShadow="0 2px 8px rgba(0,0,0,.25)"
-this.label.style.marginBottom="4px"
-this.label.style.textAlign="center"
-this.label.style.lineHeight="1.4"
-this.label.style.minWidth="78px"
+this.countBadge=document.createElement("div")
+this.countBadge.style.minWidth="42px"
+this.countBadge.style.height="30px"
+this.countBadge.style.padding="0 10px"
+this.countBadge.style.borderRadius="999px"
+this.countBadge.style.background="rgba(20,20,20,.82)"
+this.countBadge.style.color="#fff"
+this.countBadge.style.display="flex"
+this.countBadge.style.alignItems="center"
+this.countBadge.style.justifyContent="center"
+this.countBadge.style.fontWeight="bold"
+this.countBadge.style.fontSize="14px"
+this.countBadge.style.boxShadow="0 4px 14px rgba(0,0,0,.28)"
+this.countBadge.style.backdropFilter="blur(3px)"
+this.countBadge.innerHTML=count
 
-this.columnWrap=document.createElement("div")
-this.columnWrap.style.position="relative"
-this.columnWrap.style.width="36px"
-this.columnWrap.style.height="150px"
-this.columnWrap.style.display="flex"
-this.columnWrap.style.alignItems="flex-end"
-this.columnWrap.style.justifyContent="center"
+this.nameChip=document.createElement("div")
+this.nameChip.style.marginTop="5px"
+this.nameChip.style.padding="4px 10px"
+this.nameChip.style.borderRadius="999px"
+this.nameChip.style.background="rgba(255,255,255,.95)"
+this.nameChip.style.color="#222"
+this.nameChip.style.fontSize="11px"
+this.nameChip.style.fontWeight="bold"
+this.nameChip.style.boxShadow="0 3px 10px rgba(0,0,0,.18)"
+this.nameChip.style.border=`2px solid ${color}`
+this.nameChip.style.whiteSpace="nowrap"
+this.nameChip.innerHTML=district
 
-this.column=document.createElement("div")
-this.column.style.width="18px"
-this.column.style.borderRadius="8px 8px 0 0"
-this.column.style.background=`linear-gradient(to top, ${color}, #ffd54f)`
-this.column.style.boxShadow="0 4px 12px rgba(0,0,0,.35)"
-this.column.style.border="1px solid rgba(255,255,255,.35)"
-this.column.style.position="relative"
+this.stem=document.createElement("div")
+this.stem.style.width="2px"
+this.stem.style.height="16px"
+this.stem.style.background=color
+this.stem.style.marginTop="3px"
+this.stem.style.boxShadow="0 0 6px rgba(0,0,0,.25)"
 
-this.side=document.createElement("div")
-this.side.style.position="absolute"
-this.side.style.right="-5px"
-this.side.style.top="0"
-this.side.style.width="5px"
-this.side.style.height="100%"
-this.side.style.background="rgba(0,0,0,.18)"
-this.side.style.borderRadius="0 6px 0 0"
+this.dot=document.createElement("div")
+this.dot.style.width="10px"
+this.dot.style.height="10px"
+this.dot.style.borderRadius="50%"
+this.dot.style.background=color
+this.dot.style.border="2px solid #fff"
+this.dot.style.boxShadow="0 2px 8px rgba(0,0,0,.3)"
+this.dot.style.marginTop="-1px"
 
-this.column.appendChild(this.side)
+this.div.appendChild(this.countBadge)
+this.div.appendChild(this.nameChip)
+this.div.appendChild(this.stem)
+this.div.appendChild(this.dot)
 
-this.base=document.createElement("div")
-this.base.style.position="absolute"
-this.base.style.bottom="-2px"
-this.base.style.left="-10px"
-this.base.style.width="38px"
-this.base.style.height="4px"
-this.base.style.background="rgba(255,255,255,.75)"
-this.base.style.borderRadius="50%"
-this.base.style.boxShadow="0 0 6px rgba(0,0,0,.4)"
-
-this.tip=document.createElement("div")
-this.tip.style.position="absolute"
-this.tip.style.bottom="0"
-this.tip.style.left="50%"
-this.tip.style.transform="translateX(-50%)"
-this.tip.style.background="rgba(255,255,255,.97)"
-this.tip.style.color="#000"
-this.tip.style.border="1px solid #ddd"
-this.tip.style.borderRadius="12px"
-this.tip.style.padding="8px 10px"
-this.tip.style.minWidth="170px"
-this.tip.style.maxWidth="220px"
-this.tip.style.fontSize="12px"
-this.tip.style.lineHeight="1.5"
-this.tip.style.boxShadow="0 6px 16px rgba(0,0,0,.22)"
-this.tip.style.display="none"
-this.tip.style.zIndex="9999"
-
-this.div.appendChild(this.label)
-this.columnWrap.appendChild(this.column)
-this.columnWrap.appendChild(this.base)
-this.div.appendChild(this.columnWrap)
-this.div.appendChild(this.tip)
-
-this.getPanes().overlayMouseTarget.appendChild(this.div)
-
-this.renderContent()
-
-this.div.addEventListener("click",()=>{
-this.tip.style.display=this.tip.style.display==="none" ? "block" : "none"
+this.div.addEventListener("click",(e)=>{
+e.stopPropagation()
+closeAllInfoWindows()
+infoWindow.open({
+map:map
+})
 })
 
-}
-
-renderContent(){
-
-let sortedThird=Object.entries(data.third).sort((a,b)=>b[1]-a[1])
-
-let smallLines=""
-for(let i=0;i<sortedThird.length && i<5;i++){
-smallLines+=`<div>${sortedThird[i][0]} : <b>${sortedThird[i][1]}</b></div>`
-}
-
-this.label.innerHTML=
-`<div style="font-size:16px">${count}</div>
-<div style="font-size:11px;white-space:nowrap">${district}</div>`
-
-this.tip.innerHTML=
-`<div style="font-weight:bold;font-size:13px;margin-bottom:4px">${district}</div>
-<div>عدد البلاغات: <b>${count}</b></div>
-<div style="margin-top:6px">${smallLines || "لا توجد تصنيفات"}</div>`
-
-let h=getColumnHeight(count)
-this.column.style.height=h+"px"
+this.getPanes().overlayMouseTarget.appendChild(this.div)
 
 }
 
@@ -622,17 +627,15 @@ this.div.style.top=pos.y+"px"
 }
 
 onRemove(){
-
 if(this.div && this.div.parentNode){
 this.div.parentNode.removeChild(this.div)
 }
 this.div=null
-
 }
 
 }
 
-let overlay=new ColumnOverlay()
+let overlay=new ElegantOverlay()
 overlay.setMap(map)
 overlays.push(overlay)
 
@@ -652,9 +655,16 @@ let count=data.points.length
 if(!passesFilter(district,count)) continue
 if(count<1) continue
 
-let color=COLORS[index%COLORS.length]
+let baseColor=COLORS[index%COLORS.length]
 let columnColor=getColumnColor(count)
+let isSelected=(selectedDistrict && district===selectedDistrict)
+let isFilteredView=(currentFilter!=="all" || selectedDistrict!=="")
 index++
+
+let polygonFillOpacity=isSelected ? 0.42 : (isFilteredView ? 0.34 : 0.22)
+let polygonStrokeWeight=isSelected ? 5 : 3
+let pointColor=isSelected ? "#00e5ff" : baseColor
+let pointStrong=isSelected || isFilteredView
 
 if(data.points.length>=3){
 
@@ -664,14 +674,30 @@ if(hull && hull.length>=3){
 
 let polygon=new google.maps.Polygon({
 paths:hull,
-strokeColor:color,
-strokeWeight:4,
-fillColor:color,
-fillOpacity:0.28,
-map:map
+strokeColor:baseColor,
+strokeOpacity:1,
+strokeWeight:polygonStrokeWeight,
+fillColor:baseColor,
+fillOpacity:polygonFillOpacity,
+map:map,
+zIndex:isSelected ? 100 : 50
 })
 
 polygons.push(polygon)
+
+polygon.addListener("click",(e)=>{
+closeAllInfoWindows()
+let infoWindow=createDistrictInfoWindow(
+e.latLng || getDistrictCenter(data.points),
+district,
+count,
+data,
+baseColor
+)
+infoWindow.open({
+map:map
+})
+})
 
 hull.forEach(p=>{
 visibleBounds.extend({lat:p.lat,lng:p.lng})
@@ -687,10 +713,11 @@ let center1=getDistrictCenter(data.points)
 let marker=new google.maps.Marker({
 position:center1,
 map:map,
+zIndex:110,
 icon:{
 path:google.maps.SymbolPath.CIRCLE,
-scale:6,
-fillColor:color,
+scale:7,
+fillColor:baseColor,
 fillOpacity:1,
 strokeColor:"#fff",
 strokeWeight:2
@@ -703,11 +730,14 @@ hasVisible=true
 
 }
 
+createPointMarkers(data.points,pointColor,pointStrong)
+
 let center=getDistrictCenter(data.points)
 visibleBounds.extend(center)
 hasVisible=true
 
-createColumnOverlay(center,count,district,columnColor,data)
+let infoWindow=createDistrictInfoWindow(center,district,count,data,baseColor)
+createElegantOverlay(center,count,district,columnColor,infoWindow)
 
 }
 
