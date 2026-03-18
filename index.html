@@ -243,6 +243,10 @@ opacity:.92
 background:#111
 }
 
+#excelBtn{
+background:#0b8f55
+}
+
 /* ===== الطباعة ===== */
 @media print {
 
@@ -438,6 +442,10 @@ width:100%
         <button id="printBtn" onclick="printPage()">🖨️ طباعة</button>
       </div>
 
+      <div class="group">
+        <button id="excelBtn" onclick="exportExcel()">📤 Excel</button>
+      </div>
+
     </div>
 
     <div id="map"></div>
@@ -612,6 +620,8 @@ map.fitBounds(bounds)
 
 selectedDistrict=""
 selectedMunicipality=""
+document.getElementById("filterSelect").value="all"
+currentFilter="all"
 
 fillMunicipalityList()
 fillDistrictList()
@@ -665,7 +675,6 @@ function setMunicipalityFilter(name){
 
 selectedMunicipality=name || ""
 selectedDistrict=""
-
 document.getElementById("districtList").value=""
 
 fillDistrictList()
@@ -1243,27 +1252,87 @@ updatePanelSummary()
 /* ===== الطباعة ===== */
 function printPage(){
 
-const topPanel=document.querySelector(".topPanel")
-const center=map.getCenter()
-const zoom=map.getZoom()
+const originalCenter = map.getCenter()
+const originalZoom = map.getZoom()
+const topPanel = document.querySelector(".topPanel")
+const mapDiv = document.getElementById("map")
 
 topPanel.style.display="none"
+mapDiv.style.height="650px"
 
 setTimeout(()=>{
 
 google.maps.event.trigger(map,"resize")
-map.setCenter(center)
-map.setZoom(zoom)
+map.setCenter(originalCenter)
+map.setZoom(originalZoom)
 
 setTimeout(()=>{
+
 window.print()
-topPanel.style.display="flex"
-google.maps.event.trigger(map,"resize")
-map.setCenter(center)
-map.setZoom(zoom)
-},500)
 
-},500)
+topPanel.style.display="flex"
+mapDiv.style.height="100%"
+
+google.maps.event.trigger(map,"resize")
+map.setCenter(originalCenter)
+map.setZoom(originalZoom)
+
+},700)
+
+},700)
+
+}
+
+/* ===== تصدير Excel ===== */
+function exportExcel(){
+
+let dataToExport=[]
+
+dataToExport.push([
+"البلدية",
+"الحي",
+"عدد البلاغات",
+"التصنيف",
+"العدد"
+])
+
+let added = new Set()
+
+for(let districtKey in districts){
+
+let data = districts[districtKey]
+let count = data.points.length
+
+if(!passesFilter(districtKey,count)) continue
+if(added.has(districtKey)) continue
+added.add(districtKey)
+
+for(let key in data.third){
+dataToExport.push([
+data.municipality,
+data.name,
+count,
+key,
+data.third[key]
+])
+}
+
+}
+
+let ws = XLSX.utils.aoa_to_sheet(dataToExport)
+let wb = XLSX.utils.book_new()
+
+/* عرض الأعمدة */
+ws["!cols"] = [
+{wch:22},
+{wch:22},
+{wch:14},
+{wch:35},
+{wch:12}
+]
+
+XLSX.utils.book_append_sheet(wb, ws, "التقرير")
+XLSX.writeFile(wb, "تقرير_البلاغات.xlsx")
 
 }
 
