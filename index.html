@@ -248,10 +248,35 @@ background:#0b8f55
 }
 
 /* ===== الطباعة ===== */
-@media print {
-@page{
-size:A4 portrait;
-margin:5mm;
+
+.topPanel{
+display:none !important;
+}
+
+.mainLayout{
+display:flex !important;
+flex-direction:column !important;
+}
+
+/* الخريطة فوق */
+.mapSection{
+width:100% !important;
+display:block !important;
+}
+
+/* اللوحة تحت */
+.sidePanel{
+width:100% !important;
+display:block !important;
+margin-top:10px !important;
+}
+
+/* حجم الخريطة */
+#map{
+width:100% !important;
+height:500px !important;
+}
+
 }
 
 .topPanel{
