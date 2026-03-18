@@ -492,15 +492,26 @@ zoom:12,
 mapTypeId:"hybrid",
 gestureHandling:"greedy"
 })
+
 const drawingManager = new google.maps.drawing.DrawingManager({
-drawingControl: true,
-drawingControlOptions: {
-position: google.maps.ControlPosition.TOP_RIGHT
-drawingModes: ['polygon']
+drawingControl:true,
+drawingControlOptions:{
+position:google.maps.ControlPosition.TOP_RIGHT,
+drawingModes:['polygon']
+},
+polygonOptions:{
+fillColor:'#2196f3',
+fillOpacity:0.30,
+strokeColor:'#1a73e8',
+strokeWeight:3,
+editable:true,
+clickable:true,
+zIndex:2000
 }
 })
 
 drawingManager.setMap(map)
+
 const input=document.getElementById("searchBox")
 
 const autocomplete=new google.maps.places.Autocomplete(
