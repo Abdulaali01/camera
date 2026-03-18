@@ -570,6 +570,7 @@ let originalMapTypeId="hybrid"
 let drawingManager=null
 let isDrawingMode=false
 let manualZones=[]
+let printLayoutDistricts=null
 
 const COLORS=[
 "#ff5722",
@@ -716,6 +717,7 @@ return
 }
 const center=getPolygonCenterFromPath(zone.polygon.getPath())
 zone.label.setPosition(center)
+zone.label.wasMovedManually=false
 }
 
 document.getElementById("deleteLastBtn").onclick=function(){
@@ -1221,6 +1223,199 @@ if(count>100) return "#ffc107"
 return "#4caf50"
 }
 
+/* ===== بيانات العرض الحالية ===== */
+function getRenderableDistrictData(districtKey){
+if(isPrintMode && printLayoutDistricts && printLayoutDistricts[districtKey]){
+return printLayoutDistricts[districtKey]
+}
+return districts[districtKey]
+}
+
+function clonePoint(p){
+return {lat:p.lat,lng:p.lng}
+}
+
+/* ===== توزيع طباعة ذكي ===== */
+function preparePrintLayout(){
+
+printLayoutDistricts=null
+
+let visibleKeys=Object.keys(districts).filter(key=>{
+let data=districts[key]
+return passesFilter(key,data.points.length)
+})
+
+if(!visibleKeys.length) return
+
+let centers=visibleKeys.map(key=>{
+let data=districts[key]
+let center=getDistrictCenter(data.points)
+return {
+key:key,
+lat:center.lat,
+lng:center.lng
+}
+})
+
+let mean={
+lat:centers.reduce((s,c)=>s+c.lat,0)/centers.length,
+lng:centers.reduce((s,c)=>s+c.lng,0)/centers.length
+}
+
+let distances=centers.map(c=>{
+let dx=c.lng-mean.lng
+let dy=c.lat-mean.lat
+return Math.sqrt(dx*dx+dy*dy)
+})
+
+let maxR=Math.max(...distances,0)
+let minR=Math.min(...distances.filter(v=>v>0),maxR||0)
+let compressionPower=maxR>0 ? 0.68 : 1
+
+let transformedCenters=centers.map(c=>{
+let dx=c.lng-mean.lng
+let dy=c.lat-mean.lat
+let r=Math.sqrt(dx*dx+dy*dy)
+
+if(r===0 || maxR===0){
+return {key:c.key,lat:c.lat,lng:c.lng}
+}
+
+let unitX=dx/r
+let unitY=dy/r
+
+let newR=maxR*Math.pow(r/maxR,compressionPower)
+
+return {
+key:c.key,
+lat:mean.lat + unitY*newR,
+lng:mean.lng + unitX*newR
+}
+})
+
+let spanLat=Math.max(...transformedCenters.map(c=>c.lat)) - Math.min(...transformedCenters.map(c=>c.lat))
+let spanLng=Math.max(...transformedCenters.map(c=>c.lng)) - Math.min(...transformedCenters.map(c=>c.lng))
+let span=Math.max(spanLat,spanLng,0.01)
+let minGap=Math.max(span*0.075,0.0035)
+
+for(let round=0;round<30;round++){
+let moved=false
+
+for(let i=0;i<transformedCenters.length;i++){
+for(let j=i+1;j<transformedCenters.length;j++){
+
+let a=transformedCenters[i]
+let b=transformedCenters[j]
+
+let dx=b.lng-a.lng
+let dy=b.lat-a.lat
+let d=Math.sqrt(dx*dx+dy*dy) || 0.000001
+
+if(d<minGap){
+
+let push=(minGap-d)/2
+let ux=dx/d
+let uy=dy/d
+
+a.lng-=ux*push
+a.lat-=uy*push
+b.lng+=ux*push
+b.lat+=uy*push
+moved=true
+}
+
+}
+}
+
+if(!moved) break
+}
+
+printLayoutDistricts={}
+
+for(let item of transformedCenters){
+
+let original=districts[item.key]
+let originalCenter=getDistrictCenter(original.points)
+let shiftLat=item.lat-originalCenter.lat
+let shiftLng=item.lng-originalCenter.lng
+
+printLayoutDistricts[item.key]={
+key:original.key,
+name:original.name,
+municipality:original.municipality,
+third:JSON.parse(JSON.stringify(original.third)),
+points:original.points.map(p=>({
+lat:p.lat+shiftLat,
+lng:p.lng+shiftLng
+}))
+}
+}
+
+}
+
+function clearPrintLayout(){
+printLayoutDistricts=null
+}
+
+function getPrintBounds(){
+let bounds=new google.maps.LatLngBounds()
+let hasAny=false
+
+for(let districtKey in districts){
+
+let originalData=districts[districtKey]
+let count=originalData.points.length
+
+if(!passesFilter(districtKey,count)) continue
+
+let renderData=getRenderableDistrictData(districtKey)
+
+renderData.points.forEach(p=>{
+bounds.extend(new google.maps.LatLng(p.lat,p.lng))
+hasAny=true
+})
+}
+
+return {bounds,hasAny}
+}
+
+function adjustOverlays(){
+let used=[]
+
+overlays.forEach(o=>{
+
+if(!o.div || !o.getProjection || !o.position) return
+
+let projection=o.getProjection()
+if(!projection) return
+
+let pos=projection.fromLatLngToDivPixel(
+new google.maps.LatLng(o.position.lat,o.position.lng)
+)
+
+if(!pos) return
+
+for(let u of used){
+
+let dx=pos.x-u.x
+let dy=pos.y-u.y
+let dist=Math.sqrt(dx*dx+dy*dy)
+
+if(dist<70){
+pos.x+=42
+pos.y+=20
+}
+
+}
+
+used.push({x:pos.x,y:pos.y})
+
+o.div.style.left=pos.x+"px"
+o.div.style.top=pos.y+"px"
+
+})
+}
+
 function createPointMarkers(points,color,isStrong){
 
 for(let p of points){
@@ -1404,6 +1599,12 @@ function createElegantOverlay(position,count,districtKey,color,infoWindow){
 
 class ElegantOverlay extends google.maps.OverlayView{
 
+constructor(pos){
+super()
+this.position=pos
+this.div=null
+}
+
 onAdd(){
 
 let data=districts[districtKey]
@@ -1483,9 +1684,13 @@ this.getPanes().overlayMouseTarget.appendChild(this.div)
 draw(){
 
 let projection=this.getProjection()
+if(!projection || !this.div) return
+
 let pos=projection.fromLatLngToDivPixel(
-new google.maps.LatLng(position.lat,position.lng)
+new google.maps.LatLng(this.position.lat,this.position.lng)
 )
+
+if(!pos) return
 
 this.div.style.left=pos.x+"px"
 this.div.style.top=pos.y+"px"
@@ -1501,7 +1706,7 @@ this.div=null
 
 }
 
-let overlay=new ElegantOverlay()
+let overlay=new ElegantOverlay(position)
 overlay.setMap(map)
 overlays.push(overlay)
 
@@ -1515,11 +1720,13 @@ let hasVisible=false
 
 for(let districtKey in districts){
 
-let data=districts[districtKey]
-let count=data.points.length
+let originalData=districts[districtKey]
+let count=originalData.points.length
 
 if(!passesFilter(districtKey,count)) continue
 if(count<1) continue
+
+let data=getRenderableDistrictData(districtKey)
 
 let baseColor=COLORS[index%COLORS.length]
 let columnColor=getColumnColor(count)
@@ -1553,13 +1760,13 @@ polygon.addListener("click",(e)=>{
 closeAllInfoWindows()
 let infoWindow=createDistrictInfoWindow(
 e.latLng || getDistrictCenter(data.points),
-data.name,
+originalData.name,
 count,
-data,
+originalData,
 baseColor
 )
 infoWindow.open({map:map})
-updatePanelDistrict(districtKey,data)
+updatePanelDistrict(districtKey,originalData)
 })
 
 smoothBoundary.forEach(p=>{
@@ -1575,7 +1782,7 @@ let center=getDistrictCenter(data.points)
 visibleBounds.extend(center)
 hasVisible=true
 
-let infoWindow=createDistrictInfoWindow(center,data.name,count,data,baseColor)
+let infoWindow=createDistrictInfoWindow(center,originalData.name,count,originalData,baseColor)
 createElegantOverlay(center,count,districtKey,columnColor,infoWindow)
 
 }
@@ -1760,28 +1967,17 @@ originalMapTypeId = map.getMapTypeId()
 isPrintMode = true
 map.setMapTypeId("roadmap")
 
+preparePrintLayout()
+
 clearMap()
 drawDistricts()
 
 google.maps.event.trigger(map,"resize")
 
-let bounds = new google.maps.LatLngBounds()
-let hasAny = false
+const printInfo=getPrintBounds()
 
-for(let districtKey in districts){
-let data = districts[districtKey]
-let count = data.points.length
-
-if(!passesFilter(districtKey,count)) continue
-
-for(let p of data.points){
-bounds.extend(new google.maps.LatLng(p.lat,p.lng))
-hasAny = true
-}
-}
-
-if(hasAny){
-map.fitBounds(bounds)
+if(printInfo.hasAny){
+map.fitBounds(printInfo.bounds)
 }
 
 google.maps.event.addListenerOnce(map,"idle",function(){
@@ -1790,15 +1986,20 @@ setTimeout(()=>{
 
 google.maps.event.trigger(map,"resize")
 
-if(hasAny){
-map.fitBounds(bounds)
+if(printInfo.hasAny){
+map.fitBounds(printInfo.bounds)
 }
+
+setTimeout(()=>{
+
+adjustOverlays()
 
 setTimeout(()=>{
 
 window.print()
 
 isPrintMode = false
+clearPrintLayout()
 map.setMapTypeId(originalMapTypeId || "hybrid")
 
 topPanel.style.display="flex"
@@ -1812,9 +2013,11 @@ google.maps.event.trigger(map,"resize")
 map.setCenter(originalCenter)
 map.setZoom(originalZoom)
 
-},900)
+},500)
 
-},900)
+},500)
+
+},700)
 
 })
 }
