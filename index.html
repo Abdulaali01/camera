@@ -521,6 +521,10 @@ if(idx!==-1) return idx
 return fallbackIndex
 }
 
+function makeDistrictKey(municipality,district){
+return municipality + "|||" + district
+}
+
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
@@ -535,15 +539,15 @@ let workbook=XLSX.read(data,{type:"array"})
 let sheet=workbook.Sheets[workbook.SheetNames[0]]
 let rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:""})
 
-if(!rows.length) return
+if(!rows || !rows.length) return
 
 let headerRow=rows[0].map(normalizeHeader)
 
 let latCol=findColumnIndex(headerRow,["lat","latitude","خطالعرض","الاحداثيx","y"],0)
 let lngCol=findColumnIndex(headerRow,["lng","lon","longitude","خطالطول","الاحداثيy","x"],1)
-let districtCol=findColumnIndex(headerRow,["الحي","اسم الحي","district","neighborhood"],2)
+let districtCol=findColumnIndex(headerRow,["الحي","اسمالحي","district","neighborhood"],2)
 let thirdCol=findColumnIndex(headerRow,["التصنيف","التصنيفالتخصصي","العمودالرابع","category","third"],3)
-let municipalityCol=findColumnIndex(headerRow,["البلديهالفرعيه","البلديه","بلديهفرعيه","municipality"],4)
+let municipalityCol=findColumnIndex(headerRow,["البلديهالفرعيه","بلديهفرعيه","البلديه","بلديه","municipality","submunicipality"],4)
 
 districts={}
 clearMap()
@@ -564,14 +568,14 @@ let municipality=(row[municipalityCol]??"غير محددة").toString().trim() |
 
 if(isNaN(lat) || isNaN(lng) || !district) continue
 
-const districtKey=`${municipality}|||${district}`
+let key=makeDistrictKey(municipality,district)
 
 bounds.extend({lat:lat,lng:lng})
 hasValidPoint=true
 
-if(!districts[districtKey]){
-districts[districtKey]={
-key:districtKey,
+if(!districts[key]){
+districts[key]={
+key:key,
 name:district,
 municipality:municipality,
 points:[],
@@ -579,13 +583,13 @@ third:{}
 }
 }
 
-districts[districtKey].points.push({lat,lng})
+districts[key].points.push({lat,lng})
 
-if(!districts[districtKey].third[third]){
-districts[districtKey].third[third]=0
+if(!districts[key].third[third]){
+districts[key].third[third]=0
 }
 
-districts[districtKey].third[third]++
+districts[key].third[third]++
 
 }
 
@@ -609,7 +613,8 @@ function fillMunicipalityList(){
 let sel=document.getElementById("municipalityList")
 sel.innerHTML='<option value="">كل البلديات</option>'
 
-let names=[...new Set(Object.values(districts).map(d=>d.municipality))].sort((a,b)=>a.localeCompare(b,'ar'))
+let names=[...new Set(Object.values(districts).map(d=>d.municipality))]
+.sort((a,b)=>a.localeCompare(b,'ar'))
 
 for(let name of names){
 let opt=document.createElement("option")
@@ -626,11 +631,11 @@ function fillDistrictList(){
 let sel=document.getElementById("districtList")
 sel.innerHTML='<option value="">كل الأحياء</option>'
 
-let items=Object.values(districts)
+let list=Object.values(districts)
 .filter(d=>!selectedMunicipality || d.municipality===selectedMunicipality)
 .sort((a,b)=>a.name.localeCompare(b.name,'ar'))
 
-for(let item of items){
+for(let item of list){
 let opt=document.createElement("option")
 opt.value=item.key
 opt.textContent=item.name
@@ -641,12 +646,16 @@ sel.value=selectedDistrict || ""
 }
 
 function setMunicipalityFilter(name){
+
 selectedMunicipality=name || ""
 selectedDistrict=""
+document.getElementById("districtList").value=""
+
 fillDistrictList()
 clearMap()
 drawDistricts()
 updatePanelForCurrentView()
+
 }
 
 function setFilter(type){
@@ -725,7 +734,8 @@ return lower.concat(upper)
 
 }
 
-function getRankedDistrictKeysForCurrentMunicipality(){
+function getRankedDistrictKeysScoped(){
+
 let arr=Object.values(districts)
 .filter(d=>!selectedMunicipality || d.municipality===selectedMunicipality)
 .map(d=>({key:d.key,count:d.points.length}))
@@ -735,10 +745,10 @@ return arr.map(x=>x.key)
 }
 
 function getTopGroupKeys(groupNumber){
-let rankedKeys=getRankedDistrictKeysForCurrentMunicipality()
+let ranked=getRankedDistrictKeysScoped()
 let start=(groupNumber-1)*3
 let end=start+3
-return rankedKeys.slice(start,end)
+return ranked.slice(start,end)
 }
 
 function passesFilter(districtKey,count){
@@ -847,7 +857,7 @@ class ElegantOverlay extends google.maps.OverlayView{
 
 onAdd(){
 
-const data=districts[districtKey]
+let data=districts[districtKey]
 
 this.div=document.createElement("div")
 this.div.style.position="absolute"
