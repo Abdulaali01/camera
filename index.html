@@ -249,11 +249,34 @@ background:#0b8f55
 
 /* ===== الطباعة ===== */
 @media print {
+@page{
+size:A4 portrait;
+margin:5mm;
+}
 
-html,body{
+.topPanel{
+display:none !important;
+}
+
+.mainLayout{
+display:flex !important;
+flex-direction:column !import
+
+.mapSection{
+width:100% !important;
 height:auto !important;
-overflow:visible !important;
-background:#fff !important
+}
+
+.sidePanel{
+width:100% !important;
+height:auto !important;
+}
+
+#map{
+width:100% !important;
+height:500px !important;
+}
+
 }
 
 .topPanel{
