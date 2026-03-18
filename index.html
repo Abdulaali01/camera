@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>تحليل الأحياء + الأعمدة على الخريطة</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
 <style>
 
 body{
@@ -247,9 +249,11 @@ background:#0b8f55
 @media print {
 
 html,body{
-height:auto !important;
+height:100% !important;
 overflow:visible !important;
-background:#fff !important
+background:#fff !important;
+margin:0 !important;
+padding:0 !important
 }
 
 .topPanel{
@@ -258,24 +262,26 @@ display:none !important
 
 @page{
 size:A4 landscape;
-margin:5mm;
+margin:6mm
 }
 
 .mainLayout{
 display:flex !important;
 flex-direction:row !important;
-height:auto !important;
-min-height:0 !important
+width:100% !important;
+height:100vh !important;
+min-height:100vh !important;
+align-items:stretch !important
 }
 
 .sidePanel{
-width:28% !important;
-min-width:28% !important;
-max-width:28% !important;
-height:auto !important;
+width:30% !important;
+min-width:30% !important;
+max-width:30% !important;
+height:100vh !important;
+overflow:visible !important;
 box-shadow:none !important;
-border:none !important;
-overflow:visible !important
+border:none !important
 }
 
 .sideBody{
@@ -283,26 +289,23 @@ overflow:visible !important
 }
 
 .mapSection{
-width:72% !important;
-height:auto !important;
+width:70% !important;
+height:100vh !important;
 overflow:visible !important
 }
 
 #map{
 width:100% !important;
-height:750px !important;
-min-height:750px !important;
-max-height:750px !important
-}
-
-.statValue{
-font-size:20px !important
+height:100vh !important;
+min-height:100vh !important;
+max-height:none !important
 }
 
 .chartCard,
 .listCard,
 .statCard{
-break-inside:avoid
+break-inside:avoid !important;
+page-break-inside:avoid !important
 }
 
 }
@@ -351,6 +354,7 @@ width:100%
 </style>
 </head>
 <body>
+
 <div class="mainLayout">
 
   <!-- ===== لوحة المعلومات ===== -->
@@ -460,6 +464,8 @@ let currentFilter="all"
 let selectedDistrict=""
 let selectedMunicipality=""
 let sideChart=null
+let isPrintMode=false
+let originalMapTypeId="hybrid"
 
 const COLORS=[
 "#ff5722",
@@ -713,7 +719,6 @@ infoWindows=[]
 
 }
 
-/* ===== Convex Hull ===== */
 function convexHull(points){
 
 points=points.slice()
@@ -873,7 +878,7 @@ return win
 }
 
 /* ===== تنعيم المضلع ===== */
-function densifyClosedPath(points,segmentsPerEdge=6){
+function densifyClosedPath(points,segmentsPerEdge=10){
 if(!points || points.length<3) return points || []
 
 let dense=[]
@@ -896,7 +901,7 @@ lng:p0.lng+(p1.lng-p0.lng)*t
 return dense
 }
 
-function chaikinSmoothClosed(points,iterations=3){
+function chaikinSmoothClosed(points,iterations=4){
 if(!points || points.length<3) return points || []
 
 let result=points.slice()
@@ -927,7 +932,7 @@ result=newPoints
 return result
 }
 
-function expandClosedPath(points,factor=1.12){
+function expandClosedPath(points,factor=1.16){
 if(!points || points.length<3) return points || []
 
 const center=getDistrictCenter(points)
@@ -979,11 +984,21 @@ if(!hull || hull.length<3){
 return points
 }
 
-let dense=densifyClosedPath(hull,6)
-let expanded=expandClosedPath(dense,1.12)
-let smooth=chaikinSmoothClosed(expanded,3)
+let dense=densifyClosedPath(hull,10)
+let expanded=expandClosedPath(dense,1.16)
+let smooth=chaikinSmoothClosed(expanded,4)
 
 return smooth
+}
+
+function getPolygonStrokeColor(baseColor){
+if(isPrintMode) return "#5f84c9"
+return baseColor
+}
+
+function getPolygonFillColor(baseColor){
+if(isPrintMode) return "#bcd0f6"
+return baseColor
 }
 
 function createElegantOverlay(position,count,districtKey,color,infoWindow){
@@ -1113,12 +1128,10 @@ let isSelected=(selectedDistrict && districtKey===selectedDistrict)
 let isFilteredView=(currentFilter!=="all" || selectedDistrict!=="" || selectedMunicipality!=="")
 index++
 
-let polygonFillOpacity=isSelected ? 0.42 : (isFilteredView ? 0.34 : 0.22)
-let polygonStrokeWeight=isSelected ? 5 : 3
+let polygonFillOpacity=isPrintMode ? 0.32 : (isSelected ? 0.42 : (isFilteredView ? 0.34 : 0.22))
+let polygonStrokeWeight=isPrintMode ? 4 : (isSelected ? 5 : 3)
 let pointColor=isSelected ? "#00e5ff" : baseColor
 let pointStrong=isSelected || isFilteredView
-
-if(data.points.length>=1){
 
 let smoothBoundary=createSmoothBoundary(data.points)
 
@@ -1126,10 +1139,10 @@ if(smoothBoundary && smoothBoundary.length>=3){
 
 let polygon=new google.maps.Polygon({
 paths:smoothBoundary,
-strokeColor:baseColor,
-strokeOpacity:1,
+strokeColor:getPolygonStrokeColor(baseColor),
+strokeOpacity:isPrintMode ? 0.95 : 1,
 strokeWeight:polygonStrokeWeight,
-fillColor:baseColor,
+fillColor:getPolygonFillColor(baseColor),
 fillOpacity:polygonFillOpacity,
 map:map,
 zIndex:isSelected ? 100 : 50
@@ -1154,8 +1167,6 @@ smoothBoundary.forEach(p=>{
 visibleBounds.extend({lat:p.lat,lng:p.lng})
 hasVisible=true
 })
-
-}
 
 }
 
@@ -1339,9 +1350,19 @@ const originalCenter = map.getCenter()
 const originalZoom = map.getZoom()
 const topPanel = document.querySelector(".topPanel")
 const mapDiv = document.getElementById("map")
+const mainLayout = document.querySelector(".mainLayout")
 
 topPanel.style.display="none"
-mapDiv.style.height="750px"
+mainLayout.style.height="100vh"
+mapDiv.style.height="100vh"
+
+originalMapTypeId = map.getMapTypeId()
+
+isPrintMode = true
+map.setMapTypeId("roadmap")
+
+clearMap()
+drawDistricts()
 
 google.maps.event.trigger(map,"resize")
 
@@ -1378,19 +1399,25 @@ setTimeout(()=>{
 
 window.print()
 
+isPrintMode = false
+map.setMapTypeId(originalMapTypeId || "hybrid")
+
 topPanel.style.display="flex"
+mainLayout.style.height="100vh"
 mapDiv.style.height="100%"
+
+clearMap()
+drawDistricts()
 
 google.maps.event.trigger(map,"resize")
 map.setCenter(originalCenter)
 map.setZoom(originalZoom)
 
-},500)
+},900)
 
-},500)
+},900)
 
 })
-
 }
 
 /* ===== تصدير Excel ===== */
@@ -1450,5 +1477,6 @@ XLSX.writeFile(wb, "تقرير_البلاغات.xlsx")
 <script async defer
 src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places&callback=initMap">
 </script>
+
 </body>
 </html>
