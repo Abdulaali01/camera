@@ -245,6 +245,86 @@ background:#111
 background:#0b8f55
 }
 
+/* ===== أزرار عائمة ===== */
+.fabWrap{
+position:fixed;
+left:18px;
+bottom:18px;
+z-index:99999;
+display:flex;
+flex-direction:column;
+gap:10px
+}
+
+.fabBtn{
+border:none;
+border-radius:999px;
+padding:13px 16px;
+font-size:13px;
+font-weight:bold;
+box-shadow:0 8px 18px rgba(0,0,0,.22);
+cursor:pointer;
+background:#2d6cff;
+color:#fff;
+min-width:120px
+}
+
+.fabBtn.stop{
+background:#d32f2f
+}
+
+.fabBtn.gray{
+background:#374151
+}
+
+.fabBtn.green{
+background:#0b8f55
+}
+
+/* ===== ملصق الحي اليدوي ===== */
+.manualLabel{
+position:absolute;
+transform:translate(-50%,-50%);
+display:flex;
+align-items:center;
+gap:6px;
+cursor:grab;
+user-select:none;
+touch-action:none;
+z-index:5000
+}
+
+.manualLabel.dragging{
+cursor:grabbing
+}
+
+.manualCount{
+min-width:34px;
+height:30px;
+padding:0 10px;
+display:flex;
+align-items:center;
+justify-content:center;
+background:#111827;
+color:#fff;
+border-radius:999px;
+font-size:13px;
+font-weight:bold;
+box-shadow:0 4px 12px rgba(0,0,0,.25)
+}
+
+.manualName{
+padding:6px 10px;
+background:#ffffff;
+color:#111827;
+border:2px solid #2563eb;
+border-radius:999px;
+font-size:12px;
+font-weight:bold;
+box-shadow:0 4px 12px rgba(0,0,0,.18);
+white-space:nowrap
+}
+
 /* ===== الطباعة ===== */
 @media print {
 
@@ -256,7 +336,8 @@ margin:0 !important;
 padding:0 !important
 }
 
-.topPanel{
+.topPanel,
+.fabWrap{
 display:none !important
 }
 
@@ -347,6 +428,17 @@ width:100%
 select,
 button{
 width:100%
+}
+
+.fabWrap{
+left:12px;
+bottom:12px
+}
+
+.fabBtn{
+min-width:108px;
+padding:12px 14px;
+font-size:12px
 }
 
 }
@@ -451,6 +543,14 @@ width:100%
   </div>
 </div>
 
+<!-- ===== أزرار عائمة ===== -->
+<div class="fabWrap">
+  <button class="fabBtn" id="drawToggleBtn" type="button">✏️ رسم حي</button>
+  <button class="fabBtn gray" id="renameLastBtn" type="button">📝 اسم/رقم</button>
+  <button class="fabBtn green" id="centerLastBtn" type="button">🎯 توسيط الاسم</button>
+  <button class="fabBtn stop" id="deleteLastBtn" type="button">🗑️ حذف آخر</button>
+</div>
+
 <script>
 
 let map
@@ -466,6 +566,10 @@ let selectedMunicipality=""
 let sideChart=null
 let isPrintMode=false
 let originalMapTypeId="hybrid"
+
+let drawingManager=null
+let isDrawingMode=false
+let manualZones=[]
 
 const COLORS=[
 "#ff5722",
@@ -493,24 +597,7 @@ mapTypeId:"hybrid",
 gestureHandling:"greedy"
 })
 
-const drawingManager = new google.maps.drawing.DrawingManager({
-drawingControl:true,
-drawingControlOptions:{
-position:google.maps.ControlPosition.TOP_RIGHT,
-drawingModes:['polygon']
-},
-polygonOptions:{
-fillColor:'#2196f3',
-fillOpacity:0.30,
-strokeColor:'#1a73e8',
-strokeWeight:3,
-editable:true,
-clickable:true,
-zIndex:2000
-}
-})
-
-drawingManager.setMap(map)
+initDrawingTools()
 
 const input=document.getElementById("searchBox")
 
@@ -541,6 +628,299 @@ closeAllInfoWindows()
 updatePanelForCurrentView()
 })
 
+bindFloatingButtons()
+
+}
+
+function initDrawingTools(){
+
+drawingManager=new google.maps.drawing.DrawingManager({
+drawingControl:false,
+drawingModes:['polygon'],
+polygonOptions:{
+fillColor:'#2196f3',
+fillOpacity:0.28,
+strokeColor:'#1a73e8',
+strokeWeight:3,
+editable:true,
+draggable:true,
+clickable:true,
+zIndex:1500
+}
+})
+
+drawingManager.setMap(map)
+
+google.maps.event.addListener(drawingManager,'overlaycomplete',function(event){
+
+if(event.type!=="polygon") return
+
+const polygon=event.overlay
+polygon.setEditable(true)
+polygon.setDraggable(true)
+
+const center=getPolygonCenterFromPath(polygon.getPath())
+const zoneIndex=manualZones.length+1
+
+const zone=createManualZone(
+polygon,
+center,
+"حي جديد",
+String(zoneIndex)
+)
+
+manualZones.push(zone)
+attachPolygonSync(zone)
+
+drawingManager.setDrawingMode(null)
+isDrawingMode=false
+updateDrawButtonUI()
+
+})
+
+}
+
+function bindFloatingButtons(){
+
+document.getElementById("drawToggleBtn").onclick=function(){
+isDrawingMode=!isDrawingMode
+drawingManager.setDrawingMode(
+isDrawingMode ? google.maps.drawing.OverlayType.POLYGON : null
+)
+updateDrawButtonUI()
+}
+
+document.getElementById("renameLastBtn").onclick=function(){
+const zone=getLastManualZone()
+if(!zone){
+alert("لا يوجد حي مرسوم.")
+return
+}
+const newName=prompt("اكتب اسم الحي:",zone.label.nameText)
+if(newName!==null && newName.trim()!==""){
+zone.label.nameText=newName.trim()
+zone.label.refresh()
+}
+const newNum=prompt("اكتب الرقم:",zone.label.countText)
+if(newNum!==null && newNum.trim()!==""){
+zone.label.countText=newNum.trim()
+zone.label.refresh()
+}
+}
+
+document.getElementById("centerLastBtn").onclick=function(){
+const zone=getLastManualZone()
+if(!zone){
+alert("لا يوجد حي مرسوم.")
+return
+}
+const center=getPolygonCenterFromPath(zone.polygon.getPath())
+zone.label.setPosition(center)
+}
+
+document.getElementById("deleteLastBtn").onclick=function(){
+const zone=getLastManualZone()
+if(!zone){
+alert("لا يوجد حي مرسوم.")
+return
+}
+zone.polygon.setMap(null)
+zone.label.setMap(null)
+manualZones.pop()
+renumberManualZones()
+}
+}
+
+function updateDrawButtonUI(){
+const btn=document.getElementById("drawToggleBtn")
+if(isDrawingMode){
+btn.classList.add("stop")
+btn.textContent="⛔ إيقاف الرسم"
+}else{
+btn.classList.remove("stop")
+btn.textContent="✏️ رسم حي"
+}
+}
+
+function getLastManualZone(){
+if(!manualZones.length) return null
+return manualZones[manualZones.length-1]
+}
+
+function renumberManualZones(){
+manualZones.forEach((zone,i)=>{
+zone.label.countText=String(i+1)
+zone.label.refresh()
+})
+}
+
+function getPolygonCenterFromPath(path){
+const bounds=new google.maps.LatLngBounds()
+for(let i=0;i<path.getLength();i++){
+bounds.extend(path.getAt(i))
+}
+return bounds.getCenter()
+}
+
+function attachPolygonSync(zone){
+
+const syncCenter=()=>{
+const center=getPolygonCenterFromPath(zone.polygon.getPath())
+if(!zone.label.wasMovedManually){
+zone.label.setPosition(center)
+}
+}
+
+google.maps.event.addListener(zone.polygon.getPath(),"set_at",syncCenter)
+google.maps.event.addListener(zone.polygon.getPath(),"insert_at",syncCenter)
+google.maps.event.addListener(zone.polygon.getPath(),"remove_at",syncCenter)
+
+google.maps.event.addListener(zone.polygon,"dragend",()=>{
+const center=getPolygonCenterFromPath(zone.polygon.getPath())
+if(!zone.label.wasMovedManually){
+zone.label.setPosition(center)
+}
+})
+}
+
+function createManualZone(polygon,position,nameText,countText){
+const label=new ManualLabelOverlay(position,nameText,countText)
+label.setMap(map)
+
+return {
+polygon:polygon,
+label:label
+}
+}
+
+class ManualLabelOverlay extends google.maps.OverlayView{
+constructor(position,nameText,countText){
+super()
+this.position=position
+this.nameText=nameText || "حي جديد"
+this.countText=countText || "1"
+this.wasMovedManually=false
+this.div=null
+this.isDragging=false
+this.pointerId=null
+this.pointerOffsetX=0
+this.pointerOffsetY=0
+}
+
+onAdd(){
+
+this.div=document.createElement("div")
+this.div.className="manualLabel"
+
+this.countEl=document.createElement("div")
+this.countEl.className="manualCount"
+this.countEl.textContent=this.countText
+
+this.nameEl=document.createElement("div")
+this.nameEl.className="manualName"
+this.nameEl.textContent=this.nameText
+
+this.div.appendChild(this.countEl)
+this.div.appendChild(this.nameEl)
+
+this.div.addEventListener("dblclick",(e)=>{
+e.stopPropagation()
+})
+
+this.nameEl.addEventListener("dblclick",(e)=>{
+e.stopPropagation()
+const v=prompt("اسم الحي:",this.nameText)
+if(v!==null && v.trim()!==""){
+this.nameText=v.trim()
+this.refresh()
+}
+})
+
+this.countEl.addEventListener("dblclick",(e)=>{
+e.stopPropagation()
+const v=prompt("الرقم:",this.countText)
+if(v!==null && v.trim()!==""){
+this.countText=v.trim()
+this.refresh()
+}
+})
+
+this.div.addEventListener("pointerdown",(e)=>{
+e.preventDefault()
+e.stopPropagation()
+this.isDragging=true
+this.pointerId=e.pointerId
+this.div.setPointerCapture(e.pointerId)
+this.div.classList.add("dragging")
+const rect=this.div.getBoundingClientRect()
+this.pointerOffsetX=e.clientX-rect.left
+this.pointerOffsetY=e.clientY-rect.top
+})
+
+this.div.addEventListener("pointermove",(e)=>{
+if(!this.isDragging) return
+e.preventDefault()
+e.stopPropagation()
+
+const mapRect=document.getElementById("map").getBoundingClientRect()
+const x=e.clientX-mapRect.left-this.pointerOffsetX+(this.div.offsetWidth/2)
+const y=e.clientY-mapRect.top-this.pointerOffsetY+(this.div.offsetHeight/2)
+
+const projection=this.getProjection()
+if(!projection) return
+
+const latLng=projection.fromDivPixelToLatLng(new google.maps.Point(x,y))
+if(!latLng) return
+
+this.position=latLng
+this.wasMovedManually=true
+this.draw()
+})
+
+const stopDrag=(e)=>{
+if(!this.isDragging) return
+e.preventDefault()
+e.stopPropagation()
+this.isDragging=false
+this.div.classList.remove("dragging")
+try{
+this.div.releasePointerCapture(this.pointerId)
+}catch(err){}
+}
+
+this.div.addEventListener("pointerup",stopDrag)
+this.div.addEventListener("pointercancel",stopDrag)
+
+this.getPanes().overlayMouseTarget.appendChild(this.div)
+this.refresh()
+}
+
+refresh(){
+if(this.countEl) this.countEl.textContent=this.countText
+if(this.nameEl) this.nameEl.textContent=this.nameText
+}
+
+setPosition(pos){
+this.position=pos
+this.draw()
+}
+
+draw(){
+if(!this.div) return
+const projection=this.getProjection()
+if(!projection) return
+const point=projection.fromLatLngToDivPixel(this.position)
+if(!point) return
+this.div.style.left=point.x+"px"
+this.div.style.top=point.y+"px"
+}
+
+onRemove(){
+if(this.div && this.div.parentNode){
+this.div.parentNode.removeChild(this.div)
+}
+this.div=null
+}
 }
 
 function normalizeHeader(v){
