@@ -713,6 +713,7 @@ infoWindows=[]
 
 }
 
+/* ===== Convex Hull ===== */
 function convexHull(points){
 
 points=points.slice()
@@ -871,6 +872,120 @@ return win
 
 }
 
+/* ===== تنعيم المضلع ===== */
+function densifyClosedPath(points,segmentsPerEdge=6){
+if(!points || points.length<3) return points || []
+
+let dense=[]
+
+for(let i=0;i<points.length;i++){
+let p0=points[i]
+let p1=points[(i+1)%points.length]
+
+dense.push({lat:p0.lat,lng:p0.lng})
+
+for(let s=1;s<segmentsPerEdge;s++){
+let t=s/segmentsPerEdge
+dense.push({
+lat:p0.lat+(p1.lat-p0.lat)*t,
+lng:p0.lng+(p1.lng-p0.lng)*t
+})
+}
+}
+
+return dense
+}
+
+function chaikinSmoothClosed(points,iterations=3){
+if(!points || points.length<3) return points || []
+
+let result=points.slice()
+
+for(let iter=0;iter<iterations;iter++){
+let newPoints=[]
+
+for(let i=0;i<result.length;i++){
+let p0=result[i]
+let p1=result[(i+1)%result.length]
+
+let q={
+lat:0.75*p0.lat+0.25*p1.lat,
+lng:0.75*p0.lng+0.25*p1.lng
+}
+
+let r={
+lat:0.25*p0.lat+0.75*p1.lat,
+lng:0.25*p0.lng+0.75*p1.lng
+}
+
+newPoints.push(q,r)
+}
+
+result=newPoints
+}
+
+return result
+}
+
+function expandClosedPath(points,factor=1.12){
+if(!points || points.length<3) return points || []
+
+const center=getDistrictCenter(points)
+
+return points.map(p=>{
+return {
+lat:center.lat+(p.lat-center.lat)*factor,
+lng:center.lng+(p.lng-center.lng)*factor
+}
+})
+}
+
+function createSmoothBoundary(points){
+
+if(!points || points.length===0) return []
+
+if(points.length===1){
+let p=points[0]
+let off=0.0015
+return [
+{lat:p.lat-off,lng:p.lng-off},
+{lat:p.lat-off,lng:p.lng+off},
+{lat:p.lat+off,lng:p.lng+off},
+{lat:p.lat+off,lng:p.lng-off}
+]
+}
+
+if(points.length===2){
+const p1=points[0]
+const p2=points[1]
+const dx=p2.lng-p1.lng
+const dy=p2.lat-p1.lat
+const len=Math.sqrt(dx*dx+dy*dy) || 0.0001
+const nx=-dy/len
+const ny=dx/len
+const off=0.0025
+
+return [
+{lat:p1.lat+ny*off,lng:p1.lng+nx*off},
+{lat:p2.lat+ny*off,lng:p2.lng+nx*off},
+{lat:p2.lat-ny*off,lng:p2.lng-nx*off},
+{lat:p1.lat-ny*off,lng:p1.lng-nx*off}
+]
+}
+
+let hull=convexHull(points)
+
+if(!hull || hull.length<3){
+return points
+}
+
+let dense=densifyClosedPath(hull,6)
+let expanded=expandClosedPath(dense,1.12)
+let smooth=chaikinSmoothClosed(expanded,3)
+
+return smooth
+}
+
 function createElegantOverlay(position,count,districtKey,color,infoWindow){
 
 class ElegantOverlay extends google.maps.OverlayView{
@@ -1003,14 +1118,14 @@ let polygonStrokeWeight=isSelected ? 5 : 3
 let pointColor=isSelected ? "#00e5ff" : baseColor
 let pointStrong=isSelected || isFilteredView
 
-if(data.points.length>=3){
+if(data.points.length>=1){
 
-let hull=convexHull(data.points)
+let smoothBoundary=createSmoothBoundary(data.points)
 
-if(hull && hull.length>=3){
+if(smoothBoundary && smoothBoundary.length>=3){
 
 let polygon=new google.maps.Polygon({
-paths:hull,
+paths:smoothBoundary,
 strokeColor:baseColor,
 strokeOpacity:1,
 strokeWeight:polygonStrokeWeight,
@@ -1035,38 +1150,12 @@ infoWindow.open({map:map})
 updatePanelDistrict(districtKey,data)
 })
 
-hull.forEach(p=>{
+smoothBoundary.forEach(p=>{
 visibleBounds.extend({lat:p.lat,lng:p.lng})
 hasVisible=true
 })
 
 }
-
-}else{
-
-let center1=getDistrictCenter(data.points)
-
-let marker=new google.maps.Marker({
-position:center1,
-map:map,
-zIndex:110,
-icon:{
-path:google.maps.SymbolPath.CIRCLE,
-scale:7,
-fillColor:baseColor,
-fillOpacity:1,
-strokeColor:"#fff",
-strokeWeight:2
-}
-})
-
-marker.addListener("click",()=>{
-updatePanelDistrict(districtKey,data)
-})
-
-markers.push(marker)
-visibleBounds.extend(center1)
-hasVisible=true
 
 }
 
