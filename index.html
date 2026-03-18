@@ -246,7 +246,8 @@ background:#111
 /* ===== الطباعة ===== */
 @media print {
 
-body{
+html,body{
+height:auto !important;
 overflow:visible !important;
 background:#fff !important
 }
@@ -257,7 +258,7 @@ display:none !important
 
 @page{
 size:A4 landscape;
-margin:8mm;
+margin:5mm;
 }
 
 .mainLayout{
@@ -268,28 +269,40 @@ min-height:0 !important
 }
 
 .sidePanel{
-width:30% !important;
-min-width:30% !important;
-max-width:30% !important;
+width:28% !important;
+min-width:28% !important;
+max-width:28% !important;
 height:auto !important;
 box-shadow:none !important;
 border:none !important;
 overflow:visible !important
 }
 
+.sideBody{
+overflow:visible !important
+}
+
 .mapSection{
-width:70% !important;
+width:72% !important;
 height:auto !important;
 overflow:visible !important
 }
 
 #map{
-height:720px !important;
-width:100% !important
+width:100% !important;
+height:100% !important;
+min-height:600px !important;
+max-height:650px !important
 }
 
-html,body{
-height:auto !important
+.statValue{
+font-size:20px !important
+}
+
+.chartCard,
+.listCard,
+.statCard{
+break-inside:avoid
 }
 
 }
@@ -514,7 +527,7 @@ return (v ?? "")
 }
 
 function findColumnIndex(headers,candidates,fallbackIndex){
-for(const candidate of candidates){
+for(let candidate of candidates){
 const idx=headers.findIndex(h=>h.includes(candidate))
 if(idx!==-1) return idx
 }
@@ -597,6 +610,9 @@ if(hasValidPoint){
 map.fitBounds(bounds)
 }
 
+selectedDistrict=""
+selectedMunicipality=""
+
 fillMunicipalityList()
 fillDistrictList()
 drawDistricts()
@@ -649,6 +665,7 @@ function setMunicipalityFilter(name){
 
 selectedMunicipality=name || ""
 selectedDistrict=""
+
 document.getElementById("districtList").value=""
 
 fillDistrictList()
@@ -1246,7 +1263,7 @@ map.setCenter(center)
 map.setZoom(zoom)
 },500)
 
-},400)
+},500)
 
 }
 
