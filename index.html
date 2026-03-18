@@ -492,7 +492,15 @@ zoom:12,
 mapTypeId:"hybrid",
 gestureHandling:"greedy"
 })
+const drawingManager = new google.maps.drawing.DrawingManager({
+drawingControl: true,
+drawingControlOptions: {
+position: google.maps.ControlPosition.TOP_CENTER,
+drawingModes: ['polygon']
+}
+})
 
+drawingManager.setMap(map)
 const input=document.getElementById("searchBox")
 
 const autocomplete=new google.maps.places.Autocomplete(
