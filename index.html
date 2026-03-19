@@ -2088,11 +2088,52 @@ XLSX.utils.book_append_sheet(wb, ws, "التقرير")
 XLSX.writeFile(wb, "تقرير_البلاغات.xlsx")
 
 }
+function printOneDistrict(key){
 
+let data = districts[key]
+if(!data){
+alert("الحي غير موجود")
+return
+}
+
+let allDistricts = districts
+
+// عرض حي واحد فقط
+districts = {}
+districts[key] = data
+
+clearMap()
+drawDistricts()
+
+updatePanelDistrict(key,data)
+
+google.maps.event.trigger(map,"resize")
+
+setTimeout(()=>{
+
+let bounds = new google.maps.LatLngBounds()
+data.points.forEach(p=>bounds.extend(p))
+map.fitBounds(bounds)
+
+setTimeout(()=>{
+
+window.print()
+
+// رجوع الوضع الطبيعي
+districts = allDistricts
+clearMap()
+drawDistricts()
+
+},800)
+
+},800)
+
+}
 </script>
 
 <script async defer
 src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing&callback=initMap">
+  
 </script>
 
 </body>
