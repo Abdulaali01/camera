@@ -2070,6 +2070,18 @@ XLSX.writeFile(wb, "تقرير_البلاغات.xlsx")
 <script async defer
 src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing&callback=initMap">
 </script>
+<script>
+function initMap(){
 
+map = new google.maps.Map(document.getElementById("map"), {
+center: { lat: 21.3891, lng: 39.8579 }, // جدة (تقدر تغيرها)
+zoom: 10,
+mapTypeId: "roadmap"
+})
+
+}
+</script>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&callback=initMap" async defer></script>
 </body>
 </html>
