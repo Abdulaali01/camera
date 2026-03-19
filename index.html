@@ -327,7 +327,10 @@ white-space:nowrap
 
 /* ===== الطباعة ===== */
 @media print {
-
+.pageBreak{
+page-break-after:always !important;
+break-after:always !important;
+}
 html,body{
 height:100% !important;
 overflow:visible !important;
@@ -1997,7 +2000,19 @@ adjustOverlays()
 
 setTimeout(()=>{
 
+setTimeout(()=>{
+
+let br = document.createElement("div")
+br.className = "pageBreak"
+document.body.appendChild(br)
+
 window.print()
+
+setTimeout(()=>{
+br.remove()
+},500)
+
+},300)
 
 isPrintMode = false
 clearPrintLayout()
