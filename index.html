@@ -2420,21 +2420,77 @@ return true
 /* ===== الطباعة ===== */
 function printPage(){
 
+async function printPage(){
+
 if(!Object.keys(districts).length){
-alert("استورد ملف Excel أولاً")
+alert("أولاً استورد ملف Excel")
 return
 }
 
-const ok=buildAllPrintPages()
+const topPanel = document.querySelector(".topPanel")
 
-if(!ok){
+topPanel.style.display="none"
+
+// 🔹 الأحياء حسب الفلتر
+let visibleKeys = Object.keys(districts).filter(key=>{
+let d = districts[key]
+return passesFilter(key, d.points.length)
+})
+
+if(!visibleKeys.length){
 alert("لا توجد أحياء مطابقة للفلترة الحالية")
+topPanel.style.display="flex"
 return
 }
 
-setTimeout(()=>{
+// ⏱️ انتظار
+function wait(ms){
+return new Promise(res=>setTimeout(res,ms))
+}
+
+// 🔥 طباعة حي حي
+for(let i=0;i<visibleKeys.length;i++){
+
+let key = visibleKeys[i]
+
+selectedDistrict = key
+
+clearMap()
+drawDistricts()
+updatePanelDistrict(key, districts[key])
+
+google.maps.event.trigger(map,"resize")
+
+let data = districts[key]
+
+let bounds = new google.maps.LatLngBounds()
+data.points.forEach(p=>{
+bounds.extend(p)
+})
+
+map.fitBounds(bounds)
+
+await wait(900)
+
+adjustOverlays()
+
+await wait(600)
+
 window.print()
-},250)
+
+await wait(1200)
+
+}
+
+// رجوع للوضع الطبيعي
+selectedDistrict = ""
+clearMap()
+drawDistricts()
+updatePanelForCurrentView()
+
+topPanel.style.display="flex"
+
+google.maps.event.trigger(map,"resize")
 
 }
 
