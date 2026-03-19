@@ -325,20 +325,249 @@ box-shadow:0 4px 12px rgba(0,0,0,.18);
 white-space:nowrap
 }
 
+/* ===== منطقة صفحات الطباعة ===== */
+#printPages{
+display:none
+}
+
+.printDoc{
+display:flex;
+flex-direction:column;
+gap:0
+}
+
+.printSheet{
+width:100%;
+min-height:100vh;
+box-sizing:border-box;
+padding:0;
+background:#fff;
+page-break-after:always;
+break-after:page
+}
+
+.printSheet:last-child{
+page-break-after:auto;
+break-after:auto
+}
+
+.printSheetInner{
+display:flex;
+flex-direction:row;
+width:100%;
+min-height:100vh;
+box-sizing:border-box
+}
+
+.printMapWrap{
+width:70%;
+min-width:70%;
+max-width:70%;
+padding:8mm;
+box-sizing:border-box;
+display:flex;
+flex-direction:column;
+gap:8px;
+border-left:1px solid #dde5f0
+}
+
+.printSideWrap{
+width:30%;
+min-width:30%;
+max-width:30%;
+padding:8mm;
+box-sizing:border-box;
+display:flex;
+flex-direction:column;
+gap:10px;
+background:#fff
+}
+
+.printMapCard{
+flex:1;
+border:1px solid #dbe5f2;
+border-radius:16px;
+overflow:hidden;
+background:#fff;
+display:flex;
+align-items:center;
+justify-content:center;
+min-height:0
+}
+
+.printMapSvg{
+width:100%;
+height:100%;
+display:block;
+background:
+linear-gradient(180deg,#eef5ff,#ffffff);
+}
+
+.printTopInfo{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:10px;
+padding:10px 12px;
+background:#f7fbff;
+border:1px solid #dfe8f5;
+border-radius:14px;
+font-size:13px;
+font-weight:bold;
+color:#1f2937
+}
+
+.printStatGrid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px
+}
+
+.printStatCard{
+background:#f8fbff;
+border:1px solid #e6eef9;
+border-radius:14px;
+padding:12px
+}
+
+.printStatLabel{
+font-size:12px;
+color:#6b7280;
+margin-bottom:5px
+}
+
+.printStatValue{
+font-size:22px;
+font-weight:bold;
+color:#111827
+}
+
+.printBox{
+background:#ffffff;
+border:1px solid #e8edf5;
+border-radius:14px;
+padding:12px
+}
+
+.printBoxTitle{
+font-size:13px;
+font-weight:bold;
+color:#374151;
+margin-bottom:10px
+}
+
+.printSummaryList{
+display:flex;
+flex-direction:column;
+gap:7px
+}
+
+.printSummaryRow{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:10px;
+padding:8px 10px;
+background:#f9fbff;
+border:1px dashed #dbe4f1;
+border-radius:10px
+}
+
+.printSummaryName{
+font-size:12px;
+color:#1f2937;
+word-break:break-word
+}
+
+.printSummaryVal{
+font-size:13px;
+font-weight:bold;
+color:#0f172a;
+min-width:32px;
+text-align:left
+}
+
+.printBarWrap{
+display:flex;
+align-items:flex-end;
+gap:8px;
+height:220px;
+padding:10px 6px 2px;
+border-radius:12px;
+background:linear-gradient(180deg,#fafcff,#f5f9ff);
+border:1px solid #e7eef8
+}
+
+.printBarItem{
+flex:1;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:flex-end;
+gap:6px;
+min-width:0
+}
+
+.printBar{
+width:100%;
+max-width:34px;
+border-radius:8px 8px 0 0;
+background:#2d6cff;
+min-height:8px
+}
+
+.printBarVal{
+font-size:11px;
+font-weight:bold;
+color:#111827
+}
+
+.printBarLabel{
+font-size:10px;
+color:#475569;
+text-align:center;
+line-height:1.3;
+word-break:break-word
+}
+
+.printLegend{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+font-size:11px;
+color:#475569
+}
+
+.printLegendItem{
+display:flex;
+align-items:center;
+gap:6px
+}
+
+.printLegendDot{
+width:12px;
+height:12px;
+border-radius:50%
+}
+
 /* ===== الطباعة ===== */
 @media print {
 
 html,body{
-height:100% !important;
+height:auto !important;
 overflow:visible !important;
 background:#fff !important;
 margin:0 !important;
 padding:0 !important
 }
 
-.topPanel,
+.mainLayout,
 .fabWrap{
 display:none !important
+}
+
+#printPages{
+display:block !important
 }
 
 @page{
@@ -346,47 +575,12 @@ size:A4 landscape;
 margin:6mm
 }
 
-.mainLayout{
-display:flex !important;
-flex-direction:row !important;
-width:100% !important;
-height:100vh !important;
-min-height:100vh !important;
-align-items:stretch !important
+.printSheet{
+min-height:auto !important
 }
 
-.sidePanel{
-width:30% !important;
-min-width:30% !important;
-max-width:30% !important;
-height:100vh !important;
-overflow:visible !important;
-box-shadow:none !important;
-border:none !important
-}
-
-.sideBody{
-overflow:visible !important
-}
-
-.mapSection{
-width:70% !important;
-height:100vh !important;
-overflow:visible !important
-}
-
-#map{
-width:100% !important;
-height:100vh !important;
-min-height:100vh !important;
-max-height:none !important
-}
-
-.chartCard,
-.listCard,
-.statCard{
-break-inside:avoid !important;
-page-break-inside:avoid !important
+.printSheetInner{
+min-height:calc(100vh - 12mm) !important
 }
 
 }
@@ -550,6 +744,9 @@ font-size:12px
   <button class="fabBtn green" id="centerLastBtn" type="button">🎯 توسيط الاسم</button>
   <button class="fabBtn stop" id="deleteLastBtn" type="button">🗑️ حذف آخر</button>
 </div>
+
+<!-- ===== صفحات الطباعة ===== -->
+<div id="printPages"></div>
 
 <script>
 
@@ -1223,7 +1420,6 @@ if(count>100) return "#ffc107"
 return "#4caf50"
 }
 
-/* ===== بيانات العرض الحالية ===== */
 function getRenderableDistrictData(districtKey){
 if(isPrintMode && printLayoutDistricts && printLayoutDistricts[districtKey]){
 return printLayoutDistricts[districtKey]
@@ -1235,7 +1431,6 @@ function clonePoint(p){
 return {lat:p.lat,lng:p.lng}
 }
 
-/* ===== توزيع طباعة ذكي ===== */
 function preparePrintLayout(){
 
 printLayoutDistricts=null
@@ -1269,7 +1464,6 @@ return Math.sqrt(dx*dx+dy*dy)
 })
 
 let maxR=Math.max(...distances,0)
-let minR=Math.min(...distances.filter(v=>v>0),maxR||0)
 let compressionPower=maxR>0 ? 0.68 : 1
 
 let transformedCenters=centers.map(c=>{
@@ -1283,7 +1477,6 @@ return {key:c.key,lat:c.lat,lng:c.lng}
 
 let unitX=dx/r
 let unitY=dy/r
-
 let newR=maxR*Math.pow(r/maxR,compressionPower)
 
 return {
@@ -1471,7 +1664,6 @@ return win
 
 }
 
-/* ===== تنعيم المضلع ===== */
 function densifyClosedPath(points,segmentsPerEdge=10){
 if(!points || points.length<3) return points || []
 
@@ -1827,7 +2019,7 @@ entries.forEach(([k,v],i)=>{
 total+=v
 html+=`
 <div class="summaryRow">
-  <div class="summaryName">${k}</div>
+  <div class="summaryName">${escapeHtml(k)}</div>
   <div class="summaryVal">${v}</div>
 </div>
 `
@@ -1876,7 +2068,7 @@ entries.forEach(([k,v],i)=>{
 totalTypes+=v
 html+=`
 <div class="summaryRow">
-  <div class="summaryName">${k}</div>
+  <div class="summaryName">${escapeHtml(k)}</div>
   <div class="summaryVal">${v}</div>
 </div>
 `
@@ -1949,77 +2141,301 @@ return
 updatePanelSummary()
 }
 
+/* ===== أدوات مساعدة للطباعة ===== */
+
+function escapeHtml(value){
+return String(value ?? "")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#39;")
+}
+
+function getVisibleDistrictKeysForPrint(){
+return Object.keys(districts).filter(key=>{
+let d=districts[key]
+return passesFilter(key,d.points.length)
+})
+}
+
+function getDistrictIndexColor(key,visibleKeys){
+let idx=visibleKeys.indexOf(key)
+if(idx===-1) idx=0
+return COLORS[idx % COLORS.length]
+}
+
+function projectPointsToSvg(points,width,height,padding=28){
+if(!points || !points.length){
+return {items:[],minLat:0,maxLat:1,minLng:0,maxLng:1}
+}
+
+let minLat=Math.min(...points.map(p=>p.lat))
+let maxLat=Math.max(...points.map(p=>p.lat))
+let minLng=Math.min(...points.map(p=>p.lng))
+let maxLng=Math.max(...points.map(p=>p.lng))
+
+if(minLat===maxLat){
+minLat-=0.001
+maxLat+=0.001
+}
+if(minLng===maxLng){
+minLng-=0.001
+maxLng+=0.001
+}
+
+let latRange=maxLat-minLat
+let lngRange=maxLng-minLng
+
+minLat-=latRange*0.12
+maxLat+=latRange*0.12
+minLng-=lngRange*0.12
+maxLng+=lngRange*0.12
+
+latRange=maxLat-minLat
+lngRange=maxLng-minLng
+
+let usableW=width-padding*2
+let usableH=height-padding*2
+
+const items=points.map(p=>{
+let x=padding + ((p.lng-minLng)/lngRange)*usableW
+let y=height-padding - ((p.lat-minLat)/latRange)*usableH
+return {x,y,lat:p.lat,lng:p.lng}
+})
+
+return {items,minLat,maxLat,minLng,maxLng}
+}
+
+function buildSvgPolygonPath(projected){
+if(!projected || !projected.length) return ""
+return projected.map((p,i)=>`${i===0?"M":"L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") + " Z"
+}
+
+function buildSvgDistrictMap(data,color,count){
+const width=980
+const height=640
+const boundary=createSmoothBoundary(data.points)
+const projectedBoundary=projectPointsToSvg(boundary,width,height,36).items
+const projectedPoints=projectPointsToSvg(data.points,width,height,36).items
+
+let centerX=width/2
+let centerY=height/2
+
+if(projectedPoints.length){
+centerX=projectedPoints.reduce((s,p)=>s+p.x,0)/projectedPoints.length
+centerY=projectedPoints.reduce((s,p)=>s+p.y,0)/projectedPoints.length
+}
+
+const polygonPath=buildSvgPolygonPath(projectedBoundary)
+
+let pointDots=projectedPoints.map((p,i)=>{
+return `
+<g>
+  <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="6.4" fill="${color}" stroke="#ffffff" stroke-width="2.2"></circle>
+  <text x="${p.x.toFixed(1)}" y="${(p.y+18).toFixed(1)}" text-anchor="middle" font-size="11" font-family="Tahoma" fill="#111827">${i+1}</text>
+</g>`
+}).join("")
+
+let badgeW=60
+let badgeH=34
+let badgeX=centerX-(badgeW/2)
+let badgeY=centerY-76
+
+let nameW=Math.max(100, Math.min(230, data.name.length*9+28))
+let nameH=30
+let nameX=centerX-(nameW/2)
+let nameY=centerY-36
+
+return `
+<svg class="printMapSvg" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="shadow1" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="rgba(0,0,0,.22)"/>
+    </filter>
+    <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#dfe7f3" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect x="0" y="0" width="${width}" height="${height}" fill="url(#gridPattern)"></rect>
+
+  ${polygonPath ? `<path d="${polygonPath}" fill="${hexToRgba(color,0.18)}" stroke="${color}" stroke-width="4" filter="url(#shadow1)"></path>` : ""}
+
+  ${pointDots}
+
+  <line x1="${centerX.toFixed(1)}" y1="${(centerY-6).toFixed(1)}" x2="${centerX.toFixed(1)}" y2="${(centerY-28).toFixed(1)}" stroke="${color}" stroke-width="3"></line>
+  <circle cx="${centerX.toFixed(1)}" cy="${centerY.toFixed(1)}" r="8" fill="${color}" stroke="#fff" stroke-width="2"></circle>
+
+  <rect x="${badgeX.toFixed(1)}" y="${badgeY.toFixed(1)}" rx="17" ry="17" width="${badgeW}" height="${badgeH}" fill="#111827"></rect>
+  <text x="${centerX.toFixed(1)}" y="${(badgeY+22).toFixed(1)}" text-anchor="middle" font-size="16" font-family="Tahoma" font-weight="bold" fill="#ffffff">${count}</text>
+
+  <rect x="${nameX.toFixed(1)}" y="${nameY.toFixed(1)}" rx="15" ry="15" width="${nameW}" height="${nameH}" fill="#ffffff" stroke="${color}" stroke-width="3"></rect>
+  <text x="${centerX.toFixed(1)}" y="${(nameY+20).toFixed(1)}" text-anchor="middle" font-size="14" font-family="Tahoma" font-weight="bold" fill="#111827">${escapeXml(data.name)}</text>
+</svg>
+`
+}
+
+function hexToRgba(hex,alpha){
+let c=hex.replace("#","")
+if(c.length===3){
+c=c.split("").map(x=>x+x).join("")
+}
+let num=parseInt(c,16)
+let r=(num>>16)&255
+let g=(num>>8)&255
+let b=num&255
+return `rgba(${r},${g},${b},${alpha})`
+}
+
+function escapeXml(value){
+return String(value ?? "")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&apos;")
+}
+
+function buildPrintChart(entries){
+if(!entries.length){
+return `<div class="emptyBox">لا توجد بيانات.</div>`
+}
+
+let top=entries.slice(0,10)
+let maxVal=Math.max(...top.map(x=>x[1]),1)
+
+let bars=top.map(([label,val])=>{
+let h=Math.max(8,(val/maxVal)*150)
+return `
+<div class="printBarItem">
+  <div class="printBarVal">${val}</div>
+  <div class="printBar" style="height:${h}px"></div>
+  <div class="printBarLabel">${escapeHtml(label)}</div>
+</div>
+`
+}).join("")
+
+return `<div class="printBarWrap">${bars}</div>`
+}
+
+function buildPrintSummaryList(entries){
+if(!entries.length){
+return `<div class="emptyBox">لا توجد بيانات.</div>`
+}
+
+return `
+<div class="printSummaryList">
+${entries.map(([name,val])=>`
+<div class="printSummaryRow">
+  <div class="printSummaryName">${escapeHtml(name)}</div>
+  <div class="printSummaryVal">${val}</div>
+</div>
+`).join("")}
+</div>
+`
+}
+
+function buildPrintPageHtml(key,data,pageNo,totalPages,visibleKeys){
+
+let count=data.points.length
+let entries=Object.entries(data.third).sort((a,b)=>b[1]-a[1])
+let totalTypes=entries.reduce((s,x)=>s+x[1],0)
+let color=getDistrictIndexColor(key,visibleKeys)
+let chartHtml=buildPrintChart(entries)
+let summaryHtml=buildPrintSummaryList(entries)
+let svgMap=buildSvgDistrictMap(data,color,count)
+
+return `
+<section class="printSheet">
+  <div class="printSheetInner">
+
+    <div class="printMapWrap">
+      <div class="printTopInfo">
+        <div>الحي: ${escapeHtml(data.name)}</div>
+        <div>البلدية: ${escapeHtml(data.municipality)}</div>
+        <div>الصفحة: ${pageNo} / ${totalPages}</div>
+      </div>
+
+      <div class="printMapCard">
+        ${svgMap}
+      </div>
+
+      <div class="printLegend">
+        <div class="printLegendItem"><span class="printLegendDot" style="background:${color}"></span><span>نقاط البلاغات</span></div>
+        <div class="printLegendItem"><span class="printLegendDot" style="background:#111827"></span><span>عدد البلاغات داخل الحي</span></div>
+      </div>
+    </div>
+
+    <div class="printSideWrap">
+      <div class="printStatGrid">
+        <div class="printStatCard">
+          <div class="printStatLabel">عدد البلاغات</div>
+          <div class="printStatValue">${count}</div>
+        </div>
+
+        <div class="printStatCard">
+          <div class="printStatLabel">إجمالي العمود الرابع</div>
+          <div class="printStatValue">${totalTypes}</div>
+        </div>
+      </div>
+
+      <div class="printBox">
+        <div class="printBoxTitle">الرسم البياني</div>
+        ${chartHtml}
+      </div>
+
+      <div class="printBox">
+        <div class="printBoxTitle">ملخص العمود الرابع</div>
+        ${summaryHtml}
+      </div>
+    </div>
+
+  </div>
+</section>
+`
+}
+
+function buildAllPrintPages(){
+const printPages=document.getElementById("printPages")
+const visibleKeys=getVisibleDistrictKeysForPrint()
+
+if(!visibleKeys.length){
+printPages.innerHTML=""
+return false
+}
+
+let html=`<div class="printDoc">`
+
+visibleKeys.forEach((key,idx)=>{
+let data=districts[key]
+html+=buildPrintPageHtml(key,data,idx+1,visibleKeys.length,visibleKeys)
+})
+
+html+=`</div>`
+printPages.innerHTML=html
+return true
+}
+
 /* ===== الطباعة ===== */
 function printPage(){
 
-const originalCenter = map.getCenter()
-const originalZoom = map.getZoom()
-const topPanel = document.querySelector(".topPanel")
-const mapDiv = document.getElementById("map")
-const mainLayout = document.querySelector(".mainLayout")
-
-topPanel.style.display="none"
-mainLayout.style.height="100vh"
-mapDiv.style.height="100vh"
-
-originalMapTypeId = map.getMapTypeId()
-
-isPrintMode = true
-map.setMapTypeId("roadmap")
-
-preparePrintLayout()
-
-clearMap()
-drawDistricts()
-
-google.maps.event.trigger(map,"resize")
-
-const printInfo=getPrintBounds()
-
-if(printInfo.hasAny){
-map.fitBounds(printInfo.bounds)
+if(!Object.keys(districts).length){
+alert("استورد ملف Excel أولاً")
+return
 }
 
-google.maps.event.addListenerOnce(map,"idle",function(){
+const ok=buildAllPrintPages()
 
-setTimeout(()=>{
-
-google.maps.event.trigger(map,"resize")
-
-if(printInfo.hasAny){
-map.fitBounds(printInfo.bounds)
+if(!ok){
+alert("لا توجد أحياء مطابقة للفلترة الحالية")
+return
 }
 
 setTimeout(()=>{
-
-adjustOverlays()
-
-setTimeout(()=>{
-
 window.print()
+},250)
 
-isPrintMode = false
-clearPrintLayout()
-map.setMapTypeId(originalMapTypeId || "hybrid")
-
-topPanel.style.display="flex"
-mainLayout.style.height="100vh"
-mapDiv.style.height="100%"
-
-clearMap()
-drawDistricts()
-
-google.maps.event.trigger(map,"resize")
-map.setCenter(originalCenter)
-map.setZoom(originalZoom)
-
-},500)
-
-},500)
-
-},700)
-
-})
 }
 
 /* ===== تصدير Excel ===== */
