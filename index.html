@@ -10,11 +10,12 @@
 
 <style>
 
-body{
+html,body{
+height:100%;
 margin:0;
+padding:0;
 font-family:tahoma;
 background:#f5f7fb;
-overflow:hidden
 }
 
 /* ===== تقسيم الصفحة ===== */
@@ -157,7 +158,8 @@ overflow:hidden
 
 #map{
 height:100%;
-width:100%
+width:100%;
+min-height:100%;
 }
 
 /* ===== الشريط العلوي ===== */
@@ -600,6 +602,10 @@ zoom:12,
 mapTypeId:"hybrid",
 gestureHandling:"greedy"
 })
+
+setTimeout(()=>{
+google.maps.event.trigger(map,"resize")
+},500)
 
 initDrawingTools()
 
