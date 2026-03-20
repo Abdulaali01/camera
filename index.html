@@ -9,7 +9,6 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
 <style>
-
 body{
 margin:0;
 font-family:tahoma;
@@ -91,7 +90,8 @@ color:#111827
 }
 
 .chartCard,
-.listCard{
+.listCard,
+.tableCard{
 background:#ffffff;
 border:1px solid #e8edf5;
 border-radius:14px;
@@ -145,6 +145,40 @@ text-align:left
 font-size:13px;
 color:#6b7280;
 line-height:1.8
+}
+
+.dataTableWrap{
+max-height:270px;
+overflow:auto;
+border:1px solid #edf2f7;
+border-radius:12px
+}
+
+.dataTable{
+width:100%;
+border-collapse:collapse;
+font-size:12px
+}
+
+.dataTable th,
+.dataTable td{
+border-bottom:1px solid #eef2f7;
+padding:8px 10px;
+text-align:center;
+vertical-align:middle
+}
+
+.dataTable th{
+position:sticky;
+top:0;
+background:#f8fbff;
+z-index:2;
+font-weight:bold;
+color:#374151
+}
+
+.dataTable tbody tr:nth-child(even){
+background:#fcfdff
 }
 
 /* ===== جهة الخريطة ===== */
@@ -325,15 +359,153 @@ box-shadow:0 4px 12px rgba(0,0,0,.18);
 white-space:nowrap
 }
 
+/* ===== صفحة التفاصيل الخاصة بالطباعة ===== */
+.printDetailsPage{
+display:none;
+background:#fff;
+padding:16mm 12mm;
+box-sizing:border-box;
+min-height:100vh
+}
+
+.printHead{
+margin-bottom:12px
+}
+
+.printHeadTitle{
+font-size:22px;
+font-weight:bold;
+color:#111827;
+margin-bottom:6px
+}
+
+.printHeadSub{
+font-size:13px;
+color:#6b7280;
+line-height:1.8
+}
+
+.printGrid{
+display:grid;
+grid-template-columns:280px 1fr;
+gap:14px;
+align-items:start
+}
+
+.printLeft{
+display:flex;
+flex-direction:column;
+gap:12px
+}
+
+.printStats{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px
+}
+
+.printStat{
+border:1px solid #dfe8f5;
+background:#f8fbff;
+border-radius:14px;
+padding:12px
+}
+
+.printStatLabel{
+font-size:12px;
+color:#6b7280;
+margin-bottom:6px
+}
+
+.printStatValue{
+font-size:26px;
+font-weight:bold;
+color:#0f172a
+}
+
+.printChartCard,
+.printListCard,
+.printTableCard{
+border:1px solid #e7edf7;
+border-radius:14px;
+padding:12px;
+background:#fff
+}
+
+.printCardTitle{
+font-size:14px;
+font-weight:bold;
+color:#374151;
+margin-bottom:8px
+}
+
+#printChartImg{
+width:100%;
+height:220px;
+object-fit:contain;
+display:block
+}
+
+.printSummaryList{
+display:flex;
+flex-direction:column;
+gap:7px
+}
+
+.printSummaryRow{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:8px;
+padding:8px 10px;
+background:#f9fbff;
+border:1px dashed #dbe4f1;
+border-radius:10px;
+font-size:12px
+}
+
+.printTableWrap{
+overflow:visible
+}
+
+.printTable{
+width:100%;
+border-collapse:collapse;
+font-size:12px
+}
+
+.printTable th,
+.printTable td{
+border:1px solid #dfe5ef;
+padding:8px 9px;
+text-align:center;
+vertical-align:middle
+}
+
+.printTable th{
+background:#f2f6fc;
+font-weight:bold;
+color:#374151
+}
+
+.printTable tbody tr:nth-child(even){
+background:#fafcff
+}
+
 /* ===== الطباعة ===== */
 @media print {
 
 html,body{
-height:100% !important;
+height:auto !important;
 overflow:visible !important;
 background:#fff !important;
 margin:0 !important;
 padding:0 !important
+}
+
+@page{
+size:A4 landscape;
+margin:0
 }
 
 .topPanel,
@@ -341,54 +513,48 @@ padding:0 !important
 display:none !important
 }
 
-@page{
-size:A4 landscape;
-margin:6mm
-}
-
+/* الصفحة الأولى: الخريطة فقط */
 .mainLayout{
-display:flex !important;
-flex-direction:row !important;
+display:block !important;
 width:100% !important;
-height:100vh !important;
-min-height:100vh !important;
-align-items:stretch !important
+height:auto !important
 }
 
 .sidePanel{
-width:30% !important;
-min-width:30% !important;
-max-width:30% !important;
-height:100vh !important;
-overflow:visible !important;
-box-shadow:none !important;
-border:none !important
-}
-
-.sideBody{
-overflow:visible !important
+display:none !important
 }
 
 .mapSection{
-width:70% !important;
+display:block !important;
+position:relative !important;
+width:100vw !important;
 height:100vh !important;
-overflow:visible !important
+overflow:hidden !important;
+page-break-after:always !important;
+break-after:page !important
 }
 
 #map{
-width:100% !important;
+width:100vw !important;
 height:100vh !important;
 min-height:100vh !important;
 max-height:none !important
 }
 
-.chartCard,
-.listCard,
-.statCard{
+/* الصفحة الثانية: التفاصيل فقط */
+.printDetailsPage{
+display:block !important;
+page-break-before:always !important;
+break-before:page !important
+}
+
+.printChartCard,
+.printListCard,
+.printTableCard,
+.printStat{
 break-inside:avoid !important;
 page-break-inside:avoid !important
 }
-
 }
 
 /* ===== للجوال ===== */
@@ -402,13 +568,13 @@ flex-direction:column
 width:100%;
 min-width:unset;
 max-width:none;
-height:30vh;
+height:34vh;
 border-left:none;
 border-bottom:1px solid #e3e8f0
 }
 
 .mapSection{
-height:70vh
+height:66vh
 }
 
 .topPanel{
@@ -441,8 +607,10 @@ padding:12px 14px;
 font-size:12px
 }
 
+.dataTableWrap{
+max-height:220px
 }
-
+}
 </style>
 </head>
 <body>
@@ -479,6 +647,26 @@ font-size:12px
         <div class="cardTitle">ملخص العمود الرابع</div>
         <div class="summaryList" id="detailsList">
           <div class="emptyBox">لا توجد بيانات حتى الآن.</div>
+        </div>
+      </div>
+
+      <div class="tableCard">
+        <div class="cardTitle">جدول البيانات الحالي</div>
+        <div class="dataTableWrap">
+          <table class="dataTable">
+            <thead>
+              <tr>
+                <th>البلدية</th>
+                <th>الحي</th>
+                <th>عدد البلاغات</th>
+                <th>أعلى تصنيف</th>
+                <th>عدد أعلى تصنيف</th>
+              </tr>
+            </thead>
+            <tbody id="screenTableBody">
+              <tr><td colspan="5">لا توجد بيانات.</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -551,8 +739,64 @@ font-size:12px
   <button class="fabBtn stop" id="deleteLastBtn" type="button">🗑️ حذف آخر</button>
 </div>
 
-<script>
+<!-- ===== الصفحة الثانية للطباعة ===== -->
+<div class="printDetailsPage" id="printDetailsPage">
+  <div class="printHead">
+    <div class="printHeadTitle" id="printTitle">تقرير الأحياء</div>
+    <div class="printHeadSub" id="printSubTitle">ملخص البيانات الحالية حسب الفلترة المحددة.</div>
+  </div>
 
+  <div class="printGrid">
+    <div class="printLeft">
+
+      <div class="printStats">
+        <div class="printStat">
+          <div class="printStatLabel">عدد البلاغات</div>
+          <div class="printStatValue" id="printTotalCount">0</div>
+        </div>
+        <div class="printStat">
+          <div class="printStatLabel">إجمالي العمود الرابع</div>
+          <div class="printStatValue" id="printTotalTypes">0</div>
+        </div>
+      </div>
+
+      <div class="printChartCard">
+        <div class="printCardTitle">الرسم البياني</div>
+        <img id="printChartImg" alt="">
+      </div>
+
+      <div class="printListCard">
+        <div class="printCardTitle">ملخص العمود الرابع</div>
+        <div class="printSummaryList" id="printDetailsList"></div>
+      </div>
+
+    </div>
+
+    <div class="printTableCard">
+      <div class="printCardTitle">جدول البيانات الحالي</div>
+      <div class="printTableWrap">
+        <table class="printTable">
+          <thead>
+            <tr>
+              <th>البلدية</th>
+              <th>الحي</th>
+              <th>عدد البلاغات</th>
+              <th>عدد التصنيفات</th>
+              <th>أعلى تصنيف</th>
+              <th>عدد أعلى تصنيف</th>
+            </tr>
+          </thead>
+          <tbody id="printTableBody">
+            <tr><td colspan="6">لا توجد بيانات.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
 let map
 let districts={}
 let polygons=[]
@@ -566,6 +810,7 @@ let selectedMunicipality=""
 let sideChart=null
 let isPrintMode=false
 let originalMapTypeId="hybrid"
+let printCleanupDone=false
 
 let drawingManager=null
 let isDrawingMode=false
@@ -610,9 +855,7 @@ input,
 autocomplete.bindTo("bounds",map)
 
 autocomplete.addListener("place_changed",function(){
-
 const place=autocomplete.getPlace()
-
 if(!place.geometry)return
 
 if(place.geometry.viewport){
@@ -621,7 +864,6 @@ map.fitBounds(place.geometry.viewport)
 map.setCenter(place.geometry.location)
 map.setZoom(16)
 }
-
 })
 
 map.addListener("click",()=>{
@@ -630,9 +872,9 @@ updatePanelForCurrentView()
 })
 
 bindFloatingButtons()
-
 }
 
+/* ===== الرسم اليدوي ===== */
 function initDrawingTools(){
 
 drawingManager=new google.maps.drawing.DrawingManager({
@@ -676,9 +918,7 @@ attachPolygonSync(zone)
 drawingManager.setDrawingMode(null)
 isDrawingMode=false
 updateDrawButtonUI()
-
 })
-
 }
 
 function bindFloatingButtons(){
@@ -765,7 +1005,6 @@ return bounds.getCenter()
 }
 
 function attachPolygonSync(zone){
-
 const syncCenter=()=>{
 const center=getPolygonCenterFromPath(zone.polygon.getPath())
 if(!zone.label.wasMovedManually){
@@ -788,11 +1027,7 @@ zone.label.setPosition(center)
 function createManualZone(polygon,position,nameText,countText){
 const label=new ManualLabelOverlay(position,nameText,countText)
 label.setMap(map)
-
-return {
-polygon:polygon,
-label:label
-}
+return {polygon:polygon,label:label}
 }
 
 class ManualLabelOverlay extends google.maps.OverlayView{
@@ -925,6 +1160,7 @@ this.div=null
 }
 }
 
+/* ===== أدوات البيانات ===== */
 function normalizeHeader(v){
 return (v ?? "")
 .toString()
@@ -947,6 +1183,7 @@ function makeDistrictKey(municipality,district){
 return municipality + "|||" + district
 }
 
+/* ===== استيراد Excel ===== */
 function importExcel(){
 
 let file=document.getElementById("excelFile").files[0]
@@ -1012,7 +1249,6 @@ districts[key].third[third]=0
 }
 
 districts[key].third[third]++
-
 }
 
 if(hasValidPoint){
@@ -1028,15 +1264,12 @@ fillMunicipalityList()
 fillDistrictList()
 drawDistricts()
 updatePanelForCurrentView()
-
 }
 
 reader.readAsArrayBuffer(file)
-
 }
 
 function fillMunicipalityList(){
-
 let sel=document.getElementById("municipalityList")
 sel.innerHTML='<option value="">كل البلديات</option>'
 
@@ -1054,7 +1287,6 @@ sel.value=selectedMunicipality || ""
 }
 
 function fillDistrictList(){
-
 let sel=document.getElementById("districtList")
 sel.innerHTML='<option value="">كل الأحياء</option>'
 
@@ -1073,16 +1305,13 @@ sel.value=selectedDistrict || ""
 }
 
 function setMunicipalityFilter(name){
-
 selectedMunicipality=name || ""
 selectedDistrict=""
 document.getElementById("districtList").value=""
-
 fillDistrictList()
 clearMap()
 drawDistricts()
 updatePanelForCurrentView()
-
 }
 
 function setFilter(type){
@@ -1105,7 +1334,6 @@ infoWindows.forEach(w=>w.close())
 }
 
 function clearMap(){
-
 polygons.forEach(p=>p.setMap(null))
 markers.forEach(m=>m.setMap(null))
 pointMarkers.forEach(m=>m.setMap(null))
@@ -1117,13 +1345,11 @@ markers=[]
 pointMarkers=[]
 overlays=[]
 infoWindows=[]
-
 }
 
+/* ===== هندسة الرسم ===== */
 function convexHull(points){
-
 points=points.slice()
-
 if(points.length<3)return points
 
 points.sort((a,b)=>a.lng-b.lng||a.lat-b.lat)
@@ -1134,21 +1360,17 @@ const cross=(o,a,b)=>(
 )
 
 let lower=[]
-
 for(let p of points){
-while(lower.length>=2 &&
-cross(lower[lower.length-2],lower[lower.length-1],p)<=0){
+while(lower.length>=2 && cross(lower[lower.length-2],lower[lower.length-1],p)<=0){
 lower.pop()
 }
 lower.push(p)
 }
 
 let upper=[]
-
 for(let i=points.length-1;i>=0;i--){
 let p=points[i]
-while(upper.length>=2 &&
-cross(upper[upper.length-2],upper[upper.length-1],p)<=0){
+while(upper.length>=2 && cross(upper[upper.length-2],upper[upper.length-1],p)<=0){
 upper.pop()
 }
 upper.push(p)
@@ -1156,13 +1378,10 @@ upper.push(p)
 
 upper.pop()
 lower.pop()
-
 return lower.concat(upper)
-
 }
 
 function getRankedDistrictKeysScoped(){
-
 let arr=Object.values(districts)
 .filter(d=>!selectedMunicipality || d.municipality===selectedMunicipality)
 .map(d=>({key:d.key,count:d.points.length}))
@@ -1179,7 +1398,6 @@ return ranked.slice(start,end)
 }
 
 function passesFilter(districtKey,count){
-
 let data=districts[districtKey]
 if(!data) return false
 
@@ -1197,11 +1415,9 @@ if(currentFilter=="100_200" && (count<100 || count>200)) return false
 if(currentFilter=="100" && count>=100) return false
 
 return true
-
 }
 
 function getDistrictCenter(points){
-
 let lat=0
 let lng=0
 
@@ -1214,7 +1430,6 @@ return {
 lat:lat/points.length,
 lng:lng/points.length
 }
-
 }
 
 function getColumnColor(count){
@@ -1231,13 +1446,72 @@ return printLayoutDistricts[districtKey]
 return districts[districtKey]
 }
 
+function getCurrentVisibleDistrictKeys(){
+return Object.keys(districts).filter(key=>{
+const data=districts[key]
+return passesFilter(key,data.points.length)
+})
+}
+
+function getTopCategory(thirdObj){
+let entries=Object.entries(thirdObj || {}).sort((a,b)=>b[1]-a[1])
+if(!entries.length){
+return {name:"-",count:0,total:0}
+}
+let total=entries.reduce((s,x)=>s+x[1],0)
+return {
+name:entries[0][0],
+count:entries[0][1],
+total:total
+}
+}
+
+function getCurrentReportRows(){
+let rows=[]
+
+getCurrentVisibleDistrictKeys().forEach(key=>{
+const data=districts[key]
+const top=getTopCategory(data.third)
+rows.push({
+municipality:data.municipality,
+district:data.name,
+count:data.points.length,
+topCategory:top.name,
+topCount:top.count,
+totalTypes:top.total
+})
+})
+
+rows.sort((a,b)=>b.count-a.count || a.district.localeCompare(b.district,'ar'))
+return rows
+}
+
+function renderScreenTable(){
+const body=document.getElementById("screenTableBody")
+const rows=getCurrentReportRows()
+
+if(!rows.length){
+body.innerHTML='<tr><td colspan="5">لا توجد بيانات مطابقة للفلترة الحالية.</td></tr>'
+return
+}
+
+body.innerHTML=rows.map(r=>`
+<tr>
+<td>${escapeHtml(r.municipality)}</td>
+<td>${escapeHtml(r.district)}</td>
+<td>${r.count}</td>
+<td>${escapeHtml(r.topCategory)}</td>
+<td>${r.topCount}</td>
+</tr>
+`).join("")
+}
+
 function clonePoint(p){
 return {lat:p.lat,lng:p.lng}
 }
 
 /* ===== توزيع طباعة ذكي ===== */
 function preparePrintLayout(){
-
 printLayoutDistricts=null
 
 let visibleKeys=Object.keys(districts).filter(key=>{
@@ -1269,7 +1543,6 @@ return Math.sqrt(dx*dx+dy*dy)
 })
 
 let maxR=Math.max(...distances,0)
-let minR=Math.min(...distances.filter(v=>v>0),maxR||0)
 let compressionPower=maxR>0 ? 0.68 : 1
 
 let transformedCenters=centers.map(c=>{
@@ -1283,7 +1556,6 @@ return {key:c.key,lat:c.lat,lng:c.lng}
 
 let unitX=dx/r
 let unitY=dy/r
-
 let newR=maxR*Math.pow(r/maxR,compressionPower)
 
 return {
@@ -1312,7 +1584,6 @@ let dy=b.lat-a.lat
 let d=Math.sqrt(dx*dx+dy*dy) || 0.000001
 
 if(d<minGap){
-
 let push=(minGap-d)/2
 let ux=dx/d
 let uy=dy/d
@@ -1323,7 +1594,6 @@ b.lng+=ux*push
 b.lat+=uy*push
 moved=true
 }
-
 }
 }
 
@@ -1333,7 +1603,6 @@ if(!moved) break
 printLayoutDistricts={}
 
 for(let item of transformedCenters){
-
 let original=districts[item.key]
 let originalCenter=getDistrictCenter(original.points)
 let shiftLat=item.lat-originalCenter.lat
@@ -1350,7 +1619,6 @@ lng:p.lng+shiftLng
 }))
 }
 }
-
 }
 
 function clearPrintLayout(){
@@ -1362,10 +1630,8 @@ let bounds=new google.maps.LatLngBounds()
 let hasAny=false
 
 for(let districtKey in districts){
-
 let originalData=districts[districtKey]
 let count=originalData.points.length
-
 if(!passesFilter(districtKey,count)) continue
 
 let renderData=getRenderableDistrictData(districtKey)
@@ -1383,7 +1649,6 @@ function adjustOverlays(){
 let used=[]
 
 overlays.forEach(o=>{
-
 if(!o.div || !o.getProjection || !o.position) return
 
 let projection=o.getProjection()
@@ -1396,7 +1661,6 @@ new google.maps.LatLng(o.position.lat,o.position.lng)
 if(!pos) return
 
 for(let u of used){
-
 let dx=pos.x-u.x
 let dy=pos.y-u.y
 let dist=Math.sqrt(dx*dx+dy*dy)
@@ -1405,21 +1669,17 @@ if(dist<70){
 pos.x+=42
 pos.y+=20
 }
-
 }
 
 used.push({x:pos.x,y:pos.y})
 
 o.div.style.left=pos.x+"px"
 o.div.style.top=pos.y+"px"
-
 })
 }
 
 function createPointMarkers(points,color,isStrong){
-
 for(let p of points){
-
 let marker=new google.maps.Marker({
 position:p,
 map:map,
@@ -1433,11 +1693,8 @@ strokeColor:"#ffffff",
 strokeWeight:isStrong ? 2.2 : 1.6
 }
 })
-
 pointMarkers.push(marker)
-
 }
-
 }
 
 function createDistrictInfoWindow(position,districtName,count,data,color){
@@ -1446,14 +1703,14 @@ let sortedThird=Object.entries(data.third).sort((a,b)=>b[1]-a[1])
 let smallLines=""
 
 for(let i=0;i<sortedThird.length && i<5;i++){
-smallLines+=`<div style="margin-top:4px">${sortedThird[i][0]} : <b>${sortedThird[i][1]}</b></div>`
+smallLines+=`<div style="margin-top:4px">${escapeHtml(sortedThird[i][0])} : <b>${sortedThird[i][1]}</b></div>`
 }
 
 let html=
 `
 <div style="font-family:tahoma;min-width:180px;max-width:240px">
-  <div style="font-weight:bold;font-size:14px;color:${color};margin-bottom:6px">${districtName}</div>
-  <div style="margin-bottom:4px">البلدية: <b>${data.municipality}</b></div>
+  <div style="font-weight:bold;font-size:14px;color:${color};margin-bottom:6px">${escapeHtml(districtName)}</div>
+  <div style="margin-bottom:4px">البلدية: <b>${escapeHtml(data.municipality)}</b></div>
   <div>عدد البلاغات: <b>${count}</b></div>
   <div style="margin-top:8px;border-top:1px solid #eee;padding-top:6px">
     ${smallLines || "لا توجد تصنيفات"}
@@ -1468,7 +1725,6 @@ position:position
 
 infoWindows.push(win)
 return win
-
 }
 
 /* ===== تنعيم المضلع ===== */
@@ -1598,7 +1854,6 @@ return baseColor
 function createElegantOverlay(position,count,districtKey,color,infoWindow){
 
 class ElegantOverlay extends google.maps.OverlayView{
-
 constructor(pos){
 super()
 this.position=pos
@@ -1647,7 +1902,7 @@ this.nameChip.style.fontWeight="bold"
 this.nameChip.style.boxShadow="0 3px 10px rgba(0,0,0,.18)"
 this.nameChip.style.border=`2px solid ${color}`
 this.nameChip.style.whiteSpace="nowrap"
-this.nameChip.innerHTML=data.name
+this.nameChip.innerHTML=escapeHtml(data.name)
 
 this.stem=document.createElement("div")
 this.stem.style.width="2px"
@@ -1678,11 +1933,9 @@ updatePanelDistrict(districtKey,districts[districtKey])
 })
 
 this.getPanes().overlayMouseTarget.appendChild(this.div)
-
 }
 
 draw(){
-
 let projection=this.getProjection()
 if(!projection || !this.div) return
 
@@ -1694,7 +1947,6 @@ if(!pos) return
 
 this.div.style.left=pos.x+"px"
 this.div.style.top=pos.y+"px"
-
 }
 
 onRemove(){
@@ -1703,13 +1955,11 @@ this.div.parentNode.removeChild(this.div)
 }
 this.div=null
 }
-
 }
 
 let overlay=new ElegantOverlay(position)
 overlay.setMap(map)
 overlays.push(overlay)
-
 }
 
 function drawDistricts(){
@@ -1773,7 +2023,6 @@ smoothBoundary.forEach(p=>{
 visibleBounds.extend({lat:p.lat,lng:p.lng})
 hasVisible=true
 })
-
 }
 
 createPointMarkers(data.points,pointColor,pointStrong)
@@ -1784,23 +2033,21 @@ hasVisible=true
 
 let infoWindow=createDistrictInfoWindow(center,originalData.name,count,originalData,baseColor)
 createElegantOverlay(center,count,districtKey,columnColor,infoWindow)
-
 }
 
 if(hasVisible){
 map.fitBounds(visibleBounds)
 }
-
 }
 
 /* ===== لوحة المعلومات ===== */
-
 function resetPanel(){
 document.getElementById("panelTitle").textContent="ملخص حسب الفلتر"
 document.getElementById("panelSubTitle").textContent="استورد ملف Excel ثم اختر البلدية والفلترة أو اضغط على حي في الخريطة."
 document.getElementById("totalCount").textContent="0"
 document.getElementById("totalTypes").textContent="0"
 document.getElementById("detailsList").innerHTML='<div class="emptyBox">لا توجد بيانات حتى الآن.</div>'
+document.getElementById("screenTableBody").innerHTML='<tr><td colspan="5">لا توجد بيانات.</td></tr>'
 
 if(sideChart){
 sideChart.destroy()
@@ -1827,7 +2074,7 @@ entries.forEach(([k,v],i)=>{
 total+=v
 html+=`
 <div class="summaryRow">
-  <div class="summaryName">${k}</div>
+  <div class="summaryName">${escapeHtml(k)}</div>
   <div class="summaryVal">${v}</div>
 </div>
 `
@@ -1844,6 +2091,7 @@ document.getElementById("totalTypes").textContent=total
 document.getElementById("detailsList").innerHTML=html || '<div class="emptyBox">لا توجد بيانات.</div>'
 
 drawSideChart(labels,values)
+renderScreenTable()
 }
 
 function updatePanelSummary(){
@@ -1876,7 +2124,7 @@ entries.forEach(([k,v],i)=>{
 totalTypes+=v
 html+=`
 <div class="summaryRow">
-  <div class="summaryName">${k}</div>
+  <div class="summaryName">${escapeHtml(k)}</div>
   <div class="summaryVal">${v}</div>
 </div>
 `
@@ -1896,6 +2144,7 @@ document.getElementById("totalTypes").textContent=totalTypes
 document.getElementById("detailsList").innerHTML=html || '<div class="emptyBox">لا توجد بيانات مطابقة للفلترة الحالية.</div>'
 
 drawSideChart(labels,values)
+renderScreenTable()
 }
 
 function drawSideChart(labels,values){
@@ -1936,7 +2185,6 @@ grid:{color:"rgba(0,0,0,.06)"}
 }
 }
 })
-
 }
 
 function updatePanelForCurrentView(){
@@ -1949,8 +2197,64 @@ return
 updatePanelSummary()
 }
 
+/* ===== تجهيز الصفحة الثانية للطباعة ===== */
+function buildPrintDetailsPage(){
+
+const titleEl=document.getElementById("printTitle")
+const subEl=document.getElementById("printSubTitle")
+const totalCountEl=document.getElementById("printTotalCount")
+const totalTypesEl=document.getElementById("printTotalTypes")
+const printDetailsList=document.getElementById("printDetailsList")
+const printTableBody=document.getElementById("printTableBody")
+const chartImg=document.getElementById("printChartImg")
+
+titleEl.textContent=document.getElementById("panelTitle").textContent || "تقرير الأحياء"
+subEl.textContent=document.getElementById("panelSubTitle").textContent || ""
+totalCountEl.textContent=document.getElementById("totalCount").textContent || "0"
+totalTypesEl.textContent=document.getElementById("totalTypes").textContent || "0"
+
+let currentSummaryHtml=document.getElementById("detailsList").innerHTML.trim()
+if(!currentSummaryHtml){
+currentSummaryHtml='<div class="printSummaryRow"><span>لا توجد بيانات.</span><span>-</span></div>'
+}
+
+printDetailsList.innerHTML=currentSummaryHtml
+.replaceAll('class="summaryRow"','class="printSummaryRow"')
+.replaceAll('class="summaryName"','')
+.replaceAll('class="summaryVal"','')
+.replaceAll('class="emptyBox"','')
+
+if(sideChart){
+chartImg.src=sideChart.toBase64Image("image/png",1)
+}else{
+chartImg.removeAttribute("src")
+}
+
+const rows=getCurrentReportRows()
+
+if(!rows.length){
+printTableBody.innerHTML='<tr><td colspan="6">لا توجد بيانات مطابقة للفلترة الحالية.</td></tr>'
+}else{
+printTableBody.innerHTML=rows.map(r=>`
+<tr>
+<td>${escapeHtml(r.municipality)}</td>
+<td>${escapeHtml(r.district)}</td>
+<td>${r.count}</td>
+<td>${r.totalTypes}</td>
+<td>${escapeHtml(r.topCategory)}</td>
+<td>${r.topCount}</td>
+</tr>
+`).join("")
+}
+}
+
 /* ===== الطباعة ===== */
 function printPage(){
+
+if(!Object.keys(districts).length){
+alert("استورد ملف Excel أولاً.")
+return
+}
 
 const originalCenter = map.getCenter()
 const originalZoom = map.getZoom()
@@ -1965,20 +2269,47 @@ mapDiv.style.height="100vh"
 originalMapTypeId = map.getMapTypeId()
 
 isPrintMode = true
+printCleanupDone = false
 map.setMapTypeId("roadmap")
 
 preparePrintLayout()
+buildPrintDetailsPage()
 
 clearMap()
 drawDistricts()
 
 google.maps.event.trigger(map,"resize")
 
-const printInfo=getPrintBounds()
+const printInfo = getPrintBounds()
 
 if(printInfo.hasAny){
 map.fitBounds(printInfo.bounds)
 }
+
+const cleanupAfterPrint=()=>{
+if(printCleanupDone) return
+printCleanupDone=true
+
+isPrintMode = false
+clearPrintLayout()
+map.setMapTypeId(originalMapTypeId || "hybrid")
+
+topPanel.style.display="flex"
+mainLayout.style.height="100vh"
+mapDiv.style.height="100%"
+
+clearMap()
+drawDistricts()
+
+google.maps.event.trigger(map,"resize")
+
+if(originalCenter) map.setCenter(originalCenter)
+if(originalZoom!==undefined && originalZoom!==null) map.setZoom(originalZoom)
+
+window.removeEventListener("afterprint",cleanupAfterPrint)
+}
+
+window.addEventListener("afterprint",cleanupAfterPrint,{once:true})
 
 google.maps.event.addListenerOnce(map,"idle",function(){
 
@@ -1998,26 +2329,15 @@ setTimeout(()=>{
 
 window.print()
 
-isPrintMode = false
-clearPrintLayout()
-map.setMapTypeId(originalMapTypeId || "hybrid")
-
-topPanel.style.display="flex"
-mainLayout.style.height="100vh"
-mapDiv.style.height="100%"
-
-clearMap()
-drawDistricts()
-
-google.maps.event.trigger(map,"resize")
-map.setCenter(originalCenter)
-map.setZoom(originalZoom)
-
-},500)
-
-},500)
+setTimeout(()=>{
+cleanupAfterPrint()
+},1200)
 
 },700)
+
+},500)
+
+},500)
 
 })
 }
@@ -2031,31 +2351,26 @@ dataToExport.push([
 "البلدية",
 "الحي",
 "عدد البلاغات",
-"التصنيف",
-"العدد"
+"عدد التصنيفات",
+"أعلى تصنيف",
+"عدد أعلى تصنيف"
 ])
 
-let added = new Set()
+let rows=getCurrentReportRows()
 
-for(let districtKey in districts){
-
-let data = districts[districtKey]
-let count = data.points.length
-
-if(!passesFilter(districtKey,count)) continue
-if(added.has(districtKey)) continue
-added.add(districtKey)
-
-for(let key in data.third){
+if(!rows.length){
+dataToExport.push(["-","-","0","0","-","0"])
+}else{
+rows.forEach(r=>{
 dataToExport.push([
-data.municipality,
-data.name,
-count,
-key,
-data.third[key]
+r.municipality,
+r.district,
+r.count,
+r.totalTypes,
+r.topCategory,
+r.topCount
 ])
-}
-
+})
 }
 
 let ws = XLSX.utils.aoa_to_sheet(dataToExport)
@@ -2065,15 +2380,24 @@ ws["!cols"] = [
 {wch:22},
 {wch:22},
 {wch:14},
+{wch:14},
 {wch:35},
-{wch:12}
+{wch:14}
 ]
 
 XLSX.utils.book_append_sheet(wb, ws, "التقرير")
 XLSX.writeFile(wb, "تقرير_البلاغات.xlsx")
-
 }
 
+/* ===== مساعدات ===== */
+function escapeHtml(value){
+return String(value ?? "")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#39;")
+}
 </script>
 
 <script async defer
