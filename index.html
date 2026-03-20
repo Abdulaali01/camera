@@ -2252,9 +2252,51 @@ printTableBody.innerHTML=rows.map(r=>`
 /* ===== الطباعة ===== */
 function printPage(){
 
-const topPanel = document.querySelector(".topPanel")
+if(!districts || Object.keys(districts).length===0){
+alert("استورد ملف Excel أولاً")
+return
+}
 
+const topPanel = document.querySelector(".topPanel")
 topPanel.style.display="none"
+
+const originalCenter = map.getCenter()
+const originalZoom = map.getZoom()
+
+const keys = Object.keys(districts)
+let i = 0
+
+function printNext(){
+
+if(i >= keys.length){
+
+topPanel.style.display="flex"
+map.setCenter(originalCenter)
+map.setZoom(originalZoom)
+
+clearMap()
+drawDistricts()
+
+return
+}
+
+let d = districts[keys[i]]
+
+// 🔥 نرسم حي واحد فقط
+clearMap()
+
+d.points.forEach(p=>{
+new google.maps.Marker({
+position:p,
+map:map
+})
+})
+
+// 🔥 Auto Fit
+let bounds = new google.maps.LatLngBounds()
+d.points.forEach(p=>bounds.extend(p))
+
+map.fitBounds(bounds)
 
 setTimeout(()=>{
 
@@ -2264,13 +2306,19 @@ setTimeout(()=>{
 
 window.print()
 
-topPanel.style.display="flex"
+i++
+printNext()
 
 },800)
 
-},800)
+},600)
 
 }
+
+printNext()
+
+}
+  
 
 /* ===== تصدير Excel ===== */
 function exportExcel(){
