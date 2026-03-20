@@ -612,7 +612,10 @@ max-height:220px
 }
 }
 </style>
+<!-- 👇 أضف هذا السطر هنا -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
+
 <body>
 
 <div class="mainLayout">
@@ -2249,97 +2252,102 @@ printTableBody.innerHTML=rows.map(r=>`
 }
 
 /* ===== الطباعة ===== */
-function printPage(){
 
-if(!Object.keys(districts).length){
-alert("استورد ملف Excel أولاً.")
+async function printPage(){
+
+if(!districts || Object.keys(districts).length===0){
+alert("استورد الملف أولاً")
 return
 }
 
+const container = document.createElement("div")
+container.style.position="fixed"
+container.style.top="0"
+container.style.left="0"
+container.style.width="100%"
+container.style.background="#fff"
+container.style.zIndex="999999"
+document.body.appendChild(container)
+
+// إخفاء الموقع
+document.querySelector(".mainLayout").style.display="none"
+
+// حفظ الوضع
 const originalCenter = map.getCenter()
 const originalZoom = map.getZoom()
-const topPanel = document.querySelector(".topPanel")
-const mapDiv = document.getElementById("map")
-const mainLayout = document.querySelector(".mainLayout")
 
-topPanel.style.display="none"
-mainLayout.style.height="100vh"
-mapDiv.style.height="100vh"
+for(let key of Object.keys(districts)){
 
-originalMapTypeId = map.getMapTypeId()
-
-isPrintMode = true
-printCleanupDone = false
-map.setMapTypeId("roadmap")
-
-preparePrintLayout()
-buildPrintDetailsPage()
+selectedDistrict = key
 
 clearMap()
 drawDistricts()
 
-google.maps.event.trigger(map,"resize")
+await new Promise(r=>setTimeout(r,700))
 
-const printInfo = getPrintBounds()
+// 🔥 Auto Fit
+let bounds = new google.maps.LatLngBounds()
 
-if(printInfo.hasAny){
-map.fitBounds(printInfo.bounds)
+districts[key].points.forEach(p=>{
+bounds.extend(p)
+})
+
+map.fitBounds(bounds)
+
+await new Promise(r=>setTimeout(r,700))
+
+// 🔥 تصوير عالي الجودة
+let canvas = await html2canvas(document.getElementById("map"),{
+useCORS:true,
+scale:3
+})
+
+let img = canvas.toDataURL("image/png")
+
+// صفحة
+let page = document.createElement("div")
+page.style.width="100%"
+page.style.height="100vh"
+page.style.pageBreakAfter="always"
+page.style.display="flex"
+page.style.flexDirection="column"
+
+// عنوان
+let title = document.createElement("div")
+title.innerHTML = districts[key].name
+title.style.textAlign="center"
+title.style.fontSize="22px"
+title.style.fontWeight="bold"
+title.style.padding="10px"
+
+// صورة
+let image = document.createElement("img")
+image.src = img
+image.style.width="100%"
+image.style.height="calc(100% - 50px)"
+image.style.objectFit="cover"
+
+page.appendChild(title)
+page.appendChild(image)
+
+container.appendChild(page)
+
 }
 
-const cleanupAfterPrint=()=>{
-if(printCleanupDone) return
-printCleanupDone=true
-
-isPrintMode = false
-clearPrintLayout()
-map.setMapTypeId(originalMapTypeId || "hybrid")
-
-topPanel.style.display="flex"
-mainLayout.style.height="100vh"
-mapDiv.style.height="100%"
-
-clearMap()
-drawDistricts()
-
-google.maps.event.trigger(map,"resize")
-
-if(originalCenter) map.setCenter(originalCenter)
-if(originalZoom!==undefined && originalZoom!==null) map.setZoom(originalZoom)
-
-window.removeEventListener("afterprint",cleanupAfterPrint)
-}
-
-window.addEventListener("afterprint",cleanupAfterPrint,{once:true})
-
-google.maps.event.addListenerOnce(map,"idle",function(){
-
-setTimeout(()=>{
-
-google.maps.event.trigger(map,"resize")
-
-if(printInfo.hasAny){
-map.fitBounds(printInfo.bounds)
-}
-
-setTimeout(()=>{
-
-adjustOverlays()
-
-setTimeout(()=>{
-
+// طباعة
 window.print()
 
-setTimeout(()=>{
-cleanupAfterPrint()
-},1200)
+// رجوع
+document.body.removeChild(container)
+document.querySelector(".mainLayout").style.display="flex"
 
-},700)
+selectedDistrict=""
+clearMap()
+drawDistricts()
 
-},500)
+map.setCenter(originalCenter)
+map.setZoom(originalZoom)
 
-},500)
-
-})
 }
 
 /* ===== تصدير Excel ===== */
