@@ -1,1 +1,225 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
+<title>تحليل الأحياء + الأعمدة على الخريطة</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
+<style>
+
+body{
+margin:0;
+font-family:tahoma;
+background:#f5f7fb;
+overflow:hidden
+}
+
+/* ===== تقسيم الصفحة ===== */
+.mainLayout{
+display:flex;
+width:100%;
+height:100vh
+}
+
+/* ===== لوحة المعلومات ===== */
+.sidePanel{
+width:360px;
+min-width:360px;
+max-width:360px;
+height:100vh;
+background:#ffffff;
+border-left:1px solid #e3e8f0;
+box-shadow:0 0 20px rgba(0,0,0,.06);
+display:flex;
+flex-direction:column;
+overflow:hidden
+}
+
+/* ===== جهة الخريطة ===== */
+.mapSection{
+position:relative;
+flex:1;
+height:100vh;
+overflow:hidden
+}
+
+#map{
+height:100%;
+width:100%
+}
+
+/* ===== الشريط العلوي ===== */
+.topPanel{
+position:absolute;
+top:10px;
+left:50%;
+transform:translateX(-50%);
+background:#fff;
+border-radius:14px;
+box-shadow:0 6px 18px rgba(0,0,0,.18);
+padding:10px 12px;
+z-index:10;
+display:flex;
+gap:8px;
+flex-wrap:wrap
+}
+
+</style>
+</head>
+<body>
+
+<div class="mainLayout">
+
+<div class="sidePanel">
+<h3>ملخص</h3>
+<div id="totalCount">0</div>
+<div id="totalTypes">0</div>
+</div>
+
+<div class="mapSection">
+
+<div class="topPanel">
+
+<input type="file" id="excelFile">
+
+<button onclick="importExcel()">استيراد Excel</button>
+
+<select id="filterSelect">
+<option value="all">عرض الكل</option>
+<option value="top3">أعلى 3</option>
+<option value="200">أكثر من 200</option>
+</select>
+
+<button onclick="printPage()">طباعة</button>
+
+</div>
+
+<div id="map"></div>
+
+</div>
+</div>
+
+<script>
+
+let map
+let districts={}
+
+function initMap(){
+map=new google.maps.Map(document.getElementById("map"),{
+center:{lat:21.4,lng:40.5},
+zoom:12
+})
+}
+
+function importExcel(){
+alert("تم الاستيراد")
+}
+
+function printPage(){
+window.print()
+}
+  function clearMap(){
+for(let key in districts){
+if(districts[key].polygon){
+districts[key].polygon.setMap(null)
+}
+}
+}
+
+function importExcel(){
+
+let file=document.getElementById("excelFile").files[0]
+if(!file) return alert("اختر ملف")
+
+let reader=new FileReader()
+
+reader.onload=function(e){
+
+let data=new Uint8Array(e.target.result)
+let workbook=XLSX.read(data,{type:"array"})
+let sheet=workbook.Sheets[workbook.SheetNames[0]]
+let rows=XLSX.utils.sheet_to_json(sheet)
+
+districts={}
+clearMap()
+
+rows.forEach(r=>{
+
+let lat=parseFloat(r.lat || r.latitude)
+let lng=parseFloat(r.lng || r.longitude)
+let name=(r["الحي"] || r.district || "غير معروف")
+
+if(isNaN(lat)||isNaN(lng)) return
+
+if(!districts[name]){
+districts[name]={points:[]}
+}
+
+districts[name].points.push({lat,lng})
+
+})
+
+drawDistricts()
+
+}
+
+reader.readAsArrayBuffer(file)
+
+}
+
+function drawDistricts(){
+
+clearMap()
+
+let index=0
+
+for(let name in districts){
+
+let pts=districts[name].points
+if(pts.length<2) continue
+
+let color=["red","blue","green","orange"][index%4]
+index++
+
+let polygon=new google.maps.Polygon({
+paths:pts,
+strokeColor:color,
+strokeWeight:2,
+fillColor:color,
+fillOpacity:0.2,
+map:map
+})
+
+districts[name].polygon=polygon
+
+}
+
+updateStats()
+
+}
+
+function updateStats(){
+
+let total=0
+
+for(let key in districts){
+total+=districts[key].points.length
+}
+
+document.getElementById("totalCount").innerText=total
+document.getElementById("totalTypes").innerText=Object.keys(districts).length
+
+}
+  </script>
+
+<!-- تحميل خرائط قوقل -->
+<script async defer
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&callback=initMap">
+</script>
+
+</body>
+</html>
