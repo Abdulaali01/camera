@@ -343,9 +343,48 @@ overflow:visible !important;
 }
 
 /* اخفاء الأزرار */
+@media print {
+
+/* حجم الصفحة */
+@page{
+size:A4 landscape; /* ← مهم: عرضي */
+margin:6mm;
+}
+
+/* ضبط الصفحة */
+html,body{
+margin:0 !important;
+padding:0 !important;
+background:#fff !important;
+overflow:visible !important;
+}
+
+/* اخفاء الأزرار */
 .topPanel,
 .fabWrap{
 display:none !important;
+}
+
+/* لوحة المعلومات صفحة أولى */
+.sidePanel{
+width:100% !important;
+height:auto !important;
+page-break-after:always; /* ← يفصل الصفحة */
+}
+
+/* الخريطة صفحة ثانية كاملة */
+.mapSection{
+width:100% !important;
+height:100vh !important;
+page-break-before:always;
+}
+
+/* تكبير الخريطة */
+#map{
+width:100% !important;
+height:100vh !important;
+}
+
 }
 
 /* لوحة المعلومات صفحة أولى */
