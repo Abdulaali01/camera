@@ -12,314 +12,364 @@
 body{margin:0;font-family:tahoma;background:#f5f7fb;overflow:hidden}
 .mainLayout{display:flex;width:100%;height:100vh}
 
-/* ===== اللوحة ===== */
+/* ===== لوحة المعلومات ===== */
 .sidePanel{
-width:360px;
-background:#fff;
-border-left:1px solid #e3e8f0;
-display:flex;
-flex-direction:column
+width:360px;min-width:360px;max-width:360px;height:100vh;background:#fff;
+border-left:1px solid #e3e8f0;box-shadow:0 0 20px rgba(0,0,0,.06);
+display:flex;flex-direction:column;overflow:hidden
 }
+.sideHeader{padding:16px 16px 10px;border-bottom:1px solid #eef2f7;background:linear-gradient(180deg,#fff,#f8fbff)}
+.sideTitle{font-size:18px;font-weight:bold;color:#1f2937;margin-bottom:6px}
+.sideSub{font-size:12px;color:#6b7280;line-height:1.6}
+.sideBody{padding:12px;overflow:auto;display:flex;flex-direction:column;gap:12px}
 
-.sideBody{padding:12px;overflow:auto}
+.statGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.statCard{background:#f8fbff;border:1px solid #e6eef9;border-radius:14px;padding:12px}
+.statLabel{font-size:12px;color:#6b7280;margin-bottom:5px}
+.statValue{font-size:22px;font-weight:bold;color:#111827}
 
-.statCard{background:#f8fbff;padding:10px;border-radius:10px;margin-bottom:8px}
+.chartCard,.listCard,.tableCard{
+background:#fff;border:1px solid #e8edf5;border-radius:14px;padding:12px
+}
+.cardTitle{font-size:13px;font-weight:bold;color:#374151;margin-bottom:10px}
+#sideChart{width:100%!important;height:210px!important}
+
+.summaryList{display:flex;flex-direction:column;gap:7px}
+.summaryRow{
+display:flex;align-items:center;justify-content:space-between;gap:10px;
+padding:8px 10px;background:#f9fbff;border:1px dashed #dbe4f1;border-radius:10px
+}
+.summaryName{font-size:12px;color:#1f2937;word-break:break-word}
+.summaryVal{font-size:13px;font-weight:bold;color:#0f172a;min-width:32px;text-align:left}
+.emptyBox{font-size:13px;color:#6b7280;line-height:1.8}
+
+.dataTableWrap{max-height:270px;overflow:auto;border:1px solid #edf2f7;border-radius:12px}
+.dataTable{width:100%;border-collapse:collapse;font-size:12px}
+.dataTable th,.dataTable td{border-bottom:1px solid #eef2f7;padding:8px 10px;text-align:center}
+.dataTable th{position:sticky;top:0;background:#f8fbff;z-index:2;font-weight:bold;color:#374151}
+.dataTable tbody tr:nth-child(even){background:#fcfdff}
 
 /* ===== الخريطة ===== */
-.mapSection{flex:1;position:relative}
+.mapSection{position:relative;flex:1;height:100vh;overflow:hidden}
 #map{width:100%;height:100%}
 
-/* ===== الشريط ===== */
+/* ===== الشريط العلوي ===== */
 .topPanel{
-position:absolute;
-top:10px;
-left:50%;
-transform:translateX(-50%);
-background:#fff;
-padding:10px;
-border-radius:12px;
-display:flex;
-gap:8px;
-z-index:10;
-flex-wrap:wrap
+position:absolute;top:10px;left:50%;transform:translateX(-50%);
+background:#fff;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.18);
+padding:10px 12px;z-index:10;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+min-width:320px;max-width:95%
 }
+.topPanel .group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.topPanel .titleMini{font-size:12px;font-weight:bold;color:#333;margin-inline:2px}
+#searchBox{width:240px;padding:10px 12px;border-radius:10px;border:1px solid #ccc;background:#fff}
 
-input,select,button{
-padding:8px;
-border-radius:8px;
-border:1px solid #ccc
-}
+.fileInput{padding:8px;border:1px solid #ddd;border-radius:10px;background:#fff;font-size:13px;max-width:180px}
+select{padding:9px 10px;border-radius:10px;border:1px solid #ccc;background:#fff;font-size:13px;min-width:150px}
+button{padding:9px 14px;border:none;border-radius:10px;background:#2d6cff;color:#fff;cursor:pointer;font-weight:bold}
+#excelBtn{background:#0b8f55}
 
-button{
-background:#2d6cff;
-color:#fff;
-border:none;
-cursor:pointer
-}
+/* ===== أزرار عائمة ===== */
+.fabWrap{position:fixed;left:18px;bottom:18px;z-index:99999;display:flex;flex-direction:column;gap:10px}
+.fabBtn{border:none;border-radius:999px;padding:13px 16px;font-size:13px;font-weight:bold;
+box-shadow:0 8px 18px rgba(0,0,0,.22);cursor:pointer;background:#2d6cff;color:#fff;min-width:120px}
+.fabBtn.stop{background:#d32f2f}
+.fabBtn.gray{background:#374151}
+.fabBtn.green{background:#0b8f55}
 
-/* ===== الرسم اليدوي ===== */
-.manualLabel{
-position:absolute;
-transform:translate(-50%,-50%);
-display:flex;
-gap:5px;
-align-items:center;
-cursor:grab;
-z-index:5000
-}
-
-.manualCount{
-background:#111;
-color:#fff;
-padding:5px 10px;
-border-radius:20px;
-font-weight:bold
-}
-
-.manualName{
-background:#fff;
-border:2px solid #2563eb;
-padding:5px 10px;
-border-radius:20px;
-font-weight:bold
-}
+/* ===== ملصق الحي ===== */
+.manualLabel{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;cursor:grab;z-index:5000}
+.manualCount{min-width:34px;height:30px;padding:0 10px;display:flex;align-items:center;justify-content:center;background:#111827;color:#fff;border-radius:999px;font-weight:bold}
+.manualName{padding:6px 10px;background:#fff;color:#111827;border:2px solid #2563eb;border-radius:999px;font-weight:bold}
 </style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 
 <body>
 
 <div class="mainLayout">
 
-<div class="sidePanel">
-<div class="sideBody">
-<div class="statCard">
-عدد البلاغات: <span id="totalCount">0</span>
+  <!-- ===== لوحة المعلومات ===== -->
+  <div class="sidePanel">
+    <div class="sideHeader">
+      <div class="sideTitle" id="panelTitle">ملخص حسب الفلتر</div>
+      <div class="sideSub" id="panelSubTitle">استورد ملف Excel ثم اختر البلدية والفلترة أو اضغط على حي في الخريطة.</div>
+    </div>
+
+    <div class="sideBody">
+
+      <div class="statGrid">
+        <div class="statCard">
+          <div class="statLabel">عدد البلاغات</div>
+          <div class="statValue" id="totalCount">0</div>
+        </div>
+
+        <div class="statCard">
+          <div class="statLabel">إجمالي العمود الرابع</div>
+          <div class="statValue" id="totalTypes">0</div>
+        </div>
+      </div>
+
+      <div class="chartCard">
+        <div class="cardTitle">الرسم البياني</div>
+        <canvas id="sideChart"></canvas>
+      </div>
+
+      <div class="listCard">
+        <div class="cardTitle">ملخص العمود الرابع</div>
+        <div class="summaryList" id="detailsList">
+          <div class="emptyBox">لا توجد بيانات حتى الآن.</div>
+        </div>
+      </div>
+
+      <div class="tableCard">
+        <div class="cardTitle">جدول البيانات الحالي</div>
+        <div class="dataTableWrap">
+          <table class="dataTable">
+            <thead>
+              <tr>
+                <th>البلدية</th>
+                <th>الحي</th>
+                <th>عدد البلاغات</th>
+                <th>أعلى تصنيف</th>
+                <th>عدد أعلى تصنيف</th>
+              </tr>
+            </thead>
+            <tbody id="screenTableBody">
+              <tr><td colspan="5">لا توجد بيانات.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== الخريطة ===== -->
+  <div class="mapSection">
+
+    <div class="topPanel">
+      <div class="group">
+        <input id="searchBox" placeholder="ابحث عن حي أو شارع">
+      </div>
+
+      <div class="group">
+        <span class="titleMini">الملف</span>
+        <input type="file" id="excelFile" class="fileInput" accept=".xlsx,.xls">
+        <button onclick="importExcel()">استيراد Excel</button>
+      </div>
+
+      <div class="group">
+        <span class="titleMini">البلدية</span>
+        <select id="municipalityList" onchange="setMunicipalityFilter(this.value)">
+          <option value="">كل البلديات</option>
+        </select>
+      </div>
+
+      <div class="group">
+        <span class="titleMini">الفلترة</span>
+        <select id="filterSelect" onchange="setFilter(this.value)">
+          <option value="all">عرض الكل</option>
+          <option value="top3">أعلى 3</option>
+          <option value="top3_2">ثاني أعلى 3</option>
+          <option value="top3_3">ثالث أعلى 3</option>
+          <option value="top3_4">رابع أعلى 3</option>
+          <option value="200">أكثر من 200</option>
+          <option value="100_200">من 100 إلى 200</option>
+          <option value="100">أقل من 100</option>
+        </select>
+      </div>
+
+      <div class="group">
+        <span class="titleMini">الأحياء</span>
+        <select id="districtList" onchange="selectDistrict(this.value)">
+          <option value="">كل الأحياء</option>
+        </select>
+      </div>
+
+      <div class="group">
+        <button id="excelBtn" onclick="exportExcel()">📤 Excel</button>
+      </div>
+    </div>
+
+    <div id="map"></div>
+  </div>
 </div>
-<canvas id="sideChart"></canvas>
-</div>
-</div>
 
-<div class="mapSection">
-
-<div class="topPanel">
-<input type="file" id="excelFile">
-<button onclick="importExcel()">استيراد</button>
-
-<select id="filterSelect" onchange="setFilter(this.value)">
-<option value="all">عرض الكل</option>
-<option value="top3">أعلى 3</option>
-<option value="200">أكثر من 200</option>
-<option value="100">أقل من 100</option>
-</select>
-
-<button onclick="exportExcel()">Excel</button>
-</div>
-
-<div id="map"></div>
-
-</div>
+<!-- ===== أزرار عائمة ===== -->
+<div class="fabWrap">
+  <button class="fabBtn" id="drawToggleBtn" type="button">✏️ رسم حي</button>
+  <button class="fabBtn gray" id="renameLastBtn" type="button">📝 اسم/رقم</button>
+  <button class="fabBtn green" id="centerLastBtn" type="button">🎯 توسيط الاسم</button>
+  <button class="fabBtn stop" id="deleteLastBtn" type="button">🗑️ حذف آخر</button>
 </div>
 
 <script>
 let map
 let districts={}
-let currentFilter="all"
 let polygons=[]
-let drawingManager
-let manualZones=[]
+let markers=[]
+let pointMarkers=[]
+let overlays=[]
+let infoWindows=[]
+let currentFilter="all"
+let selectedDistrict=""
+let selectedMunicipality=""
 let sideChart=null
 
-/* ===== الخريطة ===== */
-function initMap(){
-map=new google.maps.Map(document.getElementById("map"),{
-center:{lat:21.4373,lng:40.5127},
-zoom:12,
-mapTypeId:"hybrid"
-})
+let drawingManager=null
+let isDrawingMode=false
+let manualZones=[]
 
-initDrawing()
+const COLORS=["#ff5722","#4caf50","#2196f3","#9c27b0","#ffc107","#00bcd4","#8bc34a","#e91e63","#795548","#3f51b5","#009688","#c2185b"]
+
+function initMap(){
+  map=new google.maps.Map(document.getElementById("map"),{
+    center:{lat:21.4373,lng:40.5127},
+    zoom:12,mapTypeId:"hybrid",gestureHandling:"greedy"
+  })
+  initDrawingTools()
+  bindFloatingButtons()
 }
 
 /* ===== الرسم اليدوي ===== */
-function initDrawing(){
+function initDrawingTools(){
+  drawingManager=new google.maps.drawing.DrawingManager({
+    drawingControl:false,
+    drawingModes:['polygon'],
+    polygonOptions:{
+      fillColor:'#2196f3',fillOpacity:0.28,strokeColor:'#1a73e8',
+      strokeWeight:3,editable:true,draggable:true
+    }
+  })
+  drawingManager.setMap(map)
 
-drawingManager=new google.maps.drawing.DrawingManager({
-drawingControl:false,
-drawingModes:['polygon'],
-polygonOptions:{
-fillColor:'#2196f3',
-fillOpacity:0.3,
-strokeColor:'#1a73e8',
-strokeWeight:3,
-editable:true,
-draggable:true
-}
-})
-
-drawingManager.setMap(map)
-
-google.maps.event.addListener(drawingManager,'overlaycomplete',function(e){
-
-let poly=e.overlay
-let center=getCenter(poly.getPath())
-
-let label=new ManualLabel(center,"حي جديد",manualZones.length+1)
-label.setMap(map)
-
-manualZones.push({poly,label})
-drawingManager.setDrawingMode(null)
-})
+  google.maps.event.addListener(drawingManager,'overlaycomplete',function(event){
+    if(event.type!=="polygon") return
+    const polygon=event.overlay
+    const center=getPolygonCenterFromPath(polygon.getPath())
+    const zone=createManualZone(polygon,center,"حي جديد",String(manualZones.length+1))
+    manualZones.push(zone)
+    drawingManager.setDrawingMode(null)
+    isDrawingMode=false
+    updateDrawButtonUI()
+  })
 }
 
-function getCenter(path){
-let b=new google.maps.LatLngBounds()
-for(let i=0;i<path.getLength();i++){
-b.extend(path.getAt(i))
-}
-return b.getCenter()
-}
-
-/* ===== Label ===== */
-class ManualLabel extends google.maps.OverlayView{
-constructor(pos,name,count){
-super()
-this.pos=pos
-this.name=name
-this.count=count
+function bindFloatingButtons(){
+  document.getElementById("drawToggleBtn").onclick=function(){
+    isDrawingMode=!isDrawingMode
+    drawingManager.setDrawingMode(isDrawingMode ? google.maps.drawing.OverlayType.POLYGON : null)
+    updateDrawButtonUI()
+  }
 }
 
-onAdd(){
-this.div=document.createElement("div")
-this.div.className="manualLabel"
-
-this.div.innerHTML=`
-<div class="manualCount">${this.count}</div>
-<div class="manualName">${this.name}</div>
-`
-
-this.getPanes().overlayMouseTarget.appendChild(this.div)
+function updateDrawButtonUI(){
+  const btn=document.getElementById("drawToggleBtn")
+  btn.textContent=isDrawingMode?"⛔ إيقاف الرسم":"✏️ رسم حي"
 }
 
-draw(){
-let p=this.getProjection().fromLatLngToDivPixel(this.pos)
-this.div.style.left=p.x+"px"
-this.div.style.top=p.y+"px"
+function getPolygonCenterFromPath(path){
+  const bounds=new google.maps.LatLngBounds()
+  for(let i=0;i<path.getLength();i++){ bounds.extend(path.getAt(i)) }
+  return bounds.getCenter()
 }
 
-onRemove(){
-this.div.remove()
+function createManualZone(polygon,position,nameText,countText){
+  const label=new ManualLabelOverlay(position,nameText,countText)
+  label.setMap(map)
+  return {polygon,label}
 }
+
+class ManualLabelOverlay extends google.maps.OverlayView{
+  constructor(position,nameText,countText){ super(); this.position=position; this.nameText=nameText; this.countText=countText }
+  onAdd(){
+    this.div=document.createElement("div")
+    this.div.className="manualLabel"
+    this.div.innerHTML=`<div class="manualCount">${this.countText}</div><div class="manualName">${this.nameText}</div>`
+    this.getPanes().overlayMouseTarget.appendChild(this.div)
+  }
+  draw(){
+    const p=this.getProjection().fromLatLngToDivPixel(this.position)
+    if(p){ this.div.style.left=p.x+"px"; this.div.style.top=p.y+"px" }
+  }
+  onRemove(){ this.div?.remove() }
 }
 
 /* ===== Excel ===== */
 function importExcel(){
-
-let file=document.getElementById("excelFile").files[0]
-if(!file)return
-
-let reader=new FileReader()
-
-reader.onload=function(e){
-
-let data=new Uint8Array(e.target.result)
-let wb=XLSX.read(data,{type:"array"})
-let sheet=wb.Sheets[wb.SheetNames[0]]
-let rows=XLSX.utils.sheet_to_json(sheet)
-
-districts={}
-
-rows.forEach(r=>{
-let d=r["الحي"]||"غير معروف"
-if(!districts[d])districts[d]=0
-districts[d]++
-})
-
-drawAll()
+  let file=document.getElementById("excelFile").files[0]; if(!file) return
+  let reader=new FileReader()
+  reader.onload=function(e){
+    let data=new Uint8Array(e.target.result)
+    let workbook=XLSX.read(data,{type:"array"})
+    let sheet=workbook.Sheets[workbook.SheetNames[0]]
+    let rows=XLSX.utils.sheet_to_json(sheet)
+    districts={}
+    rows.forEach(r=>{
+      let d=r["الحي"]||"غير معروف"
+      if(!districts[d]) districts[d]={name:d,points:[],third:{}}
+      districts[d].points.push({lat:21.4,lng:40.5})
+    })
+    drawDistricts()
+  }
+  reader.readAsArrayBuffer(file)
 }
 
-reader.readAsArrayBuffer(file)
+/* ===== الفلترة ===== */
+function setFilter(type){ currentFilter=type; drawDistricts() }
+function selectDistrict(k){ selectedDistrict=k||""; drawDistricts() }
+function setMunicipalityFilter(n){ selectedMunicipality=n||""; drawDistricts() }
+
+function passesFilter(key,count){
+  if(currentFilter==="all") return true
+  let arr=Object.entries(districts).map(x=>[x[0],x[1].points.length]).sort((a,b)=>b[1]-a[1]).map(x=>x[0])
+  if(currentFilter==="top3") return arr.slice(0,3).includes(key)
+  if(currentFilter==="200") return count>200
+  if(currentFilter==="100") return count<100
+  return true
 }
 
-/* ===== فلترة ===== */
-function setFilter(f){
-currentFilter=f
-drawAll()
+/* ===== الرسم ===== */
+function clearMap(){
+  polygons.forEach(p=>p.setMap(null))
+  polygons=[]
 }
 
-function pass(name,count){
+function drawDistricts(){
+  clearMap()
+  let index=0
+  for(let key in districts){
+    let data=districts[key]
+    let count=data.points.length
+    if(!passesFilter(key,count)) continue
 
-if(currentFilter==="all") return true
-
-let sorted=Object.entries(districts)
-.sort((a,b)=>b[1]-a[1])
-.map(x=>x[0])
-
-if(currentFilter==="top3") return sorted.slice(0,3).includes(name)
-if(currentFilter==="200") return count>200
-if(currentFilter==="100") return count<100
-
-return true
+    let center={lat:21.4+index*0.01,lng:40.5+index*0.01}
+    let polygon=new google.maps.Polygon({
+      paths:[center],
+      strokeColor:COLORS[index%COLORS.length],
+      fillColor:COLORS[index%COLORS.length],
+      map:map
+    })
+    polygons.push(polygon)
+    index++
+  }
 }
 
-/* ===== رسم ===== */
-function drawAll(){
-
-polygons.forEach(p=>p.setMap(null))
-polygons=[]
-
-let total=0
-let labels=[]
-let values=[]
-
-Object.entries(districts).forEach(([name,count])=>{
-
-if(!pass(name,count)) return
-
-total+=count
-labels.push(name)
-values.push(count)
-
-})
-
-document.getElementById("totalCount").innerText=total
-
-drawChart(labels,values)
-}
-
-/* ===== رسم بياني ===== */
-function drawChart(labels,values){
-
-if(sideChart) sideChart.destroy()
-
-sideChart=new Chart(
-document.getElementById("sideChart"),
-{
-type:"bar",
-data:{labels:labels,datasets:[{data:values}]},
-options:{plugins:{legend:{display:false}}}
-}
-)
-}
-
-/* ===== Excel تصدير ===== */
+/* ===== Excel ===== */
 function exportExcel(){
-
-let data=[["الحي","عدد"]]
-
-Object.entries(districts).forEach(([k,v])=>{
-if(pass(k,v)) data.push([k,v])
-})
-
-let ws=XLSX.utils.aoa_to_sheet(data)
-let wb=XLSX.utils.book_new()
-
-XLSX.utils.book_append_sheet(wb,ws,"data")
-XLSX.writeFile(wb,"data.xlsx")
+  let data=[["الحي","عدد"]]
+  Object.entries(districts).forEach(([k,v])=>data.push([k,v.points.length]))
+  let ws=XLSX.utils.aoa_to_sheet(data)
+  let wb=XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb,ws,"data")
+  XLSX.writeFile(wb,"data.xlsx")
 }
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=drawing&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing&callback=initMap">
 </script>
 
 </body>
