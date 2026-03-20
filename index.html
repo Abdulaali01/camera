@@ -2296,8 +2296,16 @@ map:map
 let bounds = new google.maps.LatLngBounds()
 d.points.forEach(p=>bounds.extend(p))
 
-map.fitBounds(bounds)
-
+map.fitBounds(bounds, {
+top:50,
+bottom:50,
+left:50,
+right:50
+})
+  
+setTimeout(()=>{
+map.setZoom(map.getZoom() + 2)
+},300)
 setTimeout(()=>{
 
 google.maps.event.trigger(map,"resize")
