@@ -33,7 +33,7 @@ height:100vh;
 background:#ffffff;
 border-left:1px solid #e3e8f0;
 box-shadow:0 0 20px rgba(0,0,0,.06);
-display:flex;
+display:none;
 flex-direction:column;
 overflow:hidden
 }
@@ -327,12 +327,14 @@ white-space:nowrap
 
 /* ===== الطباعة ===== */
 @media print {
-.pageBreak{
-page-break-after:always !important;
-break-after:always !important;
+
+@page{
+size:A4 portrait;
+margin:6mm;
 }
+
 html,body{
-height:100% !important;
+height:auto !important;
 overflow:visible !important;
 background:#fff !important;
 margin:0 !important;
@@ -341,41 +343,22 @@ padding:0 !important
 
 .topPanel,
 .fabWrap{
-display:none !important
-}
-
-@page{
-size:A4 landscape;
-margin:6mm
+display:none !important;
 }
 
 .mainLayout{
-display:flex !important;
-flex-direction:row !important;
+display:block !important;
+width:100% !important;
+height:auto !important
+}
+
+/* ===== الصفحة الأولى: الخريطة ===== */
+.mapSection{
 width:100% !important;
 height:100vh !important;
-min-height:100vh !important;
-align-items:stretch !important
-}
-
-.sidePanel{
-width:30% !important;
-min-width:30% !important;
-max-width:30% !important;
-height:100vh !important;
 overflow:visible !important;
-box-shadow:none !important;
-border:none !important
-}
-
-.sideBody{
-overflow:visible !important
-}
-
-.mapSection{
-width:70% !important;
-height:100vh !important;
-overflow:visible !important
+page-break-after:always !important;
+break-after:page !important
 }
 
 #map{
@@ -383,6 +366,24 @@ width:100% !important;
 height:100vh !important;
 min-height:100vh !important;
 max-height:none !important
+}
+
+/* ===== الصفحة الثانية: لوحة المعلومات ===== */
+.sidePanel{
+display:flex !important;
+width:100% !important;
+min-width:100% !important;
+max-width:100% !important;
+height:auto !important;
+overflow:visible !important;
+box-shadow:none !important;
+border:none !important;
+page-break-before:always !important;
+break-before:page !important
+}
+
+.sideBody{
+overflow:visible !important
 }
 
 .chartCard,
@@ -1960,9 +1961,11 @@ const originalZoom = map.getZoom()
 const topPanel = document.querySelector(".topPanel")
 const mapDiv = document.getElementById("map")
 const mainLayout = document.querySelector(".mainLayout")
+const sidePanel = document.querySelector(".sidePanel")
 
+sidePanel.style.display="flex"
 topPanel.style.display="none"
-mainLayout.style.height="100vh"
+mainLayout.style.height="auto"
 mapDiv.style.height="100vh"
 
 originalMapTypeId = map.getMapTypeId()
@@ -1972,8 +1975,6 @@ map.setMapTypeId("roadmap")
 
 clearMap()
 drawDistricts()
-
-
 
 google.maps.event.trigger(map,"resize")
 
@@ -1999,19 +2000,9 @@ adjustOverlays()
 
 setTimeout(()=>{
 
-setTimeout(()=>{
-
-let br = document.createElement("div")
-br.className = "pageBreak"
-document.body.appendChild(br)
-
 window.print()
 
 setTimeout(()=>{
-br.remove()
-},500)
-
-},300)
 
 isPrintMode = false
 clearPrintLayout()
@@ -2021,6 +2012,8 @@ topPanel.style.display="flex"
 mainLayout.style.height="100vh"
 mapDiv.style.height="100%"
 
+sidePanel.style.display="none"
+
 clearMap()
 drawDistricts()
 
@@ -2029,6 +2022,8 @@ map.setCenter(originalCenter)
 map.setZoom(originalZoom)
 
 },500)
+
+},300)
 
 },500)
 
@@ -2088,6 +2083,7 @@ XLSX.utils.book_append_sheet(wb, ws, "التقرير")
 XLSX.writeFile(wb, "تقرير_البلاغات.xlsx")
 
 }
+
 function printOneDistrict(key){
 
 let data = districts[key]
@@ -2098,7 +2094,6 @@ return
 
 let allDistricts = districts
 
-// عرض حي واحد فقط
 districts = {}
 districts[key] = data
 
@@ -2106,6 +2101,12 @@ clearMap()
 drawDistricts()
 
 updatePanelDistrict(key,data)
+
+const sidePanel = document.querySelector(".sidePanel")
+const topPanel = document.querySelector(".topPanel")
+
+sidePanel.style.display="flex"
+topPanel.style.display="none"
 
 google.maps.event.trigger(map,"resize")
 
@@ -2119,8 +2120,9 @@ setTimeout(()=>{
 
 window.print()
 
-// رجوع الوضع الطبيعي
 districts = allDistricts
+sidePanel.style.display="none"
+topPanel.style.display="flex"
 clearMap()
 drawDistricts()
 
@@ -2133,7 +2135,6 @@ drawDistricts()
 
 <script async defer
 src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing&callback=initMap">
-  
 </script>
 
 </body>
