@@ -548,10 +548,10 @@ let currentFilter="all"
 let selectedDistrict=""
 let selectedMunicipality=""
 let sideChart=null
-
 let drawingManager=null
 let isDrawingMode=false
 let manualZones=[]
+  let overlayByKey = {}
 
 const COLORS=[
 "#ff5722",
@@ -1531,12 +1531,12 @@ this.div.parentNode.removeChild(this.div)
 }
 this.div=null
 }
-}
+
 
 let overlay=new ElegantOverlay(position)
 overlay.setMap(map)
 overlays.push(overlay)
-}
+return overlay
 
 function drawDistricts(){
 
@@ -1578,8 +1578,29 @@ fillColor:baseColor,
 fillOpacity:polygonFillOpacity,
 map:map,
 zIndex:isSelected ? 100 : 50
+  draggable:true
 })
+polygon.addListener("drag", () => {
 
+  const overlay = overlayByKey[districtKey]
+  if (!overlay) return
+
+  const path = polygon.getPath()
+
+  let lat = 0
+  let lng = 0
+
+  for (let i = 0; i < path.getLength(); i++) {
+    lat += path.getAt(i).lat()
+    lng += path.getAt(i).lng()
+  }
+
+  lat /= path.getLength()
+  lng /= path.getLength()
+
+  overlay.position = { lat, lng }
+  overlay.draw()
+})
 polygons.push(polygon)
 
 polygon.addListener("click",(e)=>{
@@ -1608,14 +1629,15 @@ visibleBounds.extend(center)
 hasVisible=true
 
 let infoWindow=createDistrictInfoWindow(center,originalData.name,count,originalData,baseColor)
-createElegantOverlay(center,count,districtKey,columnColor,infoWindow)
+  let overlay = createElegantOverlay(center,count,districtKey,columnColor,infoWindow)
+overlayByKey[districtKey] = overlay
 }
 
 if(hasVisible){
 map.fitBounds(visibleBounds)
 setTimeout(adjustOverlays,300)
 }
-}
+
 
 /* ===== لوحة المعلومات ===== */
 function resetPanel(){
