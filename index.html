@@ -74,15 +74,56 @@ button:active { transform: translateY(0); }
 .notification.warning { background: #f59e0b; }
 .notification.info { background: #3b82f6; }
 
-/* ===== CSS جديد لقائمة الأحياء ===== */
-.districtsSection { margin-bottom: 20px; }
-.districtItem { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
-.districtItem:hover { background: #f1f5f9; border-color: #667eea; transform: translateX(-4px); }
-.districtRank { min-width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
-.districtInfo { flex: 1; }
-.districtName { font-size: 13px; font-weight: 600; color: #1f2937; }
-.districtMuni { font-size: 11px; color: #6b7280; }
-.districtCount { min-width: 40px; text-align: center; background: #e0e7ff; color: #4f46e5; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 13px; }
+/* ===== جدول داخل الخريطة ===== */
+.mapTableContainer {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 400px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  z-index: 1000;
+  max-height: 250px;
+  display: none;
+}
+.mapTableContainer.visible {
+  display: block;
+}
+.mapTableContainer .cardTitle {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+.mapTableWrap {
+  max-height: 180px;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid #e1e4e8;
+}
+.mapTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  background: white;
+}
+.mapTable th, .mapTable td {
+  border-bottom: 1px solid #e1e4e8;
+  padding: 8px 10px;
+  text-align: center;
+}
+.mapTable th {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 700;
+}
+.mapTable tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
 </style>
 </head>
 
@@ -103,7 +144,6 @@ button:active { transform: translateY(0); }
       </div>
       <div class="chartCard"><div class="cardTitle">📊 الرسم البياني</div><canvas id="sideChart"></canvas></div>
       <div class="listCard"><div class="cardTitle">📋 ملخص التصنيفات</div><div class="summaryList" id="detailsList"><div class="emptyBox">لا توجد بيانات حتى الآن.</div></div></div>
-      <div class="tableCard"><div class="cardTitle">📑 جدول البيانات الحالي</div><div class="dataTableWrap"><table class="dataTable"><thead><tr><th>البلدية</th><th>الحي</th><th>البلاغات</th><th>أعلى تصنيف</th><th>العدد</th></tr></thead><tbody id="screenTableBody"><tr><td colspan="5" style="padding: 20px;">لا توجد بيانات.</td></tr></tbody></table></div></div>
     </div>
   </div>
 
@@ -117,6 +157,27 @@ button:active { transform: translateY(0); }
       <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورة</button></div>
     </div>
     <div id="map"></div>
+    
+    <!-- جدول داخل الخريطة -->
+    <div id="mapTableContainer" class="mapTableContainer">
+      <div class="cardTitle">📑 جدول البيانات الحالي</div>
+      <div class="mapTableWrap">
+        <table class="mapTable">
+          <thead>
+            <tr>
+              <th>البلدية</th>
+              <th>الحي</th>
+              <th>البلاغات</th>
+              <th>أعلى تصنيف</th>
+              <th>العدد</th>
+            </tr>
+          </thead>
+          <tbody id="mapTableBody">
+            <tr><td colspan="5">لا توجد بيانات.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -358,6 +419,7 @@ function setFilter(type) {
 
 function selectDistrict(key) {
   selectedDistrict = key || "";
+  document.getElementById("districtList").value = selectedDistrict;
   clearMap();
   drawDistricts();
   updatePanelForCurrentView();
@@ -486,11 +548,27 @@ function getCurrentReportRows() {
   return rows;
 }
 
-function renderScreenTable() {
-  const body = document.getElementById("screenTableBody");
+// ===== عرض الجدول داخل الخريطة =====
+function renderMapTable() {
+  const container = document.getElementById("mapTableContainer");
+  const body = document.getElementById("mapTableBody");
   const rows = getCurrentReportRows();
-  if (!rows.length) { body.innerHTML = '<tr><td colspan="5" style="padding: 20px;">لا توجد بيانات مطابقة للفلترة الحالية.</td></tr>'; return; }
-  body.innerHTML = rows.map(r => `<tr><td>${escapeHtml(r.municipality)}</td><td>${escapeHtml(r.district)}</td><td><strong>${r.count}</strong></td><td>${escapeHtml(r.topCategory)}</td><td>${r.topCount}</td></tr>`).join("");
+  
+  if (!rows.length) {
+    container.classList.remove("visible");
+    return;
+  }
+  
+  container.classList.add("visible");
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td>${escapeHtml(r.municipality)}</td>
+      <td><strong>${escapeHtml(r.district)}</strong></td>
+      <td><strong>${r.count}</strong></td>
+      <td>${escapeHtml(r.topCategory)}</td>
+      <td>${r.topCount}</td>
+    </tr>
+  `).join("");
 }
 
 function drawDistricts() {
@@ -637,7 +715,7 @@ function resetPanel() {
   document.getElementById("totalCount").textContent = "0";
   document.getElementById("totalTypes").textContent = "0";
   document.getElementById("detailsList").innerHTML = '<div class="emptyBox">لا توجد بيانات حتى الآن.</div>';
-  document.getElementById("screenTableBody").innerHTML = '<tr><td colspan="5" style="padding: 20px;">لا توجد بيانات.</td></tr>';
+  document.getElementById("mapTableContainer").classList.remove("visible");
   if (sideChart) { sideChart.destroy(); sideChart = null; }
 }
 
@@ -660,86 +738,37 @@ function updatePanelDistrict(key, data) {
   document.getElementById("totalTypes").textContent = total;
   document.getElementById("detailsList").innerHTML = html || '<div class="emptyBox">لا توجد بيانات.</div>';
   drawSideChart(labels, values);
-  renderScreenTable();
+  renderMapTable();
 }
 
-// ===== الدالة المعدلة لعرض قائمة الأحياء =====
 function updatePanelSummary() {
   let totalCount = 0, totalTypes = 0, merged = {}, districtCounter = 0;
-  const districtList = [];
-  
-  // جمع الأحياء المرئية
   for (let districtKey in districts) {
     const data = districts[districtKey];
     const count = data.points.length;
     if (!passesFilter(districtKey, count)) continue;
-    
     districtCounter++;
     totalCount += count;
     for (let key in data.third) { merged[key] = (merged[key] || 0) + data.third[key]; }
-    
-    const color = COLORS[districtList.length % COLORS.length];
-    districtList.push({
-      key: districtKey,
-      name: data.name,
-      municipality: data.municipality,
-      count: count,
-      color: color
-    });
   }
-  
-  // ترتيب الأحياء تنازلياً
-  districtList.sort((a, b) => b.count - a.count);
-  
-  // بناء قائمة الأحياء
-  let districtsHtml = "";
-  districtList.forEach((d, index) => {
-    districtsHtml += `
-      <div class="districtItem" onclick="selectDistrict('${d.key}')">
-        <div class="districtRank" style="background: ${d.color};">${index + 1}</div>
-        <div class="districtInfo">
-          <div class="districtName">${escapeHtml(d.name)}</div>
-          <div class="districtMuni">${escapeHtml(d.municipality)}</div>
-        </div>
-        <div class="districtCount">${d.count}</div>
-      </div>
-    `;
-  });
-  
-  // بناء قائمة التصنيفات
   const entries = Object.entries(merged).sort((a, b) => b[1] - a[1]);
-  const labels = [], values = [];
-  let categoriesHtml = "";
+  const labels = [];
+  const values = [];
+  let html = "";
   entries.forEach(([k, v], i) => {
     totalTypes += v;
-    categoriesHtml += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`;
+    html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`;
     if (i < 10) { labels.push(k); values.push(v); }
   });
-  
   const filterText = document.getElementById("filterSelect").options[document.getElementById("filterSelect").selectedIndex].text;
   const municipalityText = selectedMunicipality || "كل البلديات";
-  
   document.getElementById("panelTitle").textContent = "ملخص حسب الفلتر";
   document.getElementById("panelSubTitle").textContent = `البلدية: ${municipalityText} | الأحياء: ${districtCounter} | ${filterText}`;
   document.getElementById("totalCount").textContent = totalCount;
   document.getElementById("totalTypes").textContent = totalTypes;
-  
-  // عرض قسمين: الأحياء + التصنيفات
-  document.getElementById("detailsList").innerHTML = `
-    <div class="districtsSection">
-      <div class="cardTitle">🏘️ الأحياء (${districtList.length})</div>
-      ${districtsHtml || '<div class="emptyBox">لا توجد أحياء مطابقة</div>'}
-    </div>
-    <div>
-      <div class="cardTitle">📋 التصنيفات</div>
-      <div class="summaryList">
-        ${categoriesHtml || '<div class="emptyBox">لا توجد تصنيفات</div>'}
-      </div>
-    </div>
-  `;
-  
+  document.getElementById("detailsList").innerHTML = html || '<div class="emptyBox">لا توجد بيانات مطابقة للفلترة الحالية.</div>';
   drawSideChart(labels, values);
-  renderScreenTable();
+  renderMapTable();
 }
 
 function updatePanelForCurrentView() {
