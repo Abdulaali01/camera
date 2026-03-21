@@ -1838,20 +1838,26 @@ XLSX.writeFile(wb, "تقرير_البلاغات.xlsx")
 /* ===== تنزيل صورة ===== */
 async function downloadImage(){
 
-google.maps.event.trigger(map,"resize")
+  const panel = document.querySelector(".topPanel")
 
-await new Promise(r=>setTimeout(r,800))
+  // اخفاء الفلتر مؤقت
+  panel.style.display = "none"
 
-const canvas = await html2canvas(document.querySelector(".mainLayout"),{
-scale:2,
-backgroundColor:"#ffffff",
-useCORS:true
-})
+  google.maps.event.trigger(map,"resize")
+  await new Promise(r=>setTimeout(r,800))
 
-const a = document.createElement("a")
-a.href = canvas.toDataURL("image/png")
-a.download = "map.png"
-a.click()
+  const canvas = await html2canvas(document.querySelector(".mainLayout"),{
+    scale:2,
+    backgroundColor:"#ffffff"
+  })
+
+  // رجّع الفلتر بعد التصوير
+  panel.style.display = "flex"
+
+  const a = document.createElement("a")
+  a.href = canvas.toDataURL("image/png")
+  a.download = "map.png"
+  a.click()
 }
 
 /* ===== مساعدات ===== */
