@@ -1840,18 +1840,23 @@ async function downloadImage(){
 
   const panel = document.querySelector(".topPanel")
 
-  // اخفاء الفلتر مؤقت
+  // اخفاء الفلتر
   panel.style.display = "none"
 
   google.maps.event.trigger(map,"resize")
-  await new Promise(r=>setTimeout(r,800))
+
+  // 🔥 أهم شي: إعادة ترتيب الأوفرلاي
+  adjustOverlays()
+
+  // نعطيه وقت يرتب نفسه
+  await new Promise(r=>setTimeout(r,1200))
 
   const canvas = await html2canvas(document.querySelector(".mainLayout"),{
     scale:2,
     backgroundColor:"#ffffff"
   })
 
-  // رجّع الفلتر بعد التصوير
+  // رجوع الفلتر
   panel.style.display = "flex"
 
   const a = document.createElement("a")
