@@ -1838,73 +1838,35 @@ XLSX.writeFile(wb, "تقرير_البلاغات.xlsx")
 /* ===== تنزيل صورة ===== */
 async function downloadImage(){
 
-  const center = map.getCenter()
-  const zoom = map.getZoom()
+  const panel = document.querySelector(".topPanel")
+  const fab = document.querySelector(".fabWrap")
 
-  let markersStr = ""
+  // اخفاء العناصر المزعجة
+  panel.style.display = "none"
+  if(fab) fab.style.display = "none"
 
-  // 🔹 نجمع النقاط
-  Object.values(districts).forEach(d=>{
-    d.points.forEach(p=>{
-      markersStr += `&markers=color:red%7C${p.lat},${p.lng}`
-    })
+  // 🔥 اهم شي: إعادة ترتيب
+  adjustOverlays()
+
+  google.maps.event.trigger(map,"resize")
+
+  await new Promise(r=>setTimeout(r,1200))
+
+  // 🔥 نصور الخريطة فقط بدون اللوحة
+  const canvas = await html2canvas(document.querySelector("#map"),{
+    scale:2,
+    useCORS:true,
+    backgroundColor:"#ffffff"
   })
 
-  // 🔹 رابط الخريطة الثابتة
-  const url =
-  `https://maps.googleapis.com/maps/api/staticmap
-  ?center=${center.lat()},${center.lng()}
-  &zoom=${zoom}
-  &size=1200x1200
-  &maptype=roadmap
-  ${markersStr}
-  &key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y`.replace(/\s/g,'')
+  // رجوع العناصر
+  panel.style.display = "flex"
+  if(fab) fab.style.display = "flex"
 
-  // 🔹 نحمل الصورة
-  const img = new Image()
-  img.crossOrigin = "anonymous"
-  img.src = url
-
-  img.onload = function(){
-
-    const canvas = document.createElement("canvas")
-    canvas.width = 1200
-    canvas.height = 1200
-
-    const ctx = canvas.getContext("2d")
-
-    // رسم الخريطة
-    ctx.drawImage(img,0,0)
-
-    // 🔥 رسم الأحياء (الأرقام)
-    Object.values(districts).forEach(d=>{
-
-      const center = getDistrictCenter(d.points)
-      const count = d.points.length
-
-      const point = latLngToCanvas(center, map, canvas)
-
-      if(!point) return
-
-      // دائرة
-      ctx.fillStyle = "#111"
-      ctx.beginPath()
-      ctx.arc(point.x, point.y, 18, 0, Math.PI*2)
-      ctx.fill()
-
-      // رقم
-      ctx.fillStyle = "#fff"
-      ctx.font = "bold 14px Arial"
-      ctx.textAlign = "center"
-      ctx.fillText(count, point.x, point.y+5)
-    })
-
-    // تحميل
-    const a = document.createElement("a")
-    a.href = canvas.toDataURL("image/png")
-    a.download = "map.png"
-    a.click()
-  }
+  const a = document.createElement("a")
+  a.href = canvas.toDataURL("image/png")
+  a.download = "map.png"
+  a.click()
 }
   function latLngToCanvas(latLng, map, canvas){
 
