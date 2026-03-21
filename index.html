@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -74,6 +73,16 @@ button:active { transform: translateY(0); }
 .notification.error { background: #ef4444; }
 .notification.warning { background: #f59e0b; }
 .notification.info { background: #3b82f6; }
+
+/* ===== CSS جديد لقائمة الأحياء ===== */
+.districtsSection { margin-bottom: 20px; }
+.districtItem { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+.districtItem:hover { background: #f1f5f9; border-color: #667eea; transform: translateX(-4px); }
+.districtRank { min-width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+.districtInfo { flex: 1; }
+.districtName { font-size: 13px; font-weight: 600; color: #1f2937; }
+.districtMuni { font-size: 11px; color: #6b7280; }
+.districtCount { min-width: 40px; text-align: center; background: #e0e7ff; color: #4f46e5; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 13px; }
 </style>
 </head>
 
@@ -654,34 +663,88 @@ function updatePanelDistrict(key, data) {
   renderScreenTable();
 }
 
+// ===== الدالة المعدلة لعرض قائمة الأحياء =====
 function updatePanelSummary() {
   let totalCount = 0, totalTypes = 0, merged = {}, districtCounter = 0;
+  const districtList = [];
+  
+  // جمع الأحياء المرئية
   for (let districtKey in districts) {
     const data = districts[districtKey];
     const count = data.points.length;
     if (!passesFilter(districtKey, count)) continue;
+    
     districtCounter++;
     totalCount += count;
     for (let key in data.third) { merged[key] = (merged[key] || 0) + data.third[key]; }
+    
+    const color = COLORS[districtList.length % COLORS.length];
+    districtList.push({
+      key: districtKey,
+      name: data.name,
+      municipality: data.municipality,
+      count: count,
+      color: color
+    });
   }
+  
+  // ترتيب الأحياء تنازلياً
+  districtList.sort((a, b) => b.count - a.count);
+  
+  // بناء قائمة الأحياء
+  let districtsHtml = "";
+  districtList.forEach((d, index) => {
+    districtsHtml += `
+      <div class="districtItem" onclick="selectDistrict('${d.key}')">
+        <div class="districtRank" style="background: ${d.color};">${index + 1}</div>
+        <div class="districtInfo">
+          <div class="districtName">${escapeHtml(d.name)}</div>
+          <div class="districtMuni">${escapeHtml(d.municipality)}</div>
+        </div>
+        <div class="districtCount">${d.count}</div>
+      </div>
+    `;
+  });
+  
+  // بناء قائمة التصنيفات
   const entries = Object.entries(merged).sort((a, b) => b[1] - a[1]);
-  const labels = [];
-  const values = [];
-  let html = "";
+  const labels = [], values = [];
+  let categoriesHtml = "";
   entries.forEach(([k, v], i) => {
     totalTypes += v;
-    html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`;
+    categoriesHtml += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`;
     if (i < 10) { labels.push(k); values.push(v); }
   });
+  
   const filterText = document.getElementById("filterSelect").options[document.getElementById("filterSelect").selectedIndex].text;
   const municipalityText = selectedMunicipality || "كل البلديات";
+  
   document.getElementById("panelTitle").textContent = "ملخص حسب الفلتر";
   document.getElementById("panelSubTitle").textContent = `البلدية: ${municipalityText} | الأحياء: ${districtCounter} | ${filterText}`;
   document.getElementById("totalCount").textContent = totalCount;
   document.getElementById("totalTypes").textContent = totalTypes;
-  document.getElementById("detailsList").innerHTML = html || '<div class="emptyBox">لا توجد بيانات مطابقة للفلترة الحالية.</div>';
+  
+  // عرض قسمين: الأحياء + التصنيفات
+  document.getElementById("detailsList").innerHTML = `
+    <div class="districtsSection">
+      <div class="cardTitle">🏘️ الأحياء (${districtList.length})</div>
+      ${districtsHtml || '<div class="emptyBox">لا توجد أحياء مطابقة</div>'}
+    </div>
+    <div>
+      <div class="cardTitle">📋 التصنيفات</div>
+      <div class="summaryList">
+        ${categoriesHtml || '<div class="emptyBox">لا توجد تصنيفات</div>'}
+      </div>
+    </div>
+  `;
+  
   drawSideChart(labels, values);
   renderScreenTable();
+}
+
+function updatePanelForCurrentView() {
+  if (selectedDistrict && districts[selectedDistrict]) { updatePanelDistrict(selectedDistrict, districts[selectedDistrict]); return; }
+  updatePanelSummary();
 }
 
 function drawSideChart(labels, values) {
@@ -692,11 +755,6 @@ function drawSideChart(labels, values) {
     data: { labels: labels, datasets: [{ label: "العدد", data: values, backgroundColor: "rgba(102, 126, 234, 0.8)", borderColor: "rgba(102, 126, 234, 1)", borderWidth: 2, borderRadius: 8, maxBarThickness: 32 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: "rgba(0,0,0,0.8)", titleFont: { size: 13 }, bodyFont: { size: 13 }, padding: 12, cornerRadius: 8 } }, scales: { x: { ticks: { display: false }, grid: { display: false } }, y: { beginAtZero: true, ticks: { font: { size: 11 }, color: "#6b7280" }, grid: { color: "rgba(0,0,0,0.05)" } } }, animation: { duration: 800, easing: 'easeOutQuart' } }
   });
-}
-
-function updatePanelForCurrentView() {
-  if (selectedDistrict && districts[selectedDistrict]) { updatePanelDistrict(selectedDistrict, districts[selectedDistrict]); return; }
-  updatePanelSummary();
 }
 
 function exportExcel() {
