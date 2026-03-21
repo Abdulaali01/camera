@@ -1396,52 +1396,6 @@ lng:center.lng+(p.lng-center.lng)*factor
 })
 }
 
-function createSmoothBoundary(points){
-
-if(!points || points.length===0) return []
-
-if(points.length===1){
-let p=points[0]
-let off=0.0015
-return [
-{lat:p.lat-off,lng:p.lng-off},
-{lat:p.lat-off,lng:p.lng+off},
-{lat:p.lat+off,lng:p.lng+off},
-{lat:p.lat+off,lng:p.lng-off}
-]
-}
-
-if(points.length===2){
-const p1=points[0]
-const p2=points[1]
-const dx=p2.lng-p1.lng
-const dy=p2.lat-p1.lat
-const len=Math.sqrt(dx*dx+dy*dy) || 0.0001
-const nx=-dy/len
-const ny=dx/len
-const off=0.0025
-
-return [
-{lat:p1.lat+ny*off,lng:p1.lng+nx*off},
-{lat:p2.lat+ny*off,lng:p2.lng+nx*off},
-{lat:p2.lat-ny*off,lng:p2.lng-nx*off},
-{lat:p1.lat-ny*off,lng:p1.lng-nx*off}
-]
-}
-
-let hull=convexHull(points)
-
-if(!hull || hull.length<3){
-return points
-}
-
-let dense=densifyClosedPath(hull,10)
-let expanded=expandClosedPath(dense,1.16)
-let smooth=chaikinSmoothClosed(expanded,4)
-
-return smooth
-}
-
 function createElegantOverlay(position,count,districtKey,color,infoWindow){
 
 class ElegantOverlay extends google.maps.OverlayView{
@@ -1464,58 +1418,60 @@ this.div.style.flexDirection="column"
 this.div.style.alignItems="center"
 this.div.style.userSelect="none"
 this.div.style.cursor="grab"
+this.div.style.zIndex="250"
 this.div.style.touchAction="none"
 
+// 🔥 السحب
 let isDragging = false
 let offsetX = 0
 let offsetY = 0
 
 this.div.addEventListener("pointerdown",(e)=>{
-  isDragging = true
-  this.div.setPointerCapture(e.pointerId)
+isDragging = true
+this.div.setPointerCapture(e.pointerId)
 
-  const rect = this.div.getBoundingClientRect()
-  offsetX = e.clientX - rect.left
-  offsetY = e.clientY - rect.top
+const rect=this.div.getBoundingClientRect()
+offsetX = e.clientX - rect.left
+offsetY = e.clientY - rect.top
 
-  this.div.style.cursor="grabbing"
+this.div.style.cursor="grabbing"
 })
 
 this.div.addEventListener("pointermove",(e)=>{
-  if(!isDragging) return
+if(!isDragging) return
 
-  const mapRect = document.getElementById("map").getBoundingClientRect()
+const mapRect=document.getElementById("map").getBoundingClientRect()
 
-  const x = e.clientX - mapRect.left - offsetX + (this.div.offsetWidth/2)
-  const y = e.clientY - mapRect.top - offsetY + (this.div.offsetHeight/2)
+const x=e.clientX - mapRect.left - offsetX + (this.div.offsetWidth/2)
+const y=e.clientY - mapRect.top - offsetY + (this.div.offsetHeight/2)
 
-  const projection = this.getProjection()
-  if(!projection) return
+const projection=this.getProjection()
+if(!projection) return
 
-  const latLng = projection.fromDivPixelToLatLng(
-    new google.maps.Point(x,y)
-  )
+const latLng=projection.fromDivPixelToLatLng(
+new google.maps.Point(x,y)
+)
 
-  if(!latLng) return
+if(!latLng) return
 
-  this.position = latLng
-  this.draw()
+this.position = latLng
+this.draw()
 })
 
 this.div.addEventListener("pointerup",(e)=>{
-  isDragging = false
-  this.div.style.cursor="grab"
-  try{
-    this.div.releasePointerCapture(e.pointerId)
-  }catch(err){}
+isDragging=false
+this.div.style.cursor="grab"
+try{
+this.div.releasePointerCapture(e.pointerId)
+}catch(err){}
 })
 
 this.div.addEventListener("pointercancel",()=>{
-  isDragging = false
-  this.div.style.cursor="grab"
+isDragging=false
+this.div.style.cursor="grab"
 })
-this.div.style.zIndex="250"
 
+// ===== التصميم =====
 this.countBadge=document.createElement("div")
 this.countBadge.style.minWidth="42px"
 this.countBadge.style.height="30px"
@@ -1528,43 +1484,20 @@ this.countBadge.style.alignItems="center"
 this.countBadge.style.justifyContent="center"
 this.countBadge.style.fontWeight="bold"
 this.countBadge.style.fontSize="14px"
-this.countBadge.style.boxShadow="0 4px 14px rgba(0,0,0,.28)"
-this.countBadge.style.backdropFilter="blur(3px)"
 this.countBadge.innerHTML=count
 
 this.nameChip=document.createElement("div")
 this.nameChip.style.marginTop="5px"
 this.nameChip.style.padding="4px 10px"
 this.nameChip.style.borderRadius="999px"
-this.nameChip.style.background="rgba(255,255,255,.95)"
-this.nameChip.style.color="#222"
+this.nameChip.style.background="#fff"
 this.nameChip.style.fontSize="11px"
 this.nameChip.style.fontWeight="bold"
-this.nameChip.style.boxShadow="0 3px 10px rgba(0,0,0,.18)"
 this.nameChip.style.border=`2px solid ${color}`
-this.nameChip.style.whiteSpace="nowrap"
-this.nameChip.innerHTML=escapeHtml(data.name)
-
-this.stem=document.createElement("div")
-this.stem.style.width="2px"
-this.stem.style.height="16px"
-this.stem.style.background=color
-this.stem.style.marginTop="3px"
-this.stem.style.boxShadow="0 0 6px rgba(0,0,0,.25)"
-
-this.dot=document.createElement("div")
-this.dot.style.width="10px"
-this.dot.style.height="10px"
-this.dot.style.borderRadius="50%"
-this.dot.style.background=color
-this.dot.style.border="2px solid #fff"
-this.dot.style.boxShadow="0 2px 8px rgba(0,0,0,.3)"
-this.dot.style.marginTop="-1px"
+this.nameChip.innerHTML=data.name
 
 this.div.appendChild(this.countBadge)
 this.div.appendChild(this.nameChip)
-this.div.appendChild(this.stem)
-this.div.appendChild(this.dot)
 
 this.div.addEventListener("click",(e)=>{
 e.stopPropagation()
@@ -1575,15 +1508,7 @@ updatePanelDistrict(districtKey,districts[districtKey])
 
 this.getPanes().overlayMouseTarget.appendChild(this.div)
 }
-const polygonRef = polygons.find(p => {
-  return p.getMap() && p.getPath()
-})
 
-if(polygonRef){
-
-  google.maps.event.addListener(polygonRef, "drag", ()=>{
-
-}
 draw(){
 let projection=this.getProjection()
 if(!projection || !this.div) return
@@ -1591,7 +1516,7 @@ if(!projection || !this.div) return
 let pos=projection.fromLatLngToDivPixel(
 new google.maps.LatLng(this.position.lat,this.position.lng)
 )
-}
+
 if(!pos) return
 
 this.div.style.left=pos.x+"px"
