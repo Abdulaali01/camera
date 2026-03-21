@@ -1836,69 +1836,44 @@ XLSX.writeFile(wb, "تقرير_البلاغات.xlsx")
 }
 
 /* ===== تنزيل صورة ===== */
+
 async function downloadImage(){
 
-  const center = map.getCenter()
-  const zoom = map.getZoom()
+  const panel = document.querySelector(".topPanel")
+  const fab = document.querySelector(".fabWrap")
 
-  // 🔥 نبني رابط الخريطة
-  let markers = ""
+  // اخفاء العناصر
+  panel.style.display = "none"
+  if(fab) fab.style.display = "none"
 
-  Object.values(districts).forEach(d=>{
-    d.points.forEach(p=>{
-      markers += `&markers=color:red%7C${p.lat},${p.lng}`
-    })
-  })
+  // 🔥 نخلي الخريطة جاهزة
+  google.maps.event.trigger(map,"resize")
 
-  const url = `https://maps.googleapis.com/maps/api/staticmap
-  ?center=${center.lat()},${center.lng()}
-  &zoom=${zoom}
-  &size=1200x1200
-  &maptype=roadmap
-  ${markers}
-  &key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y`.replace(/\s/g,'')
+  // 🔥 نوقف الحركة
+  await new Promise(r=>setTimeout(r,800))
 
-  const img = new Image()
-  img.crossOrigin = "anonymous"
-  img.src = url
+  // 🔥 نصور الصفحة كلها
+  html2canvas(document.querySelector(".mainLayout"),{
+    scale:2,
+    useCORS:true,
+    backgroundColor:"#ffffff"
+  }).then(canvas=>{
 
-  img.onload = function(){
-
-    const canvas = document.createElement("canvas")
-    canvas.width = 1200
-    canvas.height = 1200
-
-    const ctx = canvas.getContext("2d")
-
-    // 🗺️ رسم الخريطة
-    ctx.drawImage(img,0,0)
-
-    // 🔥 رسم الأرقام
-    Object.values(districts).forEach(d=>{
-
-      const center = getDistrictCenter(d.points)
-      const count = d.points.length
-
-      const point = latLngToCanvas(center)
-
-      if(!point) return
-
-      ctx.fillStyle = "#111"
-      ctx.beginPath()
-      ctx.arc(point.x, point.y, 18, 0, Math.PI*2)
-      ctx.fill()
-
-      ctx.fillStyle = "#fff"
-      ctx.font = "bold 14px Arial"
-      ctx.textAlign = "center"
-      ctx.fillText(count, point.x, point.y+5)
-    })
+    // رجوع العناصر
+    panel.style.display = "flex"
+    if(fab) fab.style.display = "flex"
 
     const a = document.createElement("a")
     a.href = canvas.toDataURL("image/png")
     a.download = "map.png"
     a.click()
-  }
+  }).catch(err=>{
+    alert("فشل التنزيل ❌")
+    console.error(err)
+
+    panel.style.display = "flex"
+    if(fab) fab.style.display = "flex"
+  })
 }
   function latLngToCanvas(latLng){
 
