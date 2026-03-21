@@ -623,6 +623,7 @@ strokeColor:'#1a73e8',
 strokeWeight:3,
 editable:true,
 draggable:true,
+  
 clickable:true,
 zIndex:1500
 }
@@ -1582,19 +1583,6 @@ if(polygonRef){
 
   google.maps.event.addListener(polygonRef, "drag", ()=>{
 
-    const center = polygonRef.getPath().getArray().reduce((acc,p)=>{
-      acc.lat += p.lat()
-      acc.lng += p.lng()
-      return acc
-    },{lat:0,lng:0})
-
-    center.lat /= polygonRef.getPath().getLength()
-    center.lng /= polygonRef.getPath().getLength()
-
-    this.position = center
-    this.draw()
-  })
-
 }
 draw(){
 let projection=this.getProjection()
@@ -1603,7 +1591,7 @@ if(!projection || !this.div) return
 let pos=projection.fromLatLngToDivPixel(
 new google.maps.LatLng(this.position.lat,this.position.lng)
 )
-
+}
 if(!pos) return
 
 this.div.style.left=pos.x+"px"
