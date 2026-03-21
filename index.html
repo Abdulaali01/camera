@@ -7,6 +7,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
 body{
@@ -516,9 +517,8 @@ max-height:220px
       </div>
 
       <div class="group">
-  <button id="excelBtn" onclick="exportExcel()">📤 Excel</button>
-  <button onclick="downloadImage()">⬇️ تنزيل</button>
-      </div>
+        <button id="excelBtn" onclick="exportExcel()">📤 Excel</button>
+        <button onclick="downloadImage()">⬇️ تنزيل</button>
       </div>
 
     </div>
@@ -1835,6 +1835,25 @@ XLSX.utils.book_append_sheet(wb, ws, "التقرير")
 XLSX.writeFile(wb, "تقرير_البلاغات.xlsx")
 }
 
+/* ===== تنزيل صورة ===== */
+async function downloadImage(){
+
+google.maps.event.trigger(map,"resize")
+
+await new Promise(r=>setTimeout(r,800))
+
+const canvas = await html2canvas(document.querySelector(".mainLayout"),{
+scale:2,
+backgroundColor:"#ffffff",
+useCORS:true
+})
+
+const a = document.createElement("a")
+a.href = canvas.toDataURL("image/png")
+a.download = "map.png"
+a.click()
+}
+
 /* ===== مساعدات ===== */
 function escapeHtml(value){
 return String(value ?? "")
@@ -1844,31 +1863,9 @@ return String(value ?? "")
 .replace(/"/g,"&quot;")
 .replace(/'/g,"&#39;")
 }
-  
-/* 👇 الصق هنا 👇 */
-async function downloadImage(){
-
-  google.maps.event.trigger(map,"resize")
-  await new Promise(r=>setTimeout(r,800))
-
-  const canvas = await html2canvas(document.querySelector(".mainLayout"),{
-    scale:2,
-    backgroundColor:"#ffffff"
-  })
-
-  const a = document.createElement("a")
-  a.href = canvas.toDataURL("image/png")
-  a.download = "map.png"
-  a.click()
-}
-
-/* 👇 هذا السطر لا تغيره 👇 */
 </script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y"></script>
-
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing&callback=initMap"></script>
 
 </body>
 </html>
