@@ -1396,6 +1396,8 @@ lng:center.lng+(p.lng-center.lng)*factor
 })
 }
 
+
+// ===== التصميم =====
 function createElegantOverlay(position,count,districtKey,color,infoWindow){
 
 class ElegantOverlay extends google.maps.OverlayView{
@@ -1422,17 +1424,17 @@ this.div.style.zIndex="250"
 this.div.style.touchAction="none"
 
 // 🔥 السحب
-let isDragging = false
-let offsetX = 0
-let offsetY = 0
+let isDragging=false
+let offsetX=0
+let offsetY=0
 
 this.div.addEventListener("pointerdown",(e)=>{
-isDragging = true
+isDragging=true
 this.div.setPointerCapture(e.pointerId)
 
 const rect=this.div.getBoundingClientRect()
-offsetX = e.clientX - rect.left
-offsetY = e.clientY - rect.top
+offsetX=e.clientX-rect.left
+offsetY=e.clientY-rect.top
 
 this.div.style.cursor="grabbing"
 })
@@ -1442,8 +1444,8 @@ if(!isDragging) return
 
 const mapRect=document.getElementById("map").getBoundingClientRect()
 
-const x=e.clientX - mapRect.left - offsetX + (this.div.offsetWidth/2)
-const y=e.clientY - mapRect.top - offsetY + (this.div.offsetHeight/2)
+const x=e.clientX-mapRect.left-offsetX+(this.div.offsetWidth/2)
+const y=e.clientY-mapRect.top-offsetY+(this.div.offsetHeight/2)
 
 const projection=this.getProjection()
 if(!projection) return
@@ -1454,7 +1456,7 @@ new google.maps.Point(x,y)
 
 if(!latLng) return
 
-this.position = latLng
+this.position=latLng
 this.draw()
 })
 
@@ -1471,7 +1473,7 @@ isDragging=false
 this.div.style.cursor="grab"
 })
 
-// ===== التصميم =====
+// الشكل
 this.countBadge=document.createElement("div")
 this.countBadge.style.minWidth="42px"
 this.countBadge.style.height="30px"
@@ -1534,7 +1536,6 @@ this.div=null
 let overlay=new ElegantOverlay(position)
 overlay.setMap(map)
 overlays.push(overlay)
-  return overlay
 }
 
 function drawDistricts(){
