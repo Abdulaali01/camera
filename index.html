@@ -1532,11 +1532,17 @@ this.div.parentNode.removeChild(this.div)
 this.div=null
 }
 
+} // ⬅️ يقفل class
 
 let overlay=new ElegantOverlay(position)
 overlay.setMap(map)
 overlays.push(overlay)
 return overlay
+
+} // ⬅️ يقفل function createElegantOverlay
+
+
+
 
 function drawDistricts(){
 
@@ -1577,7 +1583,7 @@ strokeWeight:polygonStrokeWeight,
 fillColor:baseColor,
 fillOpacity:polygonFillOpacity,
 map:map,
-zIndex:isSelected ? 100 : 50
+zIndex:isSelected ? 100 : 50,
   draggable:true
 })
 polygon.addListener("drag", () => {
@@ -1780,11 +1786,9 @@ y:{
 beginAtZero:true,
 ticks:{display:false},
 grid:{color:"rgba(0,0,0,.06)"}
-}
-}
-}
+
 })
-}
+
 
 function updatePanelForCurrentView(){
 
