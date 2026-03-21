@@ -1838,59 +1838,84 @@ XLSX.writeFile(wb, "تقرير_البلاغات.xlsx")
 /* ===== تنزيل صورة ===== */
 async function downloadImage(){
 
-  const panel = document.querySelector(".topPanel")
-  const fab = document.querySelector(".fabWrap")
+  const center = map.getCenter()
+  const zoom = map.getZoom()
 
-  // اخفاء العناصر المزعجة
-  panel.style.display = "none"
-  if(fab) fab.style.display = "none"
+  // 🔥 نبني رابط الخريطة
+  let markers = ""
 
-  // 🔥 اهم شي: إعادة ترتيب
-  adjustOverlays()
-
-  google.maps.event.trigger(map,"resize")
-
-  await new Promise(r=>setTimeout(r,1200))
-
-  // 🔥 نصور الخريطة فقط بدون اللوحة
-  const canvas = await html2canvas(document.querySelector("#map"),{
-    scale:2,
-    useCORS:true,
-    backgroundColor:"#ffffff"
+  Object.values(districts).forEach(d=>{
+    d.points.forEach(p=>{
+      markers += `&markers=color:red%7C${p.lat},${p.lng}`
+    })
   })
 
-  // رجوع العناصر
-  panel.style.display = "flex"
-  if(fab) fab.style.display = "flex"
+  const url = `https://maps.googleapis.com/maps/api/staticmap
+  ?center=${center.lat()},${center.lng()}
+  &zoom=${zoom}
+  &size=1200x1200
+  &maptype=roadmap
+  ${markers}
+  &key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y`.replace(/\s/g,'')
 
-  const a = document.createElement("a")
-  a.href = canvas.toDataURL("image/png")
-  a.download = "map.png"
-  a.click()
+  const img = new Image()
+  img.crossOrigin = "anonymous"
+  img.src = url
+
+  img.onload = function(){
+
+    const canvas = document.createElement("canvas")
+    canvas.width = 1200
+    canvas.height = 1200
+
+    const ctx = canvas.getContext("2d")
+
+    // 🗺️ رسم الخريطة
+    ctx.drawImage(img,0,0)
+
+    // 🔥 رسم الأرقام
+    Object.values(districts).forEach(d=>{
+
+      const center = getDistrictCenter(d.points)
+      const count = d.points.length
+
+      const point = latLngToCanvas(center)
+
+      if(!point) return
+
+      ctx.fillStyle = "#111"
+      ctx.beginPath()
+      ctx.arc(point.x, point.y, 18, 0, Math.PI*2)
+      ctx.fill()
+
+      ctx.fillStyle = "#fff"
+      ctx.font = "bold 14px Arial"
+      ctx.textAlign = "center"
+      ctx.fillText(count, point.x, point.y+5)
+    })
+
+    const a = document.createElement("a")
+    a.href = canvas.toDataURL("image/png")
+    a.download = "map.png"
+    a.click()
+  }
 }
-  function latLngToCanvas(latLng, map, canvas){
-
-  const projection = map.getProjection()
-  if(!projection) return null
+  function latLngToCanvas(latLng){
 
   const bounds = map.getBounds()
   if(!bounds) return null
 
-  const topRight = projection.fromLatLngToPoint(bounds.getNorthEast())
-  const bottomLeft = projection.fromLatLngToPoint(bounds.getSouthWest())
+  const ne = bounds.getNorthEast()
+  const sw = bounds.getSouthWest()
 
-  const scale = Math.pow(2, map.getZoom())
-
-  const worldPoint = projection.fromLatLngToPoint(
-    new google.maps.LatLng(latLng.lat, latLng.lng)
-  )
+  const x = (latLng.lng - sw.lng()) / (ne.lng() - sw.lng())
+  const y = (latLng.lat - ne.lat()) / (sw.lat() - ne.lat())
 
   return {
-    x: (worldPoint.x - bottomLeft.x) * scale,
-    y: (worldPoint.y - topRight.y) * scale
+    x: x * 1200,
+    y: y * 1200
   }
 }
-
 /* ===== مساعدات ===== */
 function escapeHtml(value){
 return String(value ?? "")
