@@ -1574,7 +1574,28 @@ updatePanelDistrict(districtKey,districts[districtKey])
 
 this.getPanes().overlayMouseTarget.appendChild(this.div)
 }
+const polygonRef = polygons.find(p => {
+  return p.getMap() && p.getPath()
+})
 
+if(polygonRef){
+
+  google.maps.event.addListener(polygonRef, "drag", ()=>{
+
+    const center = polygonRef.getPath().getArray().reduce((acc,p)=>{
+      acc.lat += p.lat()
+      acc.lng += p.lng()
+      return acc
+    },{lat:0,lng:0})
+
+    center.lat /= polygonRef.getPath().getLength()
+    center.lng /= polygonRef.getPath().getLength()
+
+    this.position = center
+    this.draw()
+  })
+
+}
 draw(){
 let projection=this.getProjection()
 if(!projection || !this.div) return
