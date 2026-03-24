@@ -194,8 +194,13 @@ button:active { transform: translateY(0); }
     </div>
     <div id="map"></div>
     
-    <!-- شبكة خرايطي -->
-    <div id="kharaityGrid" class="kharaityGrid"></div>
+    <!-- كرت واحد كبير يحتوي على كل الأحياء -->
+    <div id="kharaityGrid" class="kharaityGrid">
+      <div class="bigMapCard" id="bigMapCard">
+        <div class="bigMapTitle">📍 الأحياء</div>
+        <div class="districtsContainer" id="districtsContainer"></div>
+      </div>
+    </div>
     
     <!-- رسم بياني ملصق -->
     <div id="mapChartOverlay" class="mapChartOverlay">
