@@ -1,915 +1,870 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحليل الأحياء - Google Maps</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCqm8L6wLdTKC5M1n3b4b8g2xB4z5z5z5z&libraries=drawing,places,geometry&language=ar"></script>
-    
-    <!-- html2canvas -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    
-    <!-- html-to-image (better for maps) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
-    
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تحليل الأحياء + الأعمدة على الخريطة</title>
 
-    <style>
-        * { font-family: 'Cairo', sans-serif; }
-        
-        body { margin: 0; padding: 0; overflow: hidden; }
-        
-        #map {
-            height: 100vh;
-            width: 100%;
-            position: relative;
-        }
-        
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 10px;
-        }
-        
-        .filter-btn {
-            transition: all 0.3s ease;
-        }
-        
-        .filter-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        
-        .neighborhood-marker {
-            background: #4f46e5;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            white-space: nowrap;
-        }
-        
-        .drawing-tools {
-            position: absolute;
-            top: 100px;
-            right: 10px;
-            z-index: 1000;
-        }
-        
-        .tool-btn {
-            width: 40px;
-            height: 40px;
-            background: white;
-            border: none;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .tool-btn:hover, .tool-btn.active {
-            background: #4f46e5;
-            color: white;
-        }
-        
-        .data-table {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .data-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .data-table th {
-            background: #f3f4f6;
-            padding: 12px;
-            text-align: right;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-        }
-        
-        .data-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        
-        .data-table tr:hover {
-            background: #f9fafb;
-        }
-        
-        /* Print Mode Styles */
-        .print-mode {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: white;
-            z-index: 9999;
-            display: none;
-            flex-direction: column;
-            padding: 20px;
-            overflow: auto;
-        }
-        
-        .print-mode.active {
-            display: flex;
-        }
-        
-        .print-header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #4f46e5;
-        }
-        
-        .print-map-container {
-            width: 100%;
-            height: 500px;
-            margin-bottom: 30px;
-            border: 2px solid #e5e7eb;
-        }
-        
-        .print-table-container {
-            width: 100%;
-            margin-top: 30px;
-        }
-        
-        /* Table Export Styles */
-        .export-table-section {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
-        
-        .export-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        
-        .export-table th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            text-align: right;
-            font-weight: 700;
-            border: 1px solid #e5e7eb;
-        }
-        
-        .export-table td {
-            padding: 12px 15px;
-            border: 1px solid #e5e7eb;
-            text-align: right;
-        }
-        
-        .export-table tr:nth-child(even) {
-            background: #f8fafc;
-        }
-        
-        .export-table tr:hover {
-            background: #e0e7ff;
-        }
-        
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255,255,255,0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            flex-direction: column;
-        }
-        
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #e5e7eb;
-            border-top-color: #4f46e5;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-    </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; overflow: hidden; }
+.mainLayout { display: flex; width: 100%; height: 100vh; }
+.sidePanel { width: 380px; min-width: 380px; max-width: 380px; height: 100vh; background: #ffffff; border-left: 1px solid #e1e4e8; box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08); display: flex; flex-direction: column; overflow: hidden; z-index: 100; }
+.sideHeader { padding: 20px; border-bottom: 1px solid #e1e4e8; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+.sideTitle { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: white; }
+.sideSub { font-size: 13px; color: rgba(255, 255, 255, 0.9); line-height: 1.5; }
+.sideBody { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.statGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.statCard { background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%); border: 1px solid #d1d5db; border-radius: 16px; padding: 16px; transition: transform 0.2s, box-shadow 0.2s; }
+.statCard:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+.statLabel { font-size: 12px; color: #6b7280; margin-bottom: 6px; font-weight: 600; }
+.statValue { font-size: 26px; font-weight: 800; color: #1f2937; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.chartCard, .listCard, .tableCard { background: #ffffff; border: 1px solid #e1e4e8; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
+.cardTitle { font-size: 14px; font-weight: 700; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+#sideChart { width: 100% !important; height: 220px !important; }
+.summaryList { display: flex; flex-direction: column; gap: 8px; }
+.summaryRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; transition: all 0.2s; }
+.summaryRow:hover { background: #f1f5f9; border-color: #cbd5e1; transform: translateX(-4px); }
+.summaryName { font-size: 13px; color: #1f2937; font-weight: 500; word-break: break-word; flex: 1; }
+.summaryVal { font-size: 14px; font-weight: 700; color: #4f46e5; min-width: 40px; text-align: left; background: #e0e7ff; padding: 4px 10px; border-radius: 20px; }
+.emptyBox { font-size: 14px; color: #6b7280; line-height: 1.8; text-align: center; padding: 20px; background: #f9fafb; border-radius: 12px; border: 2px dashed #e5e7eb; }
+.dataTableWrap { max-height: 280px; overflow: auto; border: 1px solid #e1e4e8; border-radius: 12px; background: white; }
+.dataTable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.dataTable th, .dataTable td { border-bottom: 1px solid #e1e4e8; padding: 10px 12px; text-align: center; vertical-align: middle; }
+.dataTable th { position: sticky; top: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); z-index: 2; font-weight: 700; color: white; font-size: 12px; }
+.dataTable tbody tr:nth-child(even) { background: #f8fafc; }
+.dataTable tbody tr:hover { background: #f1f5f9; }
+.mapSection { position: relative; flex: 1; height: 100vh; overflow: hidden; }
+#map { width: 100%; height: 100vh; }
+.topPanel { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12); padding: 12px 16px; z-index: 1000; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 340px; max-width: 95%; border: 1px solid rgba(255, 255, 255, 0.3); }
+.topPanel .group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.topPanel .titleMini { font-size: 11px; font-weight: 700; color: #6b7280; margin-inline: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+#searchBox { width: 260px; padding: 10px 14px; border-radius: 12px; border: 2px solid #e5e7eb; background: #ffffff; outline: none; font-size: 14px; transition: all 0.2s; }
+#searchBox:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+.fileInput { padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 12px; background: #ffffff; font-size: 13px; max-width: 200px; cursor: pointer; transition: border-color 0.2s; }
+.fileInput:hover { border-color: #667eea; }
+select { padding: 10px 12px; border-radius: 12px; border: 2px solid #e5e7eb; background: #ffffff; font-size: 13px; min-width: 160px; outline: none; cursor: pointer; transition: all 0.2s; }
+select:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+button { padding: 10px 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; cursor: pointer; font-size: 13px; font-weight: 700; transition: all 0.2s; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4); }
+button:active { transform: translateY(0); }
+#excelBtn { background: linear-gradient(135deg, #0b8f55 0%, #0a7a48 100%); box-shadow: 0 4px 12px rgba(11, 143, 85, 0.3); }
+#excelBtn:hover { box-shadow: 0 6px 20px rgba(11, 143, 85, 0.4); }
+.fabWrap { position: fixed; left: 20px; bottom: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 12px; }
+.fabBtn { border: none; border-radius: 50px; padding: 14px 20px; font-size: 14px; font-weight: 700; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; min-width: 140px; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.fabBtn:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); }
+.fabBtn.stop { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
+.fabBtn.gray { background: linear-gradient(135deg, #4b5563 0%, #374151 100%); }
+.fabBtn.green { background: linear-gradient(135deg, #0b8f55 0%, #0a7a48 100%); }
+.manualLabel { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 8px; cursor: grab; user-select: none; touch-action: none; z-index: 5000; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15)); }
+.manualLabel.dragging { cursor: grabbing; opacity: 0.8; }
+.manualCount { min-width: 38px; height: 34px; padding: 0 12px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1f2937 0%, #111827 100%); color: #fff; border-radius: 50px; font-size: 14px; font-weight: 800; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); border: 2px solid rgba(255, 255, 255, 0.1); }
+.manualName { padding: 8px 14px; background: #ffffff; color: #1f2937; border: 2px solid #667eea; border-radius: 50px; font-size: 13px; font-weight: 700; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); white-space: nowrap; }
+@media (max-width: 1100px) { .mainLayout { flex-direction: column; } .sidePanel { width: 100%; min-width: unset; max-width: none; height: 40vh; border-left: none; border-bottom: 1px solid #e1e4e8; order: 2; } .mapSection { height: 60vh; order: 1; } .topPanel { width: 95%; padding: 12px; top: 12px; } #searchBox { width: 100%; } .topPanel .group { width: 100%; } .fileInput, select, button { width: 100%; } .fabWrap { left: 12px; bottom: 12px; } .fabBtn { min-width: 120px; padding: 12px 16px; font-size: 13px; } .dataTableWrap { max-height: 200px; } }
+.loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); display: flex; align-items: center; justify-content: center; z-index: 100000; font-size: 18px; color: #667eea; font-weight: 700; backdrop-filter: blur(5px); }
+.spinner { width: 40px; height: 40px; border: 4px solid #e0e7ff; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.notification { position: fixed; top: 20px; right: 20px; padding: 16px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 100000; transform: translateX(400px); transition: transform 0.3s ease; max-width: 300px; word-wrap: break-word; color: white; }
+.notification.success { background: #10b981; }
+.notification.error { background: #ef4444; }
+.notification.warning { background: #f59e0b; }
+.notification.info { background: #3b82f6; }
+
+/* ===== جدول داخل الخريطة ===== */
+.mapTableContainer {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 400px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  z-index: 1000;
+  max-height: 250px;
+  display: none;
+}
+.mapTableContainer.visible {
+  display: block;
+}
+.mapTableContainer .cardTitle {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+.mapTableWrap {
+  max-height: 180px;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid #e1e4e8;
+}
+.mapTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  background: white;
+}
+.mapTable th, .mapTable td {
+  border-bottom: 1px solid #e1e4e8;
+  padding: 8px 10px;
+  text-align: center;
+}
+.mapTable th {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 700;
+}
+.mapTable tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+</style>
 </head>
+
 <body>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="spinner"></div>
-        <p class="mt-4 text-gray-600">جاري التحميل...</p>
+<div id="loading" class="loadingOverlay" style="display: none;">جاري التحميل...<div class="spinner"></div></div>
+
+<div class="mainLayout">
+  <div class="sidePanel">
+    <div class="sideHeader">
+      <div class="sideTitle" id="panelTitle">ملخص حسب الفلتر</div>
+      <div class="sideSub" id="panelSubTitle">استورد ملف Excel ثم اختر البلدية والفلترة أو اضغط على حي في الخريطة.</div>
     </div>
-
-    <!-- Main Container -->
-    <div id="mainContainer" style="display: flex; height: 100vh;">
-        
-        <!-- Sidebar -->
-        <div class="glass-panel w-96 p-6 overflow-y-auto" style="z-index: 1000;">
-            
-            <!-- Header -->
-            <div class="mb-6">
-                <h1 class="text-2xl font-bold text-gray-800 mb-2">
-                    <i class="fas fa-map-marked-alt text-indigo-600 ml-2"></i>
-                    تحليل الأحياء
-                </h1>
-                <p class="text-gray-500 text-sm">نظام تحليل وإحصائيات الأحياء</p>
-            </div>
-
-            <!-- Stats Cards -->
-            <div class="mb-6">
-                <div class="stat-card">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-sm opacity-90">إجمالي التصنيفات</p>
-                            <p class="text-3xl font-bold" id="totalCategories">893</p>
-                        </div>
-                        <i class="fas fa-chart-bar text-3xl opacity-50"></i>
-                    </div>
-                </div>
-                
-                <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-sm opacity-90">عدد البلاغات</p>
-                            <p class="text-3xl font-bold" id="totalReports">893</p>
-                        </div>
-                        <i class="fas fa-exclamation-circle text-3xl opacity-50"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Filters -->
-            <div class="mb-6">
-                <h3 class="font-bold text-gray-700 mb-3">تصفية البيانات</h3>
-                
-                <div class="space-y-2">
-                    <button class="filter-btn w-full bg-indigo-100 text-indigo-700 p-3 rounded-lg text-right" onclick="filterData('all')">
-                        <i class="fas fa-layer-group ml-2"></i> عرض الكل
-                    </button>
-                    <button class="filter-btn w-full bg-white border border-gray-200 text-gray-700 p-3 rounded-lg text-right" onclick="filterData('high')">
-                        <i class="fas fa-arrow-up ml-2 text-red-500"></i> الأحياء الأعلى
-                    </button>
-                    <button class="filter-btn w-full bg-white border border-gray-200 text-gray-700 p-3 rounded-lg text-right" onclick="filterData('medium')">
-                        <i class="fas fa-minus ml-2 text-yellow-500"></i> الأحياء المتوسطة
-                    </button>
-                    <button class="filter-btn w-full bg-white border border-gray-200 text-gray-700 p-3 rounded-lg text-right" onclick="filterData('low')">
-                        <i class="fas fa-arrow-down ml-2 text-green-500"></i> الأحياء الأقل
-                    </button>
-                </div>
-            </div>
-
-            <!-- Chart -->
-            <div class="mb-6 bg-white p-4 rounded-xl shadow-sm">
-                <h3 class="font-bold text-gray-700 mb-3">الرسم البياني</h3>
-                <canvas id="statsChart" height="200"></canvas>
-            </div>
-
-            <!-- Data Table -->
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div class="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 class="font-bold text-gray-700">بيانات الأحياء</h3>
-                    <span class="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full" id="visibleCount">134 حي</span>
-                </div>
-                <div class="data-table" id="neighborhoodTable">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>الحي</th>
-                                <th>البلدية</th>
-                                <th>العدد</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody">
-                            <!-- Data will be inserted here -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Export Buttons -->
-            <div class="mt-6 space-y-2">
-                <button onclick="downloadMapImage()" class="w-full bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 transition">
-                    <i class="fas fa-image ml-2"></i> تصدير صورة الخريطة
-                </button>
-                <button onclick="downloadTableImage()" class="w-full bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition">
-                    <i class="fas fa-table ml-2"></i> تصدير صورة الجدول
-                </button>
-                <button onclick="togglePrintMode()" class="w-full bg-gray-700 text-white p-3 rounded-lg hover:bg-gray-800 transition">
-                    <i class="fas fa-print ml-2"></i> وضع الطباعة
-                </button>
-            </div>
-        </div>
-
-        <!-- Map Container -->
-        <div style="flex: 1; position: relative;">
-            <div id="map"></div>
-            
-            <!-- Drawing Tools -->
-            <div class="drawing-tools">
-                <button class="tool-btn active" onclick="setDrawingMode(null)" title="تحديد">
-                    <i class="fas fa-mouse-pointer"></i>
-                </button>
-                <button class="tool-btn" onclick="setDrawingMode('polygon')" title="رسم مضلع">
-                    <i class="fas fa-draw-polygon"></i>
-                </button>
-                <button class="tool-btn" onclick="setDrawingMode('circle')" title="رسم دائرة">
-                    <i class="fas fa-circle"></i>
-                </button>
-                <button class="tool-btn" onclick="setDrawingMode('rectangle')" title="رسم مستطيل">
-                    <i class="fas fa-square"></i>
-                </button>
-                <button class="tool-btn" onclick="clearDrawings()" title="مسح الرسومات">
-                    <i class="fas fa-trash text-red-500"></i>
-                </button>
-            </div>
-        </div>
+    <div class="sideBody">
+      <div class="statGrid">
+        <div class="statCard"><div class="statLabel">عدد البلاغات</div><div class="statValue" id="totalCount">0</div></div>
+        <div class="statCard"><div class="statLabel">إجمالي التصنيفات</div><div class="statValue" id="totalTypes">0</div></div>
+      </div>
+      <div class="chartCard"><div class="cardTitle">📊 الرسم البياني</div><canvas id="sideChart"></canvas></div>
+      <div class="listCard"><div class="cardTitle">📋 ملخص التصنيفات</div><div class="summaryList" id="detailsList"><div class="emptyBox">لا توجد بيانات حتى الآن.</div></div></div>
     </div>
+  </div>
 
-    <!-- Print Mode Container -->
-    <div id="printMode" class="print-mode">
-        <div class="print-header">
-            <h1 class="text-3xl font-bold text-gray-800">تقرير تحليل الأحياء</h1>
-            <p class="text-gray-500 mt-2" id="printDate"></p>
-        </div>
-        
-        <div class="print-map-container" id="printMap"></div>
-        
-        <div class="print-table-container">
-            <h2 class="text-xl font-bold text-gray-700 mb-4">بيانات الأحياء التفصيلية</h2>
-            <div id="printTableContent"></div>
-        </div>
-        
-        <div class="mt-8 text-center">
-            <button onclick="closePrintMode()" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700">
-                <i class="fas fa-times ml-2"></i> إغلاق
-            </button>
-            <button onclick="window.print()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 mr-2">
-                <i class="fas fa-print ml-2"></i> طباعة
-            </button>
-        </div>
+  <div class="mapSection">
+    <div class="topPanel">
+      <div class="group"><input id="searchBox" placeholder="🔍 ابحث عن حي أو شارع..."></div>
+      <div class="group"><span class="titleMini">الملف</span><input type="file" id="excelFile" class="fileInput" accept=".xlsx,.xls"><button onclick="importExcel()">📥 استيراد</button></div>
+      <div class="group"><span class="titleMini">البلدية</span><select id="municipalityList" onchange="setMunicipalityFilter(this.value)"><option value="">🏛️ كل البلديات</option></select></div>
+      <div class="group"><span class="titleMini">الفلترة</span><select id="filterSelect" onchange="setFilter(this.value)"><option value="all">📊 عرض الكل</option><option value="top3">🥇 أعلى 3</option><option value="top3_2">🥈 ثاني أعلى 3</option><option value="top3_3">🥉 ثالث أعلى 3</option><option value="top3_4">🏅 رابع أعلى 3</option><option value="200">🔥 أكثر من 200</option><option value="100_200">⚡ من 100 إلى 200</option><option value="100">💤 أقل من 100</option></select></div>
+      <div class="group"><span class="titleMini">الأحياء</span><select id="districtList" onchange="selectDistrict(this.value)"><option value="">🏘️ كل الأحياء</option></select></div>
+      <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورة</button></div>
     </div>
-
-    <!-- Hidden Container for Table Export -->
-    <div id="tableExportContainer" style="position: absolute; left: -9999px; top: 0; background: white; padding: 20px;">
-        <div class="export-table-section">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h2 style="color: #4f46e5; margin-bottom: 10px;">إحصائيات البلاغات - جميع الأحياء</h2>
-                <p style="color: #6b7280;" id="exportDate"></p>
-                <p style="color: #6b7280; margin-top: 5px;">إجمالي البلاغات: <strong id="exportTotal">893</strong> | عدد الأحياء: <strong id="exportCount">134</strong></p>
-            </div>
-            <table class="export-table" id="exportTable">
-                <thead>
-                    <tr>
-                        <th style="width: 5%">#</th>
-                        <th style="width: 25%">اسم الحي</th>
-                        <th style="width: 25%">البلدية</th>
-                        <th style="width: 20%">عدد البلاغات</th>
-                        <th style="width: 25%">نسبة من الإجمالي</th>
-                    </tr>
-                </thead>
-                <tbody id="exportTableBody">
-                </tbody>
-            </table>
-        </div>
+    <div id="map"></div>
+    
+    <!-- جدول داخل الخريطة -->
+    <div id="mapTableContainer" class="mapTableContainer">
+      <div class="cardTitle">📑 جدول البيانات الحالي</div>
+      <div class="mapTableWrap">
+        <table class="mapTable">
+          <thead>
+            <tr>
+              <th>البلدية</th>
+              <th>الحي</th>
+              <th>البلاغات</th>
+              <th>أعلى تصنيف</th>
+              <th>العدد</th>
+            </tr>
+          </thead>
+          <tbody id="mapTableBody">
+            <tr><td colspan="5">لا توجد بيانات.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
+  </div>
+</div>
 
-    <script>
-        // Global Variables
-        let map;
-        let drawingManager;
-        let selectedShape = null;
-        let markers = [];
-        let neighborhoods = [];
-        let currentFilter = 'all';
-        let chart;
+<div class="fabWrap">
+  <button class="fabBtn" id="drawToggleBtn" type="button">✏️ رسم حي</button>
+  <button class="fabBtn gray" id="renameLastBtn" type="button">📝 تسمية</button>
+  <button class="fabBtn green" id="centerLastBtn" type="button">🎯 توسيط</button>
+  <button class="fabBtn stop" id="deleteLastBtn" type="button">🗑️ حذف</button>
+</div>
 
-        // Sample Data - Replace with your actual data
-        const sampleData = [
-            { id: 1, name: "حي الروضة", municipality: "بلدية الرياض", count: 518, lat: 24.7136, lng: 46.6753 },
-            { id: 2, name: "حي الصحافة", municipality: "بلدية الرياض", count: 123, lat: 24.7689, lng: 46.6987 },
-            { id: 3, name: "حي النزهة", municipality: "بلدية الرياض", count: 122, lat: 24.7365, lng: 46.7254 },
-            { id: 4, name: "حي الورود", municipality: "بلدية الشمال", count: 98, lat: 24.7890, lng: 46.6543 },
-            { id: 5, name: "حي النخيل", municipality: "بلدية الشمال", count: 87, lat: 24.7456, lng: 46.6789 },
-            { id: 6, name: "حي الربيع", municipality: "بلدية الشرق", count: 76, lat: 24.7234, lng: 46.7345 },
-            { id: 7, name: "حي الروابي", municipality: "بلدية الشرق", count: 65, lat: 24.7567, lng: 46.7123 },
-            { id: 8, name: "حي السليمانية", municipality: "بلدية الغرب", count: 54, lat: 24.6987, lng: 46.6456 },
-            { id: 9, name: "حي العدامة", municipality: "بلدية الغرب", count: 43, lat: 24.7345, lng: 46.6234 },
-            { id: 10, name: "حي الفيصلية", municipality: "بلدية الجنوب", count: 38, lat: 24.6789, lng: 46.6890 },
-            { id: 11, name: "حي الديرة", municipality: "بلدية الجنوب", count: 32, lat: 24.7123, lng: 46.6567 },
-            { id: 12, name: "حي المربع", municipality: "بلدية الوسطى", count: 28, lat: 24.6890, lng: 46.7234 },
-            { id: 13, name: "حي العليا", municipality: "بلدية الوسطى", count: 24, lat: 24.7012, lng: 46.6876 },
-            { id: 14, name: "حي الوزارات", municipality: "بلدية الرياض", count: 21, lat: 24.7234, lng: 46.6456 },
-            { id: 15, name: "حي الملز", municipality: "بلدية الشرق", count: 19, lat: 24.7456, lng: 46.7345 },
-            { id: 16, name: "حي المصيف", municipality: "بلدية الشمال", count: 17, lat: 24.7890, lng: 46.7123 },
-            { id: 17, name: "حي اليرموك", municipality: "بلدية الشرق", count: 15, lat: 24.7678, lng: 46.7567 },
-            { id: 18, name: "حي قرطبة", municipality: "بلدية الشرق", count: 14, lat: 24.7567, lng: 46.7789 },
-            { id: 19, name: "حي الخليج", municipality: "بلدية الشمال", count: 13, lat: 24.8012, lng: 46.6890 },
-            { id: 20, name: "حي المغرزات", municipality: "بلدية الشمال", count: 12, lat: 24.8123, lng: 46.7012 }
-        ];
+<script>
+let map, districts = {}, polygons = [], markers = [], pointMarkers = [], overlays = [], infoWindows = [], currentFilter = "all", selectedDistrict = "", selectedMunicipality = "", sideChart = null, drawingManager = null, isDrawingMode = false, manualZones = [], overlayByKey = {}, autocomplete;
+const COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140", "#30cfd0", "#330867", "#a8edea", "#fed6e3", "#d299c2", "#fef9d7"];
 
-        // Initialize Map
-        function initMap() {
-            map = new google.maps.Map(document.getElementById('map'), {
-                center: { lat: 24.7136, lng: 46.6753 },
-                zoom: 12,
-                mapTypeId: 'roadmap',
-                mapTypeControl: true,
-                mapTypeControlOptions: {
-                    style: google.maps.MapTypeControlStyle.DROPDOWN_MENU
-                },
-                fullscreenControl: true,
-                streetViewControl: true,
-                zoomControl: true,
-                zoomControlOptions: {
-                    position: google.maps.ControlPosition.RIGHT_BOTTOM
-                }
-            });
+function initMap() {
+  map = new google.maps.Map(document.getElementById("map"), { center: { lat: 24.7136, lng: 46.6753 }, zoom: 12, mapTypeId: "hybrid", gestureHandling: "greedy", mapTypeControl: true, mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR, position: google.maps.ControlPosition.TOP_RIGHT }, fullscreenControl: true, streetViewControl: true, zoomControl: true, zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM } });
+  initDrawingTools();
+  initSearch();
+  bindFloatingButtons();
+  map.addListener("idle", () => { adjustOverlays(); });
+  map.addListener("click", () => { closeAllInfoWindows(); updatePanelForCurrentView(); });
+}
 
-            // Initialize Drawing Manager
-            drawingManager = new google.maps.drawing.DrawingManager({
-                drawingMode: null,
-                drawingControl: false,
-                polygonOptions: {
-                    fillColor: '#4f46e5',
-                    fillOpacity: 0.3,
-                    strokeWeight: 2,
-                    strokeColor: '#4f46e5',
-                    clickable: true,
-                    editable: true,
-                    draggable: true
-                },
-                circleOptions: {
-                    fillColor: '#4f46e5',
-                    fillOpacity: 0.3,
-                    strokeWeight: 2,
-                    strokeColor: '#4f46e5',
-                    clickable: true,
-                    editable: true,
-                    draggable: true
-                },
-                rectangleOptions: {
-                    fillColor: '#4f46e5',
-                    fillOpacity: 0.3,
-                    strokeWeight: 2,
-                    strokeColor: '#4f46e5',
-                    clickable: true,
-                    editable: true,
-                    draggable: true
-                }
-            });
+function initSearch() {
+  const input = document.getElementById("searchBox");
+  autocomplete = new google.maps.places.Autocomplete(input, { componentRestrictions: { country: "sa" }, fields: ["geometry", "name"] });
+  autocomplete.bindTo("bounds", map);
+  autocomplete.addListener("place_changed", function() {
+    const place = autocomplete.getPlace();
+    if (!place.geometry) { showNotification("لم يتم العثور على المكان", "error"); return; }
+    if (place.geometry.viewport) { map.fitBounds(place.geometry.viewport); } else { map.setCenter(place.geometry.location); map.setZoom(16); }
+  });
+}
 
-            drawingManager.setMap(map);
+function initDrawingTools() {
+  drawingManager = new google.maps.drawing.DrawingManager({ drawingControl: false, drawingModes: ['polygon'], polygonOptions: { fillColor: '#667eea', fillOpacity: 0.3, strokeColor: '#764ba2', strokeWeight: 3, editable: true, draggable: true, clickable: true, zIndex: 1500 } });
+  drawingManager.setMap(map);
+  google.maps.event.addListener(drawingManager, 'overlaycomplete', function(event) {
+    if (event.type !== "polygon") return;
+    const polygon = event.overlay;
+    polygon.setEditable(true);
+    polygon.setDraggable(true);
+    const center = getPolygonCenterFromPath(polygon.getPath());
+    const zoneIndex = manualZones.length + 1;
+    const zone = createManualZone(polygon, center, "حي جديد", String(zoneIndex));
+    manualZones.push(zone);
+    attachPolygonSync(zone);
+    drawingManager.setDrawingMode(null);
+    isDrawingMode = false;
+    updateDrawButtonUI();
+    showNotification(`تم إنشاء الحي رقم ${zoneIndex}`, "success");
+  });
+}
 
-            // Add event listeners for shapes
-            google.maps.event.addListener(drawingManager, 'overlaycomplete', function(event) {
-                if (selectedShape) {
-                    selectedShape.setMap(null);
-                }
-                selectedShape = event.overlay;
-                drawingManager.setDrawingMode(null);
-            });
+function bindFloatingButtons() {
+  document.getElementById("drawToggleBtn").onclick = function() { isDrawingMode = !isDrawingMode; drawingManager.setDrawingMode(isDrawingMode ? google.maps.drawing.OverlayType.POLYGON : null); updateDrawButtonUI(); };
+  document.getElementById("renameLastBtn").onclick = function() {
+    const zone = getLastManualZone();
+    if (!zone) { showNotification("لا يوجد حي مرسوم", "warning"); return; }
+    const newName = prompt("اكتب اسم الحي:", zone.label.nameText);
+    if (newName !== null && newName.trim() !== "") { zone.label.nameText = newName.trim(); zone.label.refresh(); }
+    const newNum = prompt("اكتب الرقم:", zone.label.countText);
+    if (newNum !== null && newNum.trim() !== "") { zone.label.countText = newNum.trim(); zone.label.refresh(); }
+  };
+  document.getElementById("centerLastBtn").onclick = function() {
+    const zone = getLastManualZone();
+    if (!zone) { showNotification("لا يوجد حي مرسوم", "warning"); return; }
+    const center = getPolygonCenterFromPath(zone.polygon.getPath());
+    zone.label.setPosition(center);
+    zone.label.wasMovedManually = false;
+    showNotification("تم توسيط الملصق", "success");
+  };
+  document.getElementById("deleteLastBtn").onclick = function() {
+    const zone = getLastManualZone();
+    if (!zone) { showNotification("لا يوجد حي مرسوم", "warning"); return; }
+    if (confirm("هل أنت متأكد من حذف آخر حي مرسوم؟")) {
+      zone.polygon.setMap(null);
+      zone.label.setMap(null);
+      manualZones.pop();
+      renumberManualZones();
+      showNotification("تم الحذف بنجاح", "success");
+    }
+  };
+}
 
-            // Load neighborhood data
-            loadNeighborhoods();
-            
-            // Initialize Chart
-            initChart();
-        }
+function updateDrawButtonUI() {
+  const btn = document.getElementById("drawToggleBtn");
+  if (isDrawingMode) { btn.classList.add("stop"); btn.innerHTML = "⛔ إيقاف"; } else { btn.classList.remove("stop"); btn.innerHTML = "✏️ رسم حي"; }
+}
 
-        // Load Neighborhoods
-        function loadNeighborhoods() {
-            neighborhoods = sampleData.map(item => ({
-                ...item,
-                percentage: ((item.count / 893) * 100).toFixed(1)
-            }));
-            
-            updateMap();
-            updateTable();
-        }
+function getLastManualZone() { if (!manualZones.length) return null; return manualZones[manualZones.length - 1]; }
+function renumberManualZones() { manualZones.forEach((zone, i) => { zone.label.countText = String(i + 1); zone.label.refresh(); }); }
+function getPolygonCenterFromPath(path) { const bounds = new google.maps.LatLngBounds(); for (let i = 0; i < path.getLength(); i++) { bounds.extend(path.getAt(i)); } return bounds.getCenter(); }
 
-        // Update Map Markers
-        function updateMap() {
-            // Clear existing markers
-            markers.forEach(marker => marker.setMap(null));
-            markers = [];
+function attachPolygonSync(zone) {
+  const syncCenter = () => { const center = getPolygonCenterFromPath(zone.polygon.getPath()); if (!zone.label.wasMovedManually) { zone.label.setPosition(center); } };
+  google.maps.event.addListener(zone.polygon.getPath(), "set_at", syncCenter);
+  google.maps.event.addListener(zone.polygon.getPath(), "insert_at", syncCenter);
+  google.maps.event.addListener(zone.polygon.getPath(), "remove_at", syncCenter);
+  google.maps.event.addListener(zone.polygon, "dragend", syncCenter);
+}
 
-            const filteredData = getFilteredData();
+function createManualZone(polygon, position, nameText, countText) { const label = new ManualLabelOverlay(position, nameText, countText); label.setMap(map); return { polygon: polygon, label: label }; }
 
-            filteredData.forEach(neighborhood => {
-                const marker = new google.maps.Marker({
-                    position: { lat: neighborhood.lat, lng: neighborhood.lng },
-                    map: map,
-                    title: neighborhood.name,
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: Math.sqrt(neighborhood.count) * 2,
-                        fillColor: getColorByCount(neighborhood.count),
-                        fillOpacity: 0.7,
-                        strokeWeight: 2,
-                        strokeColor: '#fff'
-                    }
-                });
+class ManualLabelOverlay extends google.maps.OverlayView {
+  constructor(position, nameText, countText) {
+    super();
+    this.position = position;
+    this.nameText = nameText || "حي جديد";
+    this.countText = countText || "1";
+    this.wasMovedManually = false;
+    this.div = null;
+    this.isDragging = false;
+  }
+  onAdd() {
+    this.div = document.createElement("div");
+    this.div.className = "manualLabel";
+    this.countEl = document.createElement("div");
+    this.countEl.className = "manualCount";
+    this.countEl.textContent = this.countText;
+    this.nameEl = document.createElement("div");
+    this.nameEl.className = "manualName";
+    this.nameEl.textContent = this.nameText;
+    this.div.appendChild(this.countEl);
+    this.div.appendChild(this.nameEl);
+    this.div.addEventListener("click", (e) => e.stopPropagation());
+    this.div.addEventListener("dblclick", (e) => e.stopPropagation());
+    this.nameEl.addEventListener("dblclick", (e) => { e.stopPropagation(); const v = prompt("اسم الحي:", this.nameText); if (v !== null && v.trim() !== "") { this.nameText = v.trim(); this.refresh(); } });
+    this.countEl.addEventListener("dblclick", (e) => { e.stopPropagation(); const v = prompt("الرقم:", this.countText); if (v !== null && v.trim() !== "") { this.countText = v.trim(); this.refresh(); } });
+    this.div.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); this.isDragging = true; this.div.setPointerCapture(e.pointerId); this.div.classList.add("dragging"); const rect = this.div.getBoundingClientRect(); this.pointerOffsetX = e.clientX - rect.left; this.pointerOffsetY = e.clientY - rect.top; });
+    this.div.addEventListener("pointermove", (e) => { if (!this.isDragging) return; e.preventDefault(); e.stopPropagation(); const mapRect = document.getElementById("map").getBoundingClientRect(); const x = e.clientX - mapRect.left - this.pointerOffsetX + (this.div.offsetWidth / 2); const y = e.clientY - mapRect.top - this.pointerOffsetY + (this.div.offsetHeight / 2); const projection = this.getProjection(); if (!projection) return; const latLng = projection.fromDivPixelToLatLng(new google.maps.Point(x, y)); if (!latLng) return; this.position = latLng; this.wasMovedManually = true; this.draw(); });
+    const stopDrag = (e) => { if (!this.isDragging) return; e.preventDefault(); e.stopPropagation(); this.isDragging = false; this.div.classList.remove("dragging"); try { this.div.releasePointerCapture(e.pointerId); } catch (err) {} };
+    this.div.addEventListener("pointerup", stopDrag);
+    this.div.addEventListener("pointercancel", stopDrag);
+    this.getPanes().overlayMouseTarget.appendChild(this.div);
+    this.refresh();
+  }
+  refresh() { if (this.countEl) this.countEl.textContent = this.countText; if (this.nameEl) this.nameEl.textContent = this.nameText; }
+  setPosition(pos) { this.position = pos; this.draw(); }
+  draw() { if (!this.div) return; const projection = this.getProjection(); if (!projection) return; const point = projection.fromLatLngToDivPixel(this.position); if (!point) return; this.div.style.left = point.x + "px"; this.div.style.top = point.y + "px"; }
+  onRemove() { if (this.div && this.div.parentNode) { this.div.parentNode.removeChild(this.div); } this.div = null; }
+}
 
-                const infoWindow = new google.maps.InfoWindow({
-                    content: `
-                        <div style="padding: 10px; min-width: 200px;">
-                            <h3 style="margin: 0 0 10px 0; color: #4f46e5;">${neighborhood.name}</h3>
-                            <p style="margin: 5px 0;"><strong>البلدية:</strong> ${neighborhood.municipality}</p>
-                            <p style="margin: 5px 0;"><strong>عدد البلاغات:</strong> ${neighborhood.count}</p>
-                            <p style="margin: 5px 0;"><strong>النسبة:</strong> ${neighborhood.percentage}%</p>
-                        </div>
-                    `
-                });
+function normalizeHeader(v) { return (v ?? "").toString().trim().replace(/\s+/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").toLowerCase(); }
+function findColumnIndex(headers, candidates, fallbackIndex) { for (let candidate of candidates) { const idx = headers.findIndex(h => h.includes(candidate)); if (idx !== -1) return idx; } return fallbackIndex; }
+function makeDistrictKey(municipality, district) { return municipality + "|||" + district; }
 
-                marker.addListener('click', () => {
-                    infoWindow.open(map, marker);
-                });
+function importExcel() {
+  const file = document.getElementById("excelFile").files[0];
+  if (!file) { showNotification("اختر ملف Excel أولاً", "warning"); return; }
+  showLoading(true);
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      if (!rows || !rows.length) { showNotification("الملف فارغ", "error"); showLoading(false); return; }
+      processExcelData(rows);
+      showNotification("تم استيراد البيانات بنجاح!", "success");
+    } catch (err) { console.error(err); showNotification("خطأ في قراءة الملف", "error"); } finally { showLoading(false); }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
-                markers.push(marker);
-            });
+function processExcelData(rows) {
+  const headerRow = rows[0].map(normalizeHeader);
+  const latCol = findColumnIndex(headerRow, ["lat", "latitude", "خطالعرض", "الاحداثيx", "y"], 0);
+  const lngCol = findColumnIndex(headerRow, ["lng", "lon", "longitude", "خطالطول", "الاحداثيy", "x"], 1);
+  const districtCol = findColumnIndex(headerRow, ["الحي", "اسمالحي", "district", "neighborhood"], 2);
+  const thirdCol = findColumnIndex(headerRow, ["التصنيف", "التصنيفالتخصصي", "العمودالرابع", "category", "third"], 3);
+  const municipalityCol = findColumnIndex(headerRow, ["البلديهالفرعيه", "بلديهفرعيه", "البلديه", "بلديه", "municipality", "submunicipality"], 4);
+  districts = {};
+  clearMap();
+  resetPanel();
+  const bounds = new google.maps.LatLngBounds();
+  let hasValidPoint = false;
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const lat = parseFloat(row[latCol]);
+    const lng = parseFloat(row[lngCol]);
+    const district = (row[districtCol] ?? "").toString().trim();
+    const third = (row[thirdCol] ?? "بدون تصنيف").toString().trim() || "بدون تصنيف";
+    const municipality = (row[municipalityCol] ?? "غير محددة").toString().trim() || "غير محددة";
+    if (isNaN(lat) || isNaN(lng) || !district) continue;
+    const key = makeDistrictKey(municipality, district);
+    bounds.extend({ lat: lat, lng: lng });
+    hasValidPoint = true;
+    if (!districts[key]) { districts[key] = { key: key, name: district, municipality: municipality, points: [], third: {} }; }
+    districts[key].points.push({ lat, lng });
+    if (!districts[key].third[third]) { districts[key].third[third] = 0; }
+    districts[key].third[third]++;
+  }
+  if (hasValidPoint) { map.fitBounds(bounds); }
+  selectedDistrict = "";
+  selectedMunicipality = "";
+  document.getElementById("filterSelect").value = "all";
+  currentFilter = "all";
+  fillMunicipalityList();
+  fillDistrictList();
+  drawDistricts();
+  updatePanelForCurrentView();
+}
 
-            document.getElementById('visibleCount').textContent = filteredData.length + ' حي';
-        }
+function fillMunicipalityList() {
+  const sel = document.getElementById("municipalityList");
+  sel.innerHTML = '<option value="">🏛️ كل البلديات</option>';
+  const names = [...new Set(Object.values(districts).map(d => d.municipality))].sort((a, b) => a.localeCompare(b, 'ar'));
+  for (let name of names) { const opt = document.createElement("option"); opt.value = name; opt.textContent = name; sel.appendChild(opt); }
+  sel.value = selectedMunicipality || "";
+}
 
-        // Get Color by Count
-        function getColorByCount(count) {
-            if (count >= 100) return '#ef4444'; // Red
-            if (count >= 50) return '#f59e0b'; // Orange
-            if (count >= 25) return '#3b82f6'; // Blue
-            return '#10b981'; // Green
-        }
+function fillDistrictList() {
+  const sel = document.getElementById("districtList");
+  sel.innerHTML = '<option value="">🏘️ كل الأحياء</option>';
+  const list = Object.values(districts).filter(d => !selectedMunicipality || d.municipality === selectedMunicipality).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  for (let item of list) { const opt = document.createElement("option"); opt.value = item.key; opt.textContent = `${item.name} (${item.points.length})`; sel.appendChild(opt); }
+  sel.value = selectedDistrict || "";
+}
 
-        // Get Filtered Data
-        function getFilteredData() {
-            switch(currentFilter) {
-                case 'high': return neighborhoods.filter(n => n.count >= 100);
-                case 'medium': return neighborhoods.filter(n => n.count >= 50 && n.count < 100);
-                case 'low': return neighborhoods.filter(n => n.count < 50);
-                default: return neighborhoods;
-            }
-        }
+function setMunicipalityFilter(name) {
+  selectedMunicipality = name || "";
+  selectedDistrict = "";
+  document.getElementById("districtList").value = "";
+  fillDistrictList();
+  clearMap();
+  drawDistricts();
+  updatePanelForCurrentView();
+}
 
-        // Filter Data
-        function filterData(type) {
-            currentFilter = type;
-            
-            // Update button styles
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('bg-indigo-100', 'text-indigo-700');
-                btn.classList.add('bg-white', 'text-gray-700');
-            });
-            event.target.closest('.filter-btn').classList.add('bg-indigo-100', 'text-indigo-700');
-            event.target.closest('.filter-btn').classList.remove('bg-white', 'text-gray-700');
-            
-            updateMap();
-            updateTable();
-            updateChart();
-        }
+function setFilter(type) {
+  currentFilter = type;
+  selectedDistrict = document.getElementById("districtList").value || "";
+  clearMap();
+  drawDistricts();
+  updatePanelForCurrentView();
+}
 
-        // Update Table
-        function updateTable() {
-            const tbody = document.getElementById('tableBody');
-            const filteredData = getFilteredData();
-            
-            tbody.innerHTML = filteredData.map(item => `
-                <tr>
-                    <td class="font-medium">${item.name}</td>
-                    <td class="text-gray-600">${item.municipality}</td>
-                    <td>
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getBadgeClass(item.count)}">
-                            ${item.count}
-                        </span>
-                    </td>
-                </tr>
-            `).join('');
-        }
+function selectDistrict(key) {
+  selectedDistrict = key || "";
+  document.getElementById("districtList").value = selectedDistrict;
+  clearMap();
+  drawDistricts();
+  updatePanelForCurrentView();
+  if (key && districts[key]) {
+    const data = districts[key];
+    const center = getDistrictCenter(data.points);
+    map.setCenter(center);
+    map.setZoom(15);
+  }
+}
 
-        // Get Badge Class
-        function getBadgeClass(count) {
-            if (count >= 100) return 'bg-red-100 text-red-800';
-            if (count >= 50) return 'bg-yellow-100 text-yellow-800';
-            if (count >= 25) return 'bg-blue-100 text-blue-800';
-            return 'bg-green-100 text-green-800';
-        }
+function closeAllInfoWindows() { infoWindows.forEach(w => w.close()); }
 
-        // Initialize Chart
-        function initChart() {
-            const ctx = document.getElementById('statsChart').getContext('2d');
-            updateChart();
-        }
+function clearMap() {
+  polygons.forEach(p => p.setMap(null));
+  markers.forEach(m => m.setMap(null));
+  pointMarkers.forEach(m => m.setMap(null));
+  overlays.forEach(o => o.setMap(null));
+  infoWindows.forEach(w => w.close());
+  polygons = [];
+  markers = [];
+  pointMarkers = [];
+  overlays = [];
+  infoWindows = [];
+  overlayByKey = {};
+}
 
-        // Update Chart
-        function updateChart() {
-            const filteredData = getFilteredData();
-            const labels = filteredData.slice(0, 10).map(n => n.name);
-            const data = filteredData.slice(0, 10).map(n => n.count);
-            
-            if (chart) {
-                chart.destroy();
-            }
-            
-            chart = new Chart(document.getElementById('statsChart'), {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'عدد البلاغات',
-                        data: data,
-                        backgroundColor: 'rgba(79, 70, 229, 0.8)',
-                        borderColor: 'rgba(79, 70, 229, 1)',
-                        borderWidth: 1,
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { font: { family: 'Cairo' } }
-                        },
-                        x: {
-                            ticks: { 
-                                font: { family: 'Cairo' },
-                                maxRotation: 45
-                            }
-                        }
-                    }
-                }
-            });
-        }
+function convexHull(points) {
+  points = points.slice();
+  if (points.length < 3) return points;
+  points.sort((a, b) => a.lng - b.lng || a.lat - b.lat);
+  const cross = (o, a, b) => ((a.lng - o.lng) * (b.lat - o.lat) - (a.lat - o.lat) * (b.lng - o.lng));
+  const lower = [];
+  for (let p of points) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) { lower.pop(); } lower.push(p); }
+  const upper = [];
+  for (let i = points.length - 1; i >= 0; i--) { let p = points[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) { upper.pop(); } upper.push(p); }
+  upper.pop();
+  lower.pop();
+  return lower.concat(upper);
+}
 
-        // Drawing Tools
-        function setDrawingMode(mode) {
-            drawingManager.setDrawingMode(mode);
-            
-            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.closest('.tool-btn').classList.add('active');
-        }
+function createSmoothBoundary(points) {
+  if (points.length < 3) return points;
+  const hull = convexHull(points);
+  if (hull.length < 3) return points;
+  const dense = densifyClosedPath(hull, 8);
+  const smoothed = chaikinSmoothClosed(dense, 3);
+  return expandClosedPath(smoothed, 1.12);
+}
 
-        function clearDrawings() {
-            if (selectedShape) {
-                selectedShape.setMap(null);
-                selectedShape = null;
-            }
-        }
+function densifyClosedPath(points, segmentsPerEdge = 10) {
+  if (!points || points.length < 3) return points || [];
+  const dense = [];
+  for (let i = 0; i < points.length; i++) {
+    const p0 = points[i];
+    const p1 = points[(i + 1) % points.length];
+    dense.push({ lat: p0.lat, lng: p0.lng });
+    for (let s = 1; s < segmentsPerEdge; s++) {
+      const t = s / segmentsPerEdge;
+      dense.push({ lat: p0.lat + (p1.lat - p0.lat) * t, lng: p0.lng + (p1.lng - p0.lng) * t });
+    }
+  }
+  return dense;
+}
 
-        // Download Map Image - Using html-to-image (better for maps)
-        async function downloadMapImage() {
-            showLoading(true);
-            
-            try {
-                // Use html-to-image which works better with Google Maps
-                const mapElement = document.getElementById('map');
-                
-                // Wait for map to be fully rendered
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                const dataUrl = await htmlToImage.toPng(mapElement, {
-                    quality: 1.0,
-                    pixelRatio: 2,
-                    backgroundColor: '#ffffff',
-                    skipFonts: true
-                });
-                
-                const link = document.createElement('a');
-                link.download = `خريطة_الأحياء_${new Date().toLocaleDateString('ar-SA')}.png`;
-                link.href = dataUrl;
-                link.click();
-                
-            } catch (error) {
-                console.error('Error capturing map:', error);
-                alert('حدث خطأ أثناء تصدير الخريطة. جاري المحاولة بطريقة أخرى...');
-                
-                // Fallback to html2canvas
-                try {
-                    const canvas = await html2canvas(document.getElementById('map'), {
-                        useCORS: true,
-                        allowTaint: true,
-                        scale: 2,
-                        logging: false,
-                        backgroundColor: '#ffffff'
-                    });
-                    
-                    const link = document.createElement('a');
-                    link.download = `خريطة_الأحياء_${new Date().toLocaleDateString('ar-SA')}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                } catch (err) {
-                    alert('عذراً، لا يمكن تصدير الخريطة. يرجى استخدام وضع الطباعة.');
-                }
-            }
-            
-            showLoading(false);
-        }
+function chaikinSmoothClosed(points, iterations = 4) {
+  if (!points || points.length < 3) return points || [];
+  let result = points.slice();
+  for (let iter = 0; iter < iterations; iter++) {
+    const newPoints = [];
+    for (let i = 0; i < result.length; i++) {
+      const p0 = result[i];
+      const p1 = result[(i + 1) % result.length];
+      newPoints.push({ lat: 0.75 * p0.lat + 0.25 * p1.lat, lng: 0.75 * p0.lng + 0.25 * p1.lng });
+      newPoints.push({ lat: 0.25 * p0.lat + 0.75 * p1.lat, lng: 0.25 * p0.lng + 0.75 * p1.lng });
+    }
+    result = newPoints;
+  }
+  return result;
+}
 
-        // Download Table Image
-        async function downloadTableImage() {
-            showLoading(true);
-            
-            const filteredData = getFilteredData();
-            const total = filteredData.reduce((sum, item) => sum + item.count, 0);
-            
-            // Populate export table with ALL data
-            document.getElementById('exportDate').textContent = new Date().toLocaleDateString('ar-SA', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            document.getElementById('exportTotal').textContent = total;
-            document.getElementById('exportCount').textContent = filteredData.length;
-            
-            const tbody = document.getElementById('exportTableBody');
-            tbody.innerHTML = filteredData.map((item, index) => `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td><strong>${item.name}</strong></td>
-                    <td>${item.municipality}</td>
-                    <td style="font-weight: bold; color: ${getColorByCount(item.count)}">${item.count}</td>
-                    <td>${item.percentage}%</td>
-                </tr>
-            `).join('');
-            
-            // Wait for DOM update
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            try {
-                const container = document.getElementById('tableExportContainer');
-                
-                // Calculate height based on data count
-                const rowHeight = 50;
-                const headerHeight = 150;
-                const minHeight = Math.max(800, filteredData.length * rowHeight + headerHeight);
-                container.style.height = minHeight + 'px';
-                
-                const dataUrl = await htmlToImage.toPng(container, {
-                    quality: 1.0,
-                    pixelRatio: 2,
-                    backgroundColor: '#ffffff',
-                    style: {
-                        position: 'relative',
-                        left: '0',
-                        top: '0'
-                    }
-                });
-                
-                const link = document.createElement('a');
-                link.download = `جدول_إحصائيات_الأحياء_${new Date().toLocaleDateString('ar-SA')}.png`;
-                link.href = dataUrl;
-                link.click();
-                
-            } catch (error) {
-                console.error('Error capturing table:', error);
-                
-                // Fallback to html2canvas
-                try {
-                    const canvas = await html2canvas(document.getElementById('tableExportContainer'), {
-                        useCORS: true,
-                        allowTaint: true,
-                        scale: 2,
-                        backgroundColor: '#ffffff',
-                        height: Math.max(800, filteredData.length * 50 + 200)
-                    });
-                    
-                    const link = document.createElement('a');
-                    link.download = `جدول_إحصائيات_الأحياء_${new Date().toLocaleDateString('ar-SA')}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                } catch (err) {
-                    alert('حدث خطأ أثناء تصدير الجدول');
-                }
-            }
-            
-            showLoading(false);
-        }
+function expandClosedPath(points, factor = 1.16) {
+  if (!points || points.length < 3) return points || [];
+  const center = getDistrictCenter(points);
+  return points.map(p => ({ lat: center.lat + (p.lat - center.lat) * factor, lng: center.lng + (p.lng - center.lng) * factor }));
+}
 
-        // Toggle Print Mode
-        function togglePrintMode() {
-            const printMode = document.getElementById('printMode');
-            const filteredData = getFilteredData();
-            
-            document.getElementById('printDate').textContent = new Date().toLocaleDateString('ar-SA', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            // Create print map
-            const printMapDiv = document.getElementById('printMap');
-            printMapDiv.innerHTML = '';
-            
-            const printMap = new google.maps.Map(printMapDiv, {
-                center: map.getCenter(),
-                zoom: map.getZoom(),
-                mapTypeId: map.getMapTypeId(),
-                disableDefaultUI: true
-            });
-            
-            // Add markers to print map
-            filteredData.forEach(neighborhood => {
-                new google.maps.Marker({
-                    position: { lat: neighborhood.lat, lng: neighborhood.lng },
-                    map: printMap,
-                    title: neighborhood.name
-                });
-            });
-            
-            // Create print table with ALL data
-            const total = filteredData.reduce((sum, item) => sum + item.count, 0);
-            document.getElementById('printTableContent').innerHTML = `
-                <div class="overflow-x-auto">
-                    <table class="w-full border-collapse border border-gray-300">
-                        <thead>
-                            <tr class="bg-indigo-600 text-white">
-                                <th class="border border-gray-300 px-4 py-3 text-right">#</th>
-                                <th class="border border-gray-300 px-4 py-3 text-right">اسم الحي</th>
-                                <th class="border border-gray-300 px-4 py-3 text-right">البلدية</th>
-                                <th class="border border-gray-300 px-4 py-3 text-right">عدد البلاغات</th>
-                                <th class="border border-gray-300 px-4 py-3 text-right">النسبة</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${filteredData.map((item, index) => `
-                                <tr class="${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                    <td class="border border-gray-300 px-4 py-2">${index + 1}</td>
-                                    <td class="border border-gray-300 px-4 py-2 font-medium">${item.name}</td>
-                                    <td class="border border-gray-300 px-4 py-2">${item.municipality}</td>
-                                    <td class="border border-gray-300 px-4 py-2 font-bold" style="color: ${getColorByCount(item.count)}">${item.count}</td>
-                                    <td class="border border-gray-300 px-4 py-2">${item.percentage}%</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                        <tfoot>
-                            <tr class="bg-gray-100 font-bold">
-                                <td class="border border-gray-300 px-4 py-3" colspan="3">الإجمالي</td>
-                                <td class="border border-gray-300 px-4 py-3">${total}</td>
-                                <td class="border border-gray-300 px-4 py-3">100%</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            `;
-            
-            printMode.classList.add('active');
-        }
+function getDistrictCenter(points) { let lat = 0, lng = 0; for (let p of points) { lat += p.lat; lng += p.lng; } return { lat: lat / points.length, lng: lng / points.length }; }
+function getRankedDistrictKeysScoped() { const arr = Object.values(districts).filter(d => !selectedMunicipality || d.municipality === selectedMunicipality).map(d => ({ key: d.key, count: d.points.length })).sort((a, b) => b.count - a.count); return arr.map(x => x.key); }
+function getTopGroupKeys(groupNumber) { const ranked = getRankedDistrictKeysScoped(); const start = (groupNumber - 1) * 3; const end = start + 3; return ranked.slice(start, end); }
 
-        function closePrintMode() {
-            document.getElementById('printMode').classList.remove('active');
-        }
+function passesFilter(districtKey, count) {
+  const data = districts[districtKey];
+  if (!data) return false;
+  if (selectedMunicipality && data.municipality !== selectedMunicipality) return false;
+  if (selectedDistrict && districtKey !== selectedDistrict) return false;
+  if (currentFilter == "all") return true;
+  if (currentFilter == "top3") return getTopGroupKeys(1).includes(districtKey);
+  if (currentFilter == "top3_2") return getTopGroupKeys(2).includes(districtKey);
+  if (currentFilter == "top3_3") return getTopGroupKeys(3).includes(districtKey);
+  if (currentFilter == "top3_4") return getTopGroupKeys(4).includes(districtKey);
+  if (currentFilter == "200" && count <= 200) return false;
+  if (currentFilter == "100_200" && (count < 100 || count > 200)) return false;
+  if (currentFilter == "100" && count >= 100) return false;
+  return true;
+}
 
-        // Show/Hide Loading
-        function showLoading(show) {
-            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
-        }
+function getColumnColor(count) { if (count > 200) return "#dc2626"; if (count > 100) return "#f59e0b"; return "#10b981"; }
+function getCurrentVisibleDistrictKeys() { return Object.keys(districts).filter(key => { const data = districts[key]; return passesFilter(key, data.points.length); }); }
 
-        // Initialize on load
-        window.onload = initMap;
-    </script>
+function getTopCategory(thirdObj) {
+  const entries = Object.entries(thirdObj || {}).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) { return { name: "-", count: 0, total: 0 }; }
+  const total = entries.reduce((s, x) => s + x[1], 0);
+  return { name: entries[0][0], count: entries[0][1], total: total };
+}
+
+function getCurrentReportRows() {
+  const rows = [];
+  getCurrentVisibleDistrictKeys().forEach(key => {
+    const data = districts[key];
+    const top = getTopCategory(data.third);
+    rows.push({ municipality: data.municipality, district: data.name, count: data.points.length, topCategory: top.name, topCount: top.count, totalTypes: top.total });
+  });
+  rows.sort((a, b) => b.count - a.count || a.district.localeCompare(b.district, 'ar'));
+  return rows;
+}
+
+// ===== عرض الجدول داخل الخريطة =====
+function renderMapTable() {
+  const container = document.getElementById("mapTableContainer");
+  const body = document.getElementById("mapTableBody");
+  const rows = getCurrentReportRows();
+  
+  if (!rows.length) {
+    container.classList.remove("visible");
+    return;
+  }
+  
+  container.classList.add("visible");
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td>${escapeHtml(r.municipality)}</td>
+      <td><strong>${escapeHtml(r.district)}</strong></td>
+      <td><strong>${r.count}</strong></td>
+      <td>${escapeHtml(r.topCategory)}</td>
+      <td>${r.topCount}</td>
+    </tr>
+  `).join("");
+}
+
+function drawDistricts() {
+  let index = 0;
+  const visibleBounds = new google.maps.LatLngBounds();
+  let hasVisible = false;
+  for (let districtKey in districts) {
+    const originalData = districts[districtKey];
+    const count = originalData.points.length;
+    if (!passesFilter(districtKey, count)) continue;
+    if (count < 1) continue;
+    const data = districts[districtKey];
+    const baseColor = COLORS[index % COLORS.length];
+    const columnColor = getColumnColor(count);
+    const isSelected = (selectedDistrict && districtKey === selectedDistrict);
+    const isFilteredView = (currentFilter !== "all" || selectedDistrict !== "" || selectedMunicipality !== "");
+    index++;
+    const polygonFillOpacity = isSelected ? 0.45 : (isFilteredView ? 0.35 : 0.25);
+    const polygonStrokeWeight = isSelected ? 4 : 2;
+    const pointColor = isSelected ? "#00e5ff" : baseColor;
+    const pointStrong = isSelected || isFilteredView;
+    const smoothBoundary = createSmoothBoundary(data.points);
+    if (smoothBoundary && smoothBoundary.length >= 3) {
+      const polygon = new google.maps.Polygon({ paths: smoothBoundary, strokeColor: baseColor, strokeOpacity: 1, strokeWeight: polygonStrokeWeight, fillColor: baseColor, fillOpacity: polygonFillOpacity, map: map, zIndex: isSelected ? 100 : 50, draggable: true });
+      polygon.addListener("drag", () => {
+        const overlay = overlayByKey[districtKey];
+        if (!overlay) return;
+        const path = polygon.getPath();
+        let lat = 0, lng = 0;
+        for (let i = 0; i < path.getLength(); i++) { lat += path.getAt(i).lat(); lng += path.getAt(i).lng(); }
+        lat /= path.getLength();
+        lng /= path.getLength();
+        overlay.position = { lat, lng };
+        overlay.draw();
+      });
+      polygon.addListener("click", (e) => {
+        closeAllInfoWindows();
+        const infoWindow = createDistrictInfoWindow(e.latLng || getDistrictCenter(data.points), originalData.name, count, originalData, baseColor);
+        infoWindow.open({ map: map });
+        updatePanelDistrict(districtKey, originalData);
+      });
+      polygons.push(polygon);
+      smoothBoundary.forEach(p => { visibleBounds.extend({ lat: p.lat, lng: p.lng }); hasVisible = true; });
+    }
+    createPointMarkers(data.points, pointColor, pointStrong);
+    const center = getDistrictCenter(data.points);
+    visibleBounds.extend(center);
+    hasVisible = true;
+    const infoWindow = createDistrictInfoWindow(center, originalData.name, count, originalData, baseColor);
+    const overlay = createElegantOverlay(center, count, districtKey, columnColor, infoWindow);
+    overlayByKey[districtKey] = overlay;
+  }
+  if (hasVisible && !selectedDistrict) { map.fitBounds(visibleBounds); }
+  setTimeout(adjustOverlays, 400);
+}
+
+function createPointMarkers(points, color, isStrong) {
+  for (let p of points) {
+    const marker = new google.maps.Marker({ position: p, map: map, zIndex: isStrong ? 300 : 120, icon: { path: google.maps.SymbolPath.CIRCLE, scale: isStrong ? 6 : 4, fillColor: color, fillOpacity: 0.9, strokeColor: "#ffffff", strokeWeight: isStrong ? 2.5 : 1.5 } });
+    pointMarkers.push(marker);
+  }
+}
+
+function createDistrictInfoWindow(position, districtName, count, data, color) {
+  const sortedThird = Object.entries(data.third).sort((a, b) => b[1] - a[1]);
+  let smallLines = "";
+  for (let i = 0; i < sortedThird.length && i < 5; i++) { smallLines += `<div style="margin-top:4px; font-size:12px;">${escapeHtml(sortedThird[i][0])} : <b>${sortedThird[i][1]}</b></div>`; }
+  const html = `<div style="font-family: 'Segoe UI', Tahoma; min-width: 200px; max-width: 260px; padding: 8px;"><div style="font-weight: 800; font-size: 16px; color: ${color}; margin-bottom: 8px; border-bottom: 2px solid ${color}; padding-bottom: 6px;">${escapeHtml(districtName)}</div><div style="margin-bottom: 6px; font-size: 13px; color: #666;">البلدية: <b style="color: #333;">${escapeHtml(data.municipality)}</b></div><div style="font-size: 14px; margin-bottom: 8px;">عدد البلاغات: <b style="font-size: 18px; color: ${color};">${count}</b></div><div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px;"><div style="font-weight: 700; font-size: 12px; color: #888; margin-bottom: 4px;">التصنيفات:</div>${smallLines || '<div style="color: #999; font-size: 12px;">لا توجد تصنيفات</div>'}</div></div>`;
+  const win = new google.maps.InfoWindow({ content: html, position: position, maxWidth: 300 });
+  infoWindows.push(win);
+  return win;
+}
+
+function createElegantOverlay(position, count, districtKey, color, infoWindow) {
+  class ElegantOverlay extends google.maps.OverlayView {
+    constructor(pos) {
+      super();
+      this.position = pos;
+      this.div = null;
+      this.isDragging = false;
+    }
+    onAdd() {
+      const data = districts[districtKey];
+      this.div = document.createElement("div");
+      this.div.style.cssText = "position: absolute; transform: translate(-50%, -100%); pointer-events: auto; display: flex; flex-direction: column; align-items: center; user-select: none; cursor: grab; z-index: 250; touch-action: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));";
+      this.div.addEventListener("pointerdown", (e) => { this.isDragging = true; this.div.setPointerCapture(e.pointerId); this.div.style.cursor = "grabbing"; const rect = this.div.getBoundingClientRect(); this.offsetX = e.clientX - rect.left; this.offsetY = e.clientY - rect.top; });
+      this.div.addEventListener("pointermove", (e) => {
+        if (!this.isDragging) return;
+        const mapRect = document.getElementById("map").getBoundingClientRect();
+        const x = e.clientX - mapRect.left - this.offsetX + (this.div.offsetWidth / 2);
+        const y = e.clientY - mapRect.top - this.offsetY + (this.div.offsetHeight / 2);
+        const projection = this.getProjection();
+        if (!projection) return;
+        const latLng = projection.fromDivPixelToLatLng(new google.maps.Point(x, y));
+        if (!latLng) return;
+        this.position = latLng;
+        this.draw();
+      });
+      const stopDrag = () => { this.isDragging = false; this.div.style.cursor = "grab"; };
+      this.div.addEventListener("pointerup", stopDrag);
+      this.div.addEventListener("pointercancel", stopDrag);
+      this.countBadge = document.createElement("div");
+      this.countBadge.style.cssText = `min-width: 46px; height: 32px; padding: 0 12px; border-radius: 50px; background: linear-gradient(135deg, ${color} 0%, ${adjustColor(color, -20)} 100%); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); border: 2px solid rgba(255,255,255,0.3);`;
+      this.countBadge.textContent = count;
+      this.nameChip = document.createElement("div");
+      this.nameChip.style.cssText = `margin-top: 6px; padding: 6px 12px; border-radius: 50px; background: #ffffff; font-size: 12px; font-weight: 700; color: #1f2937; border: 2px solid ${color}; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis;`;
+      this.nameChip.textContent = data.name;
+      this.nameChip.title = data.name;
+      this.div.appendChild(this.countBadge);
+      this.div.appendChild(this.nameChip);
+      this.div.addEventListener("click", (e) => { e.stopPropagation(); closeAllInfoWindows(); infoWindow.open({ map: map }); updatePanelDistrict(districtKey, districts[districtKey]); });
+      this.getPanes().overlayMouseTarget.appendChild(this.div);
+    }
+    draw() {
+      const projection = this.getProjection();
+      if (!projection || !this.div) return;
+      const pos = projection.fromLatLngToDivPixel(new google.maps.LatLng(this.position.lat, this.position.lng));
+      if (!pos) return;
+      this.div.style.left = pos.x + "px";
+      this.div.style.top = pos.y + "px";
+    }
+    onRemove() { if (this.div && this.div.parentNode) { this.div.parentNode.removeChild(this.div); } this.div = null; }
+  }
+  const overlay = new ElegantOverlay(position);
+  overlay.setMap(map);
+  overlays.push(overlay);
+  return overlay;
+}
+
+function adjustColor(color, amount) {
+  const num = parseInt(color.replace("#", ""), 16);
+  const amt = Math.round(2.55 * amount);
+  const R = (num >> 16) + amt;
+  const G = (num >> 8 & 0x00FF) + amt;
+  const B = (num & 0x0000FF) + amt;
+  return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+}
+
+function adjustOverlays() { overlays.forEach(o => { if (o.draw) o.draw(); }); }
+
+function resetPanel() {
+  document.getElementById("panelTitle").textContent = "ملخص حسب الفلتر";
+  document.getElementById("panelSubTitle").textContent = "استورد ملف Excel ثم اختر البلدية والفلترة أو اضغط على حي في الخريطة.";
+  document.getElementById("totalCount").textContent = "0";
+  document.getElementById("totalTypes").textContent = "0";
+  document.getElementById("detailsList").innerHTML = '<div class="emptyBox">لا توجد بيانات حتى الآن.</div>';
+  document.getElementById("mapTableContainer").classList.remove("visible");
+  if (sideChart) { sideChart.destroy(); sideChart = null; }
+}
+
+function updatePanelDistrict(key, data) {
+  if (!key || !data) { resetPanel(); return; }
+  const count = data.points.length;
+  const entries = Object.entries(data.third).sort((a, b) => b[1] - a[1]);
+  let total = 0;
+  const labels = [];
+  const values = [];
+  let html = "";
+  entries.forEach(([k, v], i) => {
+    total += v;
+    html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`;
+    if (i < 10) { labels.push(k); values.push(v); }
+  });
+  document.getElementById("panelTitle").textContent = data.name;
+  document.getElementById("panelSubTitle").textContent = `البلدية: ${data.municipality} | إجمالي النقاط: ${count}`;
+  document.getElementById("totalCount").textContent = count;
+  document.getElementById("totalTypes").textContent = total;
+  document.getElementById("detailsList").innerHTML = html || '<div class="emptyBox">لا توجد بيانات.</div>';
+  drawSideChart(labels, values);
+  renderMapTable();
+}
+
+function updatePanelSummary() {
+  let totalCount = 0, totalTypes = 0, merged = {}, districtCounter = 0;
+  for (let districtKey in districts) {
+    const data = districts[districtKey];
+    const count = data.points.length;
+    if (!passesFilter(districtKey, count)) continue;
+    districtCounter++;
+    totalCount += count;
+    for (let key in data.third) { merged[key] = (merged[key] || 0) + data.third[key]; }
+  }
+  const entries = Object.entries(merged).sort((a, b) => b[1] - a[1]);
+  const labels = [];
+  const values = [];
+  let html = "";
+  entries.forEach(([k, v], i) => {
+    totalTypes += v;
+    html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`;
+    if (i < 10) { labels.push(k); values.push(v); }
+  });
+  const filterText = document.getElementById("filterSelect").options[document.getElementById("filterSelect").selectedIndex].text;
+  const municipalityText = selectedMunicipality || "كل البلديات";
+  document.getElementById("panelTitle").textContent = "ملخص حسب الفلتر";
+  document.getElementById("panelSubTitle").textContent = `البلدية: ${municipalityText} | الأحياء: ${districtCounter} | ${filterText}`;
+  document.getElementById("totalCount").textContent = totalCount;
+  document.getElementById("totalTypes").textContent = totalTypes;
+  document.getElementById("detailsList").innerHTML = html || '<div class="emptyBox">لا توجد بيانات مطابقة للفلترة الحالية.</div>';
+  drawSideChart(labels, values);
+  renderMapTable();
+}
+
+function updatePanelForCurrentView() {
+  if (selectedDistrict && districts[selectedDistrict]) { updatePanelDistrict(selectedDistrict, districts[selectedDistrict]); return; }
+  updatePanelSummary();
+}
+
+function drawSideChart(labels, values) {
+  const ctx = document.getElementById("sideChart").getContext("2d");
+  if (sideChart) { sideChart.destroy(); }
+  sideChart = new Chart(ctx, {
+    type: "bar",
+    data: { labels: labels, datasets: [{ label: "العدد", data: values, backgroundColor: "rgba(102, 126, 234, 0.8)", borderColor: "rgba(102, 126, 234, 1)", borderWidth: 2, borderRadius: 8, maxBarThickness: 32 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: "rgba(0,0,0,0.8)", titleFont: { size: 13 }, bodyFont: { size: 13 }, padding: 12, cornerRadius: 8 } }, scales: { x: { ticks: { display: false }, grid: { display: false } }, y: { beginAtZero: true, ticks: { font: { size: 11 }, color: "#6b7280" }, grid: { color: "rgba(0,0,0,0.05)" } } }, animation: { duration: 800, easing: 'easeOutQuart' } }
+  });
+}
+
+function exportExcel() {
+  showLoading(true);
+  setTimeout(() => {
+    try {
+      const dataToExport = [["البلدية", "الحي", "عدد البلاغات", "عدد التصنيفات", "أعلى تصنيف", "عدد أعلى تصنيف"]];
+      const rows = getCurrentReportRows();
+      if (!rows.length) { dataToExport.push(["-", "-", "0", "0", "-", "0"]); } else { rows.forEach(r => { dataToExport.push([r.municipality, r.district, r.count, r.totalTypes, r.topCategory, r.topCount]); }); }
+      const ws = XLSX.utils.aoa_to_sheet(dataToExport);
+      const headerStyle = { font: { bold: true, color: { rgb: "FFFFFF" }, size: 12 }, fill: { fgColor: { rgb: "667EEA" } }, alignment: { horizontal: "center", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "000000" } }, bottom: { style: "thin", color: { rgb: "000000" } }, left: { style: "thin", color: { rgb: "000000" } }, right: { style: "thin", color: { rgb: "000000" } } } };
+      for (let i = 0; i < 6; i++) { const cellRef = XLSX.utils.encode_cell({ r: 0, c: i }); if (!ws[cellRef]) ws[cellRef] = {}; ws[cellRef].s = headerStyle; }
+      ws["!cols"] = [{ wch: 24 }, { wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 40 }, { wch: 16 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "التقرير");
+      XLSX.writeFile(wb, "تقرير_البلاغات.xlsx");
+      showNotification("تم تصدير Excel بنجاح!", "success");
+    } catch (err) { console.error(err); showNotification("خطأ في التصدير", "error"); } finally { showLoading(false); }
+  }, 100);
+}
+
+async function downloadImage() {
+  const panel = document.querySelector(".topPanel");
+  const fab = document.querySelector(".fabWrap");
+  panel.style.visibility = "hidden";
+  if (fab) fab.style.visibility = "hidden";
+  showLoading(true);
+  try {
+    google.maps.event.trigger(map, "resize");
+    await new Promise(r => setTimeout(r, 1000));
+    const canvas = await html2canvas(document.querySelector(".mainLayout"), { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff", logging: false, onclone: (clonedDoc) => { const clonedMap = clonedDoc.getElementById("map"); if (clonedMap) { clonedMap.style.height = "100vh"; } } });
+    const link = document.createElement("a");
+    link.download = `خريطة_البلاغات_${new Date().toLocaleDateString('ar-SA')}.png`;
+    link.href = canvas.toDataURL("image/png", 1.0);
+    link.click();
+    showNotification("تم حفظ الصورة بنجاح!", "success");
+  } catch (err) { console.error(err); showNotification("فشل في حفظ الصورة", "error"); } finally { panel.style.visibility = "visible"; if (fab) fab.style.visibility = "visible"; showLoading(false); }
+}
+
+function escapeHtml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+function showLoading(show) { const loading = document.getElementById("loading"); loading.style.display = show ? "flex" : "none"; }
+
+function showNotification(message, type = "info") {
+  const notification = document.createElement("div");
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  setTimeout(() => { notification.style.transform = "translateX(0)"; }, 10);
+  setTimeout(() => { notification.style.transform = "translateX(400px)"; setTimeout(() => { if (notification.parentNode) { notification.parentNode.removeChild(notification); } }, 300); }, 3000);
+}
+
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "e") { e.preventDefault(); exportExcel(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); downloadImage(); }
+  if (e.key === "Escape") { closeAllInfoWindows(); }
+  if (e.key === "Delete" && manualZones.length > 0) {
+    const zone = getLastManualZone();
+    if (zone && confirm("هل تريد حذف آخر حي مرسوم؟")) {
+      zone.polygon.setMap(null);
+      zone.label.setMap(null);
+      manualZones.pop();
+      renumberManualZones();
+      showNotification("تم الحذف بنجاح", "success");
+    }
+  }
+});
+
+window.addEventListener("error", (e) => { console.error("خطأ في التطبيق:", e.error); showNotification("حدث خطأ غير متوقع", "error"); });
+window.addEventListener("unhandledrejection", (e) => { console.error("وعد مرفوض:", e.reason); showNotification("حدث خطأ في معالجة البيانات", "error"); });
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (!window.google || !google.maps) { showNotification("جاري تحميل خرائط Google...", "info"); }
+  const buttons = document.querySelectorAll("button");
+  buttons.forEach(btn => {
+    btn.addEventListener("mouseenter", () => { btn.style.transform = "translateY(-2px)"; });
+    btn.addEventListener("mouseleave", () => { btn.style.transform = "translateY(0)"; });
+  });
+});
+</script>
+
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=places,drawing,geometry&callback=initMap&v=weekly"></script>
+
 </body>
 </html>
