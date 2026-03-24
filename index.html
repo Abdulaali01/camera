@@ -55,6 +55,204 @@ button:active { transform: translateY(0); }
 .notification.error { background: #ef4444; }
 .notification.warning { background: #f59e0b; }
 .notification.info { background: #3b82f6; }
+
+/* أنماط الجدول الشبكي الجديد */
+.gridTableContainer { 
+  position: absolute; 
+  bottom: 20px; 
+  left: 20px; 
+  right: 420px; 
+  background: rgba(255, 255, 255, 0.98); 
+  backdrop-filter: blur(15px); 
+  border-radius: 20px; 
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15); 
+  padding: 20px; 
+  z-index: 1000; 
+  max-height: 350px; 
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+.gridTableHeader { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 15px; 
+  padding-bottom: 15px; 
+  border-bottom: 2px solid #e5e7eb; 
+}
+.gridTableTitle { 
+  font-size: 18px; 
+  font-weight: 800; 
+  color: #1f2937; 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+}
+.gridTableScroll { 
+  overflow-y: auto; 
+  flex: 1; 
+  border-radius: 12px; 
+  background: #f8fafc;
+}
+.gridTable { 
+  width: 100%; 
+  border-collapse: separate; 
+  border-spacing: 0; 
+  font-size: 13px; 
+}
+.gridTable th { 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+  color: white; 
+  padding: 14px 12px; 
+  font-weight: 700; 
+  text-align: center; 
+  position: sticky; 
+  top: 0; 
+  z-index: 10;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.gridTable th:first-child { border-radius: 0 12px 0 0; }
+.gridTable th:last-child { border-radius: 12px 0 0 0; }
+.gridTable td { 
+  padding: 12px; 
+  text-align: center; 
+  border-bottom: 1px solid #e5e7eb; 
+  font-weight: 600;
+}
+.gridTable tr:hover td { background: #e0e7ff; }
+.gridTable tr:nth-child(even) { background: #f1f5f9; }
+.gridTable tr:nth-child(even):hover td { background: #dbeafe; }
+.districtCell { 
+  text-align: right !important; 
+  font-weight: 700 !important; 
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.districtColor { 
+  width: 12px; 
+  height: 12px; 
+  border-radius: 50%; 
+  display: inline-block; 
+  flex-shrink: 0;
+}
+.countBadge { 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+  color: white; 
+  padding: 6px 14px; 
+  border-radius: 20px; 
+  font-weight: 800; 
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+.countBadge.high { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3); }
+.countBadge.medium { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3); }
+.countBadge.low { background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3); }
+.categoryTag { 
+  background: #f3f4f6; 
+  color: #4b5563; 
+  padding: 4px 10px; 
+  border-radius: 12px; 
+  font-size: 11px; 
+  font-weight: 600;
+  border: 1px solid #e5e7eb;
+}
+.municipalityTag { 
+  background: #ede9fe; 
+  color: #7c3aed; 
+  padding: 4px 10px; 
+  border-radius: 12px; 
+  font-size: 11px; 
+  font-weight: 600;
+  border: 1px solid #ddd6fe;
+}
+.gridStats { 
+  display: flex; 
+  gap: 15px; 
+  margin-top: 15px; 
+  padding-top: 15px; 
+  border-top: 2px solid #e5e7eb; 
+}
+.gridStat { 
+  flex: 1; 
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%); 
+  padding: 12px; 
+  border-radius: 12px; 
+  text-align: center; 
+}
+.gridStatLabel { 
+  font-size: 11px; 
+  color: #6b7280; 
+  margin-bottom: 4px; 
+  font-weight: 600;
+}
+.gridStatValue { 
+  font-size: 20px; 
+  font-weight: 800; 
+  color: #1f2937;
+}
+
+/* أنماط الرسم البياني الجانبي المحسن */
+.chartSidebar {
+  position: absolute;
+  top: 100px;
+  left: 20px;
+  width: 350px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  z-index: 1000;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: none;
+}
+.chartSidebar.visible { display: block; }
+.chartSidebarHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e5e7eb;
+}
+.chartSidebarTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chartContainer {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+}
+.chartContainerTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4b5563;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.categoryChart { height: 200px !important; }
+.pieChart { height: 180px !important; }
+.doughnutChart { height: 160px !important; }
+
+/* إخفاء اللوحة الجانبية */
+.sidePanel { display: none !important; }
+.mapSection { flex: 1 !important; width: 100% !important; }
+.gridTableContainer { right: 20px; }
 </style>
 </head>
 
@@ -99,18 +297,81 @@ button:active { transform: translateY(0); }
       </div>
 
       <div class="group"><span class="titleMini">الأحياء</span><select id="districtList" onchange="selectDistrict(this.value)"><option value="">🏘️ كل الأحياء</option></select></div>
-      <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورتين</button></div>
+      <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورة</button></div>
     </div>
     <div id="map"></div>
+    
+    <!-- الجدول الشبكي الجديد -->
+    <div id="gridTableContainer" class="gridTableContainer" style="display: none;">
+      <div class="gridTableHeader">
+        <div class="gridTableTitle">📋 جدول الأحياء</div>
+        <div style="display: flex; gap: 10px;">
+          <span id="gridFilterBadge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;">الكل</span>
+        </div>
+      </div>
+      <div class="gridTableScroll">
+        <table class="gridTable" id="gridTable">
+          <thead>
+            <tr>
+              <th>الحي</th>
+              <th>البلدية</th>
+              <th>البلاغات</th>
+              <th>أعلى تصنيف</th>
+              <th>التصنيفات</th>
+            </tr>
+          </thead>
+          <tbody id="gridTableBody"></tbody>
+        </table>
+      </div>
+      <div class="gridStats">
+        <div class="gridStat">
+          <div class="gridStatLabel">إجمالي البلاغات</div>
+          <div class="gridStatValue" id="gridTotalCount">0</div>
+        </div>
+        <div class="gridStat">
+          <div class="gridStatLabel">عدد الأحياء</div>
+          <div class="gridStatValue" id="gridDistrictCount">0</div>
+        </div>
+        <div class="gridStat">
+          <div class="gridStatLabel">المتوسط</div>
+          <div class="gridStatValue" id="gridAvgCount">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- الرسم البياني الجانبي المحسن -->
+    <div id="chartSidebar" class="chartSidebar">
+      <div class="chartSidebarHeader">
+        <div class="chartSidebarTitle">📊 تحليل التصنيفات</div>
+        <button onclick="toggleChartSidebar()" style="padding: 8px 12px; font-size: 12px; min-width: auto;">✕</button>
+      </div>
+      
+      <div class="chartContainer">
+        <div class="chartContainerTitle">توزيع التصنيفات الرئيسية</div>
+        <canvas id="categoryBarChart" class="categoryChart"></canvas>
+      </div>
+      
+      <div class="chartContainer">
+        <div class="chartContainerTitle">نسب التصنيفات</div>
+        <canvas id="categoryPieChart" class="pieChart"></canvas>
+      </div>
+      
+      <div class="chartContainer">
+        <div class="chartContainerTitle">Top 5 تصنيفات</div>
+        <canvas id="categoryDoughnutChart" class="doughnutChart"></canvas>
+      </div>
+    </div>
   </div>
 </div>
 
 <div class="fabWrap">
   <button class="fabBtn" id="drawToggleBtn" type="button">✏️ رسم حي</button>
+  <button class="fabBtn" id="chartToggleBtn" type="button" onclick="toggleChartSidebar()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">📊 الرسوم البيانية</button>
 </div>
 
 <script>
 let map, districts = {}, polygons = [], pointMarkers = [], overlays = [], infoWindows = [], currentFilter = "all", selectedDistrict = "", selectedMunicipality = "", sideChart = null, drawingManager = null, isDrawingMode = false, manualZones = [], overlayByKey = {}, autocomplete;
+let categoryBarChart = null, categoryPieChart = null, categoryDoughnutChart = null;
 const COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140", "#30cfd0", "#330867", "#a8edea", "#fed6e3", "#d299c2", "#fef9d7"];
 
 function initMap() {
@@ -129,7 +390,7 @@ function initMap() {
   initDrawing();
   initSearch();
   map.addListener("idle", adjustOverlays);
-  map.addListener("click", () => { closeAllInfoWindows(); updatePanelForCurrentView(); });
+  map.addListener("click", () => { closeAllInfoWindows(); });
 }
 
 function initSearch() {
@@ -173,6 +434,14 @@ function updateDrawButtonUI() {
   const btn = document.getElementById("drawToggleBtn");
   if (isDrawingMode) { btn.classList.add("stop"); btn.innerHTML = "⛔ إيقاف"; }
   else { btn.classList.remove("stop"); btn.innerHTML = "✏️ رسم حي"; }
+}
+
+function toggleChartSidebar() {
+  const sidebar = document.getElementById("chartSidebar");
+  sidebar.classList.toggle("visible");
+  if (sidebar.classList.contains("visible")) {
+    updateChartSidebar();
+  }
 }
 
 function normalizeHeader(v) { return (v ?? "").toString().trim().replace(/\s+/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").toLowerCase(); }
@@ -251,7 +520,7 @@ function processExcelData(rows) {
   fillMunicipalityList();
   fillDistrictList();
   drawDistricts();
-  updatePanelForCurrentView();
+  updateGridTable();
 }
 
 function fillMunicipalityList() {
@@ -290,7 +559,8 @@ function setMunicipalityFilter(name) {
   fillDistrictList();
   clearMap();
   drawDistricts();
-  updatePanelForCurrentView();
+  updateGridTable();
+  updateChartSidebar();
 }
 
 function setFilter(type) {
@@ -298,7 +568,8 @@ function setFilter(type) {
   selectedDistrict = document.getElementById("districtList").value || "";
   clearMap();
   drawDistricts();
-  updatePanelForCurrentView();
+  updateGridTable();
+  updateChartSidebar();
 }
 
 function selectDistrict(key) {
@@ -306,7 +577,8 @@ function selectDistrict(key) {
   document.getElementById("districtList").value = selectedDistrict;
   clearMap();
   drawDistricts();
-  updatePanelForCurrentView();
+  updateGridTable();
+  updateChartSidebar();
 
   if (key && districts[key]) {
     const data = districts[key];
@@ -461,11 +733,179 @@ function getCurrentReportRows() {
       count: count,
       topCategory: top.name,
       topCount: top.count,
-      totalTypes: top.total
+      totalTypes: top.total,
+      color: COLORS[rows.length % COLORS.length]
     });
   }
   rows.sort((a, b) => b.count - a.count || a.district.localeCompare(b.district, 'ar'));
   return rows;
+}
+
+// تحديث الجدول الشبكي
+function updateGridTable() {
+  const rows = getCurrentReportRows();
+  const container = document.getElementById("gridTableContainer");
+  const tbody = document.getElementById("gridTableBody");
+  const filterBadge = document.getElementById("gridFilterBadge");
+  
+  if (rows.length === 0) {
+    container.style.display = "none";
+    return;
+  }
+  
+  container.style.display = "flex";
+  
+  // تحديث شارة الفلتر
+  const filterSelect = document.getElementById("filterSelect");
+  filterBadge.textContent = filterSelect.options[filterSelect.selectedIndex].text;
+  
+  // تحديث الجدول
+  tbody.innerHTML = rows.map((r, i) => {
+    const countClass = r.count > 200 ? 'high' : r.count > 100 ? 'medium' : 'low';
+    return `
+      <tr onclick="selectDistrict('${makeDistrictKey(r.municipality, r.district)}')" style="cursor: pointer;">
+        <td class="districtCell">
+          <span class="districtColor" style="background: ${r.color};"></span>
+          ${escapeHtml(r.district)}
+        </td>
+        <td><span class="municipalityTag">${escapeHtml(r.municipality)}</span></td>
+        <td><span class="countBadge ${countClass}">${r.count}</span></td>
+        <td><span class="categoryTag">${escapeHtml(r.topCategory)}</span></td>
+        <td><span class="categoryTag">${r.totalTypes}</span></td>
+      </tr>
+    `;
+  }).join('');
+  
+  // تحديث الإحصائيات
+  const totalCount = rows.reduce((sum, r) => sum + r.count, 0);
+  document.getElementById("gridTotalCount").textContent = totalCount.toLocaleString('ar-SA');
+  document.getElementById("gridDistrictCount').textContent = rows.length;
+  document.getElementById("gridAvgCount").textContent = Math.round(totalCount / rows.length).toLocaleString('ar-SA');
+}
+
+// تحديث الرسوم البيانية الجانبية
+function updateChartSidebar() {
+  if (!document.getElementById("chartSidebar").classList.contains("visible")) return;
+  
+  const rows = getCurrentReportRows();
+  const allCategories = {};
+  
+  rows.forEach(r => {
+    const district = districts[makeDistrictKey(r.municipality, r.district)];
+    if (district) {
+      Object.entries(district.third).forEach(([cat, count]) => {
+        allCategories[cat] = (allCategories[cat] || 0) + count;
+      });
+    }
+  });
+  
+  const sortedCategories = Object.entries(allCategories).sort((a, b) => b[1] - a[1]);
+  const topCategories = sortedCategories.slice(0, 10);
+  const top5Categories = sortedCategories.slice(0, 5);
+  
+  const labels = topCategories.map(x => x[0]);
+  const values = topCategories.map(x => x[1]);
+  const pieLabels = topCategories.map(x => x[0]);
+  const pieValues = topCategories.map(x => x[1]);
+  
+  // رسم بياني عمودي
+  const barCtx = document.getElementById("categoryBarChart").getContext("2d");
+  if (categoryBarChart) categoryBarChart.destroy();
+  
+  categoryBarChart = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'عدد البلاغات',
+        data: values,
+        backgroundColor: COLORS.slice(0, labels.length).map(c => c + '80'),
+        borderColor: COLORS.slice(0, labels.length),
+        borderWidth: 2,
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          titleFont: { size: 13 },
+          bodyFont: { size: 13 },
+          padding: 12,
+          cornerRadius: 8
+        }
+      },
+      scales: {
+        x: { 
+          ticks: { font: { size: 10 }, maxRotation: 45 },
+          grid: { display: false }
+        },
+        y: { 
+          beginAtZero: true,
+          ticks: { font: { size: 11 } },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        }
+      }
+    }
+  });
+  
+  // رسم بياني دائري
+  const pieCtx = document.getElementById("categoryPieChart").getContext("2d");
+  if (categoryPieChart) categoryPieChart.destroy();
+  
+  categoryPieChart = new Chart(pieCtx, {
+    type: 'pie',
+    data: {
+      labels: pieLabels,
+      datasets: [{
+        data: pieValues,
+        backgroundColor: COLORS.slice(0, pieLabels.length),
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 10 }, boxWidth: 12 }
+        }
+      }
+    }
+  });
+  
+  // رسم بياني دونات للـ Top 5
+  const doughnutCtx = document.getElementById("categoryDoughnutChart").getContext("2d");
+  if (categoryDoughnutChart) categoryDoughnutChart.destroy();
+  
+  categoryDoughnutChart = new Chart(doughnutCtx, {
+    type: 'doughnut',
+    data: {
+      labels: top5Categories.map(x => x[0]),
+      datasets: [{
+        data: top5Categories.map(x => x[1]),
+        backgroundColor: COLORS.slice(0, 5),
+        borderWidth: 2,
+        borderColor: '#ffffff',
+        cutout: '60%'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { font: { size: 11 }, boxWidth: 12 }
+        }
+      }
+    }
+  });
 }
 
 function drawDistricts() {
@@ -524,7 +964,6 @@ function drawDistricts() {
         closeAllInfoWindows();
         const infoWindow = createDistrictInfoWindow(e.latLng || getDistrictCenter(data.points), originalData.name, count, originalData, baseColor);
         infoWindow.open({ map: map });
-        updatePanelDistrict(districtKey, originalData);
       });
 
       polygons.push(polygon);
@@ -649,7 +1088,6 @@ function createElegantOverlay(position, count, districtKey, color, infoWindow) {
         e.stopPropagation();
         closeAllInfoWindows();
         infoWindow.open({ map: map });
-        updatePanelDistrict(districtKey, districts[districtKey]);
       });
 
       this.getPanes().overlayMouseTarget.appendChild(this.div);
@@ -688,110 +1126,8 @@ function adjustColor(color, amount) {
 function adjustOverlays() { overlays.forEach(o => { if (o.draw) o.draw(); }); }
 
 function resetPanel() {
-  document.getElementById("panelTitle").textContent = "ملخص حسب الفلتر";
-  document.getElementById("panelSubTitle").textContent = "استورد ملف Excel ثم اختر البلدية والفلترة أو اضغط على حي في الخريطة.";
-  document.getElementById("totalCount").textContent = "0";
-  document.getElementById("totalTypes").textContent = "0";
-  if (sideChart) { sideChart.destroy(); sideChart = null; }
-}
-
-function updatePanelDistrict(key, data) {
-  if (!key || !data) { resetPanel(); return; }
-  const count = data.points.length;
-  const entries = Object.entries(data.third).sort((a, b) => b[1] - a[1]);
-  let total = 0;
-  const labels = [];
-  const values = [];
-
-  entries.forEach(([k, v], i) => {
-    total += v;
-    if (i < 10) { labels.push(k); values.push(v); }
-  });
-
-  document.getElementById("panelTitle").textContent = data.name;
-  document.getElementById("panelSubTitle").textContent = `البلدية: ${data.municipality} | إجمالي النقاط: ${count}`;
-  document.getElementById("totalCount").textContent = count;
-  document.getElementById("totalTypes").textContent = total;
-  drawSideChart(labels, values);
-}
-
-function updatePanelSummary() {
-  let totalCount = 0, totalTypes = 0, merged = {}, districtCounter = 0;
-
-  for (let districtKey in districts) {
-    const data = districts[districtKey];
-    const count = data.points.length;
-    if (!passesFilter(districtKey, count)) continue;
-    districtCounter++;
-    totalCount += count;
-    for (let key in data.third) merged[key] = (merged[key] || 0) + data.third[key];
-  }
-
-  const entries = Object.entries(merged).sort((a, b) => b[1] - a[1]);
-  const labels = [];
-  const values = [];
-
-  entries.forEach(([k, v], i) => {
-    totalTypes += v;
-    if (i < 10) { labels.push(k); values.push(v); }
-  });
-
-  const filterText = document.getElementById("filterSelect").options[document.getElementById("filterSelect").selectedIndex].text;
-  const municipalityText = selectedMunicipality || "كل البلديات";
-
-  document.getElementById("panelTitle").textContent = "ملخص حسب الفلتر";
-  document.getElementById("panelSubTitle").textContent = `البلدية: ${municipalityText} | الأحياء: ${districtCounter} | ${filterText}`;
-  document.getElementById("totalCount").textContent = totalCount;
-  document.getElementById("totalTypes").textContent = totalTypes;
-  drawSideChart(labels, values);
-}
-
-function updatePanelForCurrentView() {
-  if (selectedDistrict && districts[selectedDistrict]) {
-    updatePanelDistrict(selectedDistrict, districts[selectedDistrict]);
-    return;
-  }
-  updatePanelSummary();
-}
-
-function drawSideChart(labels, values) {
-  const ctx = document.getElementById("sideChart").getContext("2d");
-  if (sideChart) sideChart.destroy();
-
-  sideChart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: labels,
-      datasets: [{
-        label: "العدد",
-        data: values,
-        backgroundColor: "rgba(102, 126, 234, 0.8)",
-        borderColor: "rgba(102, 126, 234, 1)",
-        borderWidth: 2,
-        borderRadius: 8,
-        maxBarThickness: 32
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: "rgba(0,0,0,0.8)",
-          titleFont: { size: 13 },
-          bodyFont: { size: 13 },
-          padding: 12,
-          cornerRadius: 8
-        }
-      },
-      scales: {
-        x: { ticks: { display: false }, grid: { display: false } },
-        y: { beginAtZero: true, ticks: { font: { size: 11 }, color: "#6b7280" }, grid: { color: "rgba(0,0,0,0.05)" } }
-      },
-      animation: { duration: 800, easing: 'easeOutQuart' }
-    }
-  });
+  // تم إخفاء اللوحة الجانبية
+  document.getElementById("gridTableContainer").style.display = "none";
 }
 
 function exportExcel() {
@@ -846,14 +1182,16 @@ function exportExcel() {
 async function downloadImage() {
   const panel = document.querySelector(".topPanel");
   const fab = document.querySelector(".fabWrap");
-  const sidePanel = document.getElementById("sidePanel");
+  const gridTable = document.getElementById("gridTableContainer");
+  const chartSidebar = document.getElementById("chartSidebar");
 
   panel.style.visibility = "hidden";
   if (fab) fab.style.visibility = "hidden";
+  if (gridTable) gridTable.style.visibility = "hidden";
+  if (chartSidebar) chartSidebar.style.visibility = "hidden";
   showLoading(true);
 
   try {
-    sidePanel.style.display = "none";
     google.maps.event.trigger(map, "resize");
     await new Promise(r => setTimeout(r, 1000));
 
@@ -865,113 +1203,22 @@ async function downloadImage() {
       logging: false
     });
 
-    const link1 = document.createElement("a");
-    link1.download = `خريطة_${new Date().toLocaleDateString('ar-SA')}.png`;
-    link1.href = mapCanvas.toDataURL("image/png", 1.0);
-    link1.click();
+    const link = document.createElement("a");
+    link.download = `خريطة_${new Date().toLocaleDateString('ar-SA')}.png`;
+    link.href = mapCanvas.toDataURL("image/png", 1.0);
+    link.click();
 
-    sidePanel.style.display = "";
-    google.maps.event.trigger(map, "resize");
-    await new Promise(r => setTimeout(r, 500));
-
-    await exportSimpleTable();
-
-    showNotification("تم حفظ الصورتين بنجاح!", "success");
+    showNotification("تم حفظ الصورة بنجاح!", "success");
   } catch (err) {
     console.error(err);
     showNotification("فشل في حفظ الصورة", "error");
   } finally {
-    sidePanel.style.display = "";
     panel.style.visibility = "visible";
     if (fab) fab.style.visibility = "visible";
+    if (gridTable) gridTable.style.visibility = "visible";
+    if (chartSidebar) chartSidebar.style.visibility = "visible";
     showLoading(false);
   }
-}
-
-async function exportSimpleTable() {
-  const rows = getCurrentReportRows();
-  const totalCount = rows.reduce((sum, r) => sum + r.count, 0);
-  
-  const exportDiv = document.createElement("div");
-  exportDiv.style.cssText = "position:fixed;right:0;top:0;width:800px;height:auto;background:#ffffff;z-index:99999;direction:rtl;padding:30px;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;";
-
-  const header = `
-    <div style="text-align:center;margin-bottom:25px;padding-bottom:20px;border-bottom:3px solid #667eea;">
-      <h1 style="margin:0 0 10px;font-size:28px;font-weight:800;color:#1f2937;">تقرير الأحياء</h1>
-      <p style="margin:0;font-size:14px;color:#6b7280;">${new Date().toLocaleDateString('ar-SA')} - إجمالي البلاغات: ${totalCount}</p>
-    </div>
-  `;
-
-  const tableRows = rows.map((r, i) => {
-    const bgColor = i % 2 === 0 ? '#ffffff' : '#f8fafc';
-    const countColor = r.count > 200 ? '#dc2626' : r.count > 100 ? '#f59e0b' : '#10b981';
-    
-    return `
-      <tr style="background:${bgColor};">
-        <td style="padding:15px 20px;border-bottom:1px solid #e5e7eb;font-size:16px;font-weight:700;color:#1f2937;text-align:right;">
-          ${escapeHtml(r.district)}
-        </td>
-        <td style="padding:15px 20px;border-bottom:1px solid #e5e7eb;text-align:center;width:120px;">
-          <span style="background:${countColor}15;color:${countColor};padding:8px 16px;border-radius:20px;font-weight:800;font-size:18px;border:2px solid ${countColor}30;">
-            ${r.count}
-          </span>
-        </td>
-      </tr>
-    `;
-  }).join('');
-
-  const table = `
-    <table style="width:100%;border-collapse:collapse;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
-      <thead>
-        <tr style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
-          <th style="padding:18px 20px;color:white;font-weight:700;font-size:16px;text-align:right;">اسم الحي</th>
-          <th style="padding:18px 20px;color:white;font-weight:700;font-size:16px;text-align:center;width:120px;">البلاغات</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${tableRows}
-      </tbody>
-    </table>
-  `;
-
-  const summary = `
-    <div style="margin-top:25px;display:grid;grid-template-columns:repeat(3,1fr);gap:15px;">
-      <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:20px;border-radius:12px;text-align:center;color:white;">
-        <div style="font-size:12px;opacity:0.9;margin-bottom:5px;">إجمالي البلاغات</div>
-        <div style="font-size:28px;font-weight:800;">${totalCount}</div>
-      </div>
-      <div style="background:#f0f9ff;padding:20px;border-radius:12px;text-align:center;border:2px solid #0ea5e9;">
-        <div style="font-size:12px;color:#0ea5e9;margin-bottom:5px;">عدد الأحياء</div>
-        <div style="font-size:28px;font-weight:800;color:#0369a1;">${rows.length}</div>
-      </div>
-      <div style="background:#f0fdf4;padding:20px;border-radius:12px;text-align:center;border:2px solid #22c55e;">
-        <div style="font-size:12px;color:#22c55e;margin-bottom:5px;">متوسط البلاغات</div>
-        <div style="font-size:28px;font-weight:800;color:#15803d;">${Math.round(totalCount / rows.length) || 0}</div>
-      </div>
-    </div>
-  `;
-
-  exportDiv.innerHTML = header + table + summary;
-  document.body.appendChild(exportDiv);
-
-  await new Promise(r => setTimeout(r, 500));
-
-  const canvas = await html2canvas(exportDiv, {
-    scale: 2,
-    useCORS: true,
-    allowTaint: true,
-    backgroundColor: "#ffffff",
-    logging: false,
-    width: 800,
-    height: exportDiv.scrollHeight
-  });
-
-  const link = document.createElement("a");
-  link.download = `جدول_الأحياء_${new Date().toLocaleDateString('ar-SA')}.png`;
-  link.href = canvas.toDataURL("image/png", 1.0);
-  link.click();
-
-  document.body.removeChild(exportDiv);
 }
 
 function escapeHtml(text) {
