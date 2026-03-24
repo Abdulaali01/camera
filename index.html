@@ -42,25 +42,6 @@ button:active { transform: translateY(0); }
 .notification.error { background: #ef4444; }
 .notification.warning { background: #f59e0b; }
 .notification.info { background: #3b82f6; }
-
-/* أنماط الرسم البياني الجانبي */
-.chartSidebar {
-  position: absolute;
-  top: 100px;
-  left: 20px;
-  width: 380px;
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(15px);
-  border-radius: 20px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-  padding: 20px;
-  z-index: 1000;
-  max-height: calc(100vh - 140px);
-  overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  display: none;
-}
-.chartSidebar.visible { display: block; }
 </style>
 </head>
 
@@ -94,28 +75,16 @@ button:active { transform: translateY(0); }
       <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورة</button></div>
     </div>
     <div id="map"></div>
-
-    <div id="chartSidebar" class="chartSidebar">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:15px;border-bottom:2px solid #e5e7eb;">
-        <div style="font-size:16px;font-weight:800;color:#1f2937;">📊 تحليل التصنيفات</div>
-        <button onclick="toggleChartSidebar()" style="padding:8px 12px;font-size:12px;min-width:auto;background:#ef4444;">✕</button>
-      </div>
-      <div style="margin-bottom:20px;padding:15px;background:#f8fafc;border-radius:16px;border:1px solid #e5e7eb;">
-        <div style="font-size:13px;font-weight:700;color:#4b5563;margin-bottom:12px;text-align:center;">توزيع التصنيفات</div>
-        <canvas id="categoryBarChart" style="height:220px!important;"></canvas>
-      </div>
-    </div>
   </div>
 </div>
 
 <div class="fabWrap">
   <button class="fabBtn" id="drawToggleBtn" type="button">✏️ رسم حي</button>
-  <button class="fabBtn" id="chartToggleBtn" type="button" onclick="toggleChartSidebar()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">📊 الرسوم البيانية</button>
 </div>
 
 <script>
-let map, districts = {}, polygons = [], gridMarkers = [], overlays = [], infoWindows = [], currentFilter = "all", selectedDistrict = "", selectedMunicipality = "", drawingManager = null, isDrawingMode = false, manualZones = [], overlayByKey = {}, autocomplete;
-let categoryBarChart = null;
+let map, districts = {}, polygons = [], overlays = [], infoWindows = [], currentFilter = "all", selectedDistrict = "", selectedMunicipality = "", drawingManager = null, isDrawingMode = false, manualZones = [], overlayByKey = {}, autocomplete;
+let chartOverlay = null;
 const COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140", "#30cfd0", "#330867", "#a8edea", "#fed6e3", "#d299c2", "#fef9d7"];
 
 function initMap() {
@@ -136,6 +105,7 @@ function initMap() {
   initSearch();
   map.addListener("idle", adjustOverlays);
   map.addListener("click", () => { closeAllInfoWindows(); });
+  map.addListener("bounds_changed", updateChartOverlayPosition);
 }
 
 function initSearch() {
@@ -179,14 +149,6 @@ function updateDrawButtonUI() {
   const btn = document.getElementById("drawToggleBtn");
   if (isDrawingMode) { btn.classList.add("stop"); btn.innerHTML = "⛔ إيقاف"; }
   else { btn.classList.remove("stop"); btn.innerHTML = "✏️ رسم حي"; }
-}
-
-function toggleChartSidebar() {
-  const sidebar = document.getElementById("chartSidebar");
-  sidebar.classList.toggle("visible");
-  if (sidebar.classList.contains("visible")) {
-    updateChartSidebar();
-  }
 }
 
 function normalizeHeader(v) { return (v ?? "").toString().trim().replace(/\s+/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").toLowerCase(); }
@@ -264,6 +226,7 @@ function processExcelData(rows) {
   fillMunicipalityList();
   fillDistrictList();
   drawDistricts();
+  createChartOverlay();
 }
 
 function fillMunicipalityList() {
@@ -302,7 +265,7 @@ function setMunicipalityFilter(name) {
   fillDistrictList();
   clearMap();
   drawDistricts();
-  updateChartSidebar();
+  updateChartOverlay();
 }
 
 function setFilter(type) {
@@ -310,7 +273,7 @@ function setFilter(type) {
   selectedDistrict = document.getElementById("districtList").value || "";
   clearMap();
   drawDistricts();
-  updateChartSidebar();
+  updateChartOverlay();
 }
 
 function selectDistrict(key) {
@@ -318,7 +281,7 @@ function selectDistrict(key) {
   document.getElementById("districtList").value = selectedDistrict;
   clearMap();
   drawDistricts();
-  updateChartSidebar();
+  updateChartOverlay();
 
   if (key && districts[key]) {
     const data = districts[key];
@@ -332,14 +295,16 @@ function closeAllInfoWindows() { infoWindows.forEach(w => w.close()); }
 
 function clearMap() {
   polygons.forEach(p => p.setMap(null));
-  gridMarkers.forEach(m => m.setMap(null));
   overlays.forEach(o => o.setMap(null));
   infoWindows.forEach(w => w.close());
   polygons = [];
-  gridMarkers = [];
   overlays = [];
   infoWindows = [];
   overlayByKey = {};
+  if (chartOverlay) {
+    chartOverlay.setMap(null);
+    chartOverlay = null;
+  }
 }
 
 function convexHull(points) {
@@ -461,100 +426,216 @@ function getTopCategory(thirdObj) {
 }
 
 // ============================================
-// الدالة الأساسية لإنشاء الشبكة داخل المضلع
+// Overlay شبكي لأسماء الأحياء
 // ============================================
-function createGridInsidePolygon(polygonPath, count, color) {
-  // الحصول على حدود المضلع
-  const bounds = new google.maps.LatLngBounds();
-  polygonPath.forEach(p => bounds.extend(p));
-  
-  const ne = bounds.getNorthEast();
-  const sw = bounds.getSouthWest();
-  
-  const latMin = sw.lat();
-  const latMax = ne.lat();
-  const lngMin = sw.lng();
-  const lngMax = ne.lng();
-  
-  // حساب عدد الصفوف والأعمدة لجعل الشبكة مربعة الشكل تقريباً
-  const latRange = latMax - latMin;
-  const lngRange = lngMax - lngMin;
-  const aspectRatio = lngRange / latRange;
-  
-  // عدد الخلايا الإجمالي (نضاعف للتأكد من تغطية المساحة)
-  const totalCellsNeeded = count * 3;
-  
-  // حساب الصفوف والأعمدة
-  const cols = Math.ceil(Math.sqrt(totalCellsNeeded * aspectRatio));
-  const rows = Math.ceil(totalCellsNeeded / cols);
-  
-  const stepLat = latRange / rows;
-  const stepLng = lngRange / cols;
-  
-  // إنشاء مضلع للتحقق
-  const poly = new google.maps.Polygon({ paths: polygonPath });
-  
-  const gridPoints = [];
-  
-  // توليد نقاط الشبكة
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      // منتصف الخلية
-      const lat = latMin + (row * stepLat) + (stepLat / 2);
-      const lng = lngMin + (col * stepLng) + (stepLng / 2);
+function createGridOverlay(bounds, districtsList) {
+  class GridOverlay extends google.maps.OverlayView {
+    constructor(bounds, districts) {
+      super();
+      this.bounds = bounds;
+      this.districts = districts;
+      this.div = null;
+    }
+
+    onAdd() {
+      this.div = document.createElement("div");
+      this.div.style.cssText = "position:absolute;pointer-events:none;z-index:300;";
       
-      const point = new google.maps.LatLng(lat, lng);
+      // إنشاء جدول شبكي
+      const gridContainer = document.createElement("div");
+      gridContainer.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:8px;padding:10px;";
       
-      // التحقق من أن النقطة داخل المضلع
-      if (google.maps.geometry.poly.containsLocation(point, poly)) {
-        gridPoints.push({ lat, lng, row, col });
-      }
+      this.districts.forEach((d, index) => {
+        const cell = document.createElement("div");
+        const color = COLORS[index % COLORS.length];
+        const countColor = d.count > 200 ? "#dc2626" : d.count > 100 ? "#f59e0b" : "#10b981";
+        
+        cell.style.cssText = `
+          background: rgba(255,255,255,0.95);
+          border: 3px solid ${color};
+          border-radius: 12px;
+          padding: 10px 14px;
+          text-align: center;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+          backdrop-filter: blur(10px);
+          pointer-events: auto;
+          cursor: pointer;
+          transition: all 0.2s;
+          min-width: 140px;
+        `;
+        
+        cell.innerHTML = `
+          <div style="font-size:13px;font-weight:800;color:#1f2937;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name}</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+            <span style="background:${countColor};color:white;padding:4px 12px;border-radius:20px;font-size:16px;font-weight:800;">${d.count}</span>
+          </div>
+        `;
+        
+        cell.addEventListener("mouseenter", () => {
+          cell.style.transform = "scale(1.05)";
+          cell.style.boxShadow = "0 8px 25px rgba(0,0,0,0.3)";
+        });
+        
+        cell.addEventListener("mouseleave", () => {
+          cell.style.transform = "scale(1)";
+          cell.style.boxShadow = "0 4px 15px rgba(0,0,0,0.2)";
+        });
+        
+        cell.addEventListener("click", () => {
+          selectDistrict(d.key);
+        });
+        
+        gridContainer.appendChild(cell);
+      });
+      
+      this.div.appendChild(gridContainer);
+      this.getPanes().overlayLayer.appendChild(this.div);
+    }
+
+    draw() {
+      const projection = this.getProjection();
+      if (!projection || !this.div) return;
+      
+      const sw = projection.fromLatLngToDivPixel(this.bounds.getSouthWest());
+      const ne = projection.fromLatLngToDivPixel(this.bounds.getNorthEast());
+      
+      if (!sw || !ne) return;
+      
+      this.div.style.left = Math.min(sw.x, ne.x) + "px";
+      this.div.style.top = Math.min(sw.y, ne.y) + "px";
+      this.div.style.width = Math.abs(ne.x - sw.x) + "px";
+      this.div.style.height = Math.abs(ne.y - sw.y) + "px";
+    }
+
+    onRemove() {
+      if (this.div && this.div.parentNode) this.div.parentNode.removeChild(this.div);
+      this.div = null;
     }
   }
-  
-  return gridPoints;
+
+  return new GridOverlay(bounds, districtsList);
 }
 
-// إنشاء علامات الشبكة (مربعات صغيرة)
-function createGridMarkers(gridPoints, color, count, isStrong) {
-  // نأخذ أول 'count' نقطة
-  const selectedPoints = gridPoints.slice(0, Math.min(count, gridPoints.length));
-  
-  selectedPoints.forEach((p, index) => {
-    // حجم المربع يعتمد على الأهمية
-    const isTop = index < count * 0.1; // أعلى 10% أكبر
-    const size = isStrong ? (isTop ? 10 : 6) : (isTop ? 8 : 5);
-    
-    // إنشاء مربع باستخدام SVG path
-    const halfSize = size / 2;
-    const squarePath = `M ${-halfSize},${-halfSize} L ${halfSize},${-halfSize} L ${halfSize},${halfSize} L ${-halfSize},${halfSize} Z`;
-    
-    const marker = new google.maps.Marker({
-      position: p,
-      map: map,
-      zIndex: isTop ? 500 : 400,
-      icon: {
-        path: squarePath,
-        fillColor: color,
-        fillOpacity: isTop ? 1.0 : 0.9,
-        strokeColor: "#ffffff",
-        strokeWeight: isStrong ? 2 : 1,
-        anchor: new google.maps.Point(0, 0),
-        scale: 1
-      }
-    });
-    gridMarkers.push(marker);
-  });
-  
-  // إذا لم تكن النقاط كافية، نكمل بالنقاط الأصلية
-  if (selectedPoints.length < count) {
-    console.warn(`الحي يحتاج ${count} نقطة لكن الشبكة تحتوي على ${selectedPoints.length} فقط`);
+// ============================================
+// رسم بياني ملصق على الخريطة
+// ============================================
+function createChartOverlay() {
+  if (chartOverlay) {
+    chartOverlay.setMap(null);
+    chartOverlay = null;
   }
+
+  const rows = getCurrentReportRows();
+  if (rows.length === 0) return;
+
+  const allCategories = {};
+  rows.forEach(r => {
+    const district = districts[r.key];
+    if (district) {
+      Object.entries(district.third).forEach(([cat, count]) => {
+        allCategories[cat] = (allCategories[cat] || 0) + count;
+      });
+    }
+  });
+
+  const sortedCategories = Object.entries(allCategories).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  
+  class ChartOverlay extends google.maps.OverlayView {
+    constructor() {
+      super();
+      this.div = null;
+      this.chart = null;
+    }
+
+    onAdd() {
+      this.div = document.createElement("div");
+      this.div.style.cssText = "position:absolute;bottom:80px;right:20px;width:320px;height:280px;background:rgba(255,255,255,0.98);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.2);padding:15px;z-index:400;backdrop-filter:blur(10px);border:2px solid rgba(102,126,234,0.3);";
+      
+      const title = document.createElement("div");
+      title.style.cssText = "font-size:14px;font-weight:800;color:#1f2937;margin-bottom:10px;text-align:center;border-bottom:2px solid #e5e7eb;padding-bottom:8px;";
+      title.textContent = "📊 توزيع التصنيفات";
+      this.div.appendChild(title);
+      
+      const canvasContainer = document.createElement("div");
+      canvasContainer.style.cssText = "position:relative;height:210px;";
+      
+      const canvas = document.createElement("canvas");
+      canvas.id = "mapChartCanvas";
+      canvasContainer.appendChild(canvas);
+      this.div.appendChild(canvasContainer);
+      
+      this.getPanes().floatPane.appendChild(this.div);
+      
+      // إنشاء الرسم البياني
+      setTimeout(() => {
+        const ctx = canvas.getContext("2d");
+        this.chart = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: sortedCategories.map(x => x[0]),
+            datasets: [{
+              data: sortedCategories.map(x => x[1]),
+              backgroundColor: COLORS.slice(0, sortedCategories.length),
+              borderWidth: 2,
+              borderColor: '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: { 
+                  font: { size: 10 }, 
+                  boxWidth: 12,
+                  padding: 8
+                }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                titleFont: { size: 12 },
+                bodyFont: { size: 12 },
+                padding: 10,
+                cornerRadius: 8
+              }
+            },
+            cutout: '55%'
+          }
+        });
+      }, 100);
+    }
+
+    draw() {
+      // الرسم ثابت في الزاوية
+    }
+
+    onRemove() {
+      if (this.chart) {
+        this.chart.destroy();
+        this.chart = null;
+      }
+      if (this.div && this.div.parentNode) this.div.parentNode.removeChild(this.div);
+      this.div = null;
+    }
+  }
+
+  chartOverlay = new ChartOverlay();
+  chartOverlay.setMap(map);
+}
+
+function updateChartOverlay() {
+  createChartOverlay();
+}
+
+function updateChartOverlayPosition() {
+  // تحديث موقع الرسم عند تغيير الخريطة
 }
 
 function drawDistricts() {
   let index = 0;
   const visibleBounds = new google.maps.LatLngBounds();
+  const visibleDistricts = [];
   let hasVisible = false;
 
   for (let districtKey in districts) {
@@ -575,9 +656,6 @@ function drawDistricts() {
 
     const smoothBoundary = createSmoothBoundary(data.points);
     if (smoothBoundary && smoothBoundary.length >= 3) {
-      // تحويل النقاط إلى LatLng
-      const pathLatLng = smoothBoundary.map(p => new google.maps.LatLng(p.lat, p.lng));
-      
       const polygon = new google.maps.Polygon({
         paths: smoothBoundary,
         strokeColor: baseColor,
@@ -588,21 +666,6 @@ function drawDistricts() {
         map: map,
         zIndex: isSelected ? 100 : 50,
         draggable: true
-      });
-
-      polygon.addListener("drag", () => {
-        const overlay = overlayByKey[districtKey];
-        if (!overlay) return;
-        const path = polygon.getPath();
-        let lat = 0, lng = 0;
-        for (let i = 0; i < path.getLength(); i++) {
-          lat += path.getAt(i).lat();
-          lng += path.getAt(i).lng();
-        }
-        lat /= path.getLength();
-        lng /= path.getLength();
-        overlay.position = { lat, lng };
-        overlay.draw();
       });
 
       polygon.addListener("click", (e) => {
@@ -617,11 +680,12 @@ function drawDistricts() {
         hasVisible = true;
       });
 
-      // ============================================
-      // إنشاء الشبكة داخل المضلع
-      // ============================================
-      const gridPoints = createGridInsidePolygon(pathLatLng, count, baseColor);
-      createGridMarkers(gridPoints, baseColor, count, isSelected || isFilteredView);
+      visibleDistricts.push({
+        key: districtKey,
+        name: data.name,
+        count: count,
+        color: baseColor
+      });
     }
 
     const center = getDistrictCenter(data.points);
@@ -631,6 +695,13 @@ function drawDistricts() {
     const infoWindow = createDistrictInfoWindow(center, originalData.name, count, originalData, baseColor);
     const overlay = createElegantOverlay(center, count, districtKey, columnColor, infoWindow);
     overlayByKey[districtKey] = overlay;
+  }
+
+  // إضافة الـ Grid Overlay للأحياء المرئية
+  if (visibleDistricts.length > 0 && !selectedDistrict) {
+    const gridOverlay = createGridOverlay(visibleBounds, visibleDistricts);
+    gridOverlay.setMap(map);
+    overlays.push(gridOverlay);
   }
 
   if (hasVisible && !selectedDistrict) { map.fitBounds(visibleBounds); }
@@ -665,42 +736,12 @@ function createElegantOverlay(position, count, districtKey, color, infoWindow) {
       super();
       this.position = pos;
       this.div = null;
-      this.isDragging = false;
     }
 
     onAdd() {
       const data = districts[districtKey];
       this.div = document.createElement("div");
-      this.div.style.cssText = "position:absolute;transform:translate(-50%,-100%);pointer-events:auto;display:flex;flex-direction:column;align-items:center;user-select:none;cursor:grab;z-index:250;touch-action:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.2));";
-
-      this.div.addEventListener("pointerdown", (e) => {
-        this.isDragging = true;
-        this.div.setPointerCapture(e.pointerId);
-        this.div.style.cursor = "grabbing";
-        const rect = this.div.getBoundingClientRect();
-        this.offsetX = e.clientX - rect.left;
-        this.offsetY = e.clientY - rect.top;
-      });
-
-      this.div.addEventListener("pointermove", (e) => {
-        if (!this.isDragging) return;
-        const mapRect = document.getElementById("map").getBoundingClientRect();
-        const x = e.clientX - mapRect.left - this.offsetX + (this.div.offsetWidth / 2);
-        const y = e.clientY - mapRect.top - this.offsetY + (this.div.offsetHeight / 2);
-        const projection = this.getProjection();
-        if (!projection) return;
-        const latLng = projection.fromDivPixelToLatLng(new google.maps.Point(x, y));
-        if (!latLng) return;
-        this.position = latLng;
-        this.draw();
-      });
-
-      const stopDrag = () => {
-        this.isDragging = false;
-        this.div.style.cursor = "grab";
-      };
-      this.div.addEventListener("pointerup", stopDrag);
-      this.div.addEventListener("pointercancel", stopDrag);
+      this.div.style.cssText = "position:absolute;transform:translate(-50%,-100%);pointer-events:auto;display:flex;flex-direction:column;align-items:center;user-select:none;z-index:250;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.2));";
 
       this.countBadge = document.createElement("div");
       this.countBadge.style.cssText = `min-width:46px;height:32px;padding:0 12px;border-radius:50px;background:linear-gradient(135deg,${color} 0%,${adjustColor(color,-20)} 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;box-shadow:0 4px 12px rgba(0,0,0,0.25);border:2px solid rgba(255,255,255,0.3);`;
@@ -753,7 +794,9 @@ function adjustColor(color, amount) {
   return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
 }
 
-function adjustOverlays() { overlays.forEach(o => { if (o.draw) o.draw(); }); }
+function adjustOverlays() { 
+  overlays.forEach(o => { if (o.draw) o.draw(); });
+}
 
 function getCurrentReportRows() {
   const rows = [];
@@ -777,71 +820,6 @@ function getCurrentReportRows() {
   }
   rows.sort((a, b) => b.count - a.count || a.district.localeCompare(b.district, 'ar'));
   return rows;
-}
-
-function updateChartSidebar() {
-  if (!document.getElementById("chartSidebar").classList.contains("visible")) return;
-  
-  const rows = getCurrentReportRows();
-  const allCategories = {};
-  
-  rows.forEach(r => {
-    const district = districts[r.key];
-    if (district) {
-      Object.entries(district.third).forEach(([cat, count]) => {
-        allCategories[cat] = (allCategories[cat] || 0) + count;
-      });
-    }
-  });
-  
-  const sortedCategories = Object.entries(allCategories).sort((a, b) => b[1] - a[1]);
-  const topCategories = sortedCategories.slice(0, 10);
-  
-  const labels = topCategories.map(x => x[0]);
-  const values = topCategories.map(x => x[1]);
-  
-  const barCtx = document.getElementById("categoryBarChart").getContext("2d");
-  if (categoryBarChart) categoryBarChart.destroy();
-  
-  categoryBarChart = new Chart(barCtx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'عدد البلاغات',
-        data: values,
-        backgroundColor: COLORS.slice(0, labels.length).map(c => c + 'CC'),
-        borderColor: COLORS.slice(0, labels.length),
-        borderWidth: 2,
-        borderRadius: 8
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          titleFont: { size: 13 },
-          bodyFont: { size: 13 },
-          padding: 12,
-          cornerRadius: 8
-        }
-      },
-      scales: {
-        x: { 
-          ticks: { font: { size: 10 }, maxRotation: 45 },
-          grid: { display: false }
-        },
-        y: { 
-          beginAtZero: true,
-          ticks: { font: { size: 11 } },
-          grid: { color: 'rgba(0,0,0,0.05)' }
-        }
-      }
-    }
-  });
 }
 
 function exportExcel() {
@@ -876,11 +854,9 @@ function exportExcel() {
 async function downloadImage() {
   const panel = document.querySelector(".topPanel");
   const fab = document.querySelector(".fabWrap");
-  const chartSidebar = document.getElementById("chartSidebar");
 
   panel.style.visibility = "hidden";
   if (fab) fab.style.visibility = "hidden";
-  if (chartSidebar) chartSidebar.style.visibility = "hidden";
   showLoading(true);
 
   try {
@@ -907,7 +883,6 @@ async function downloadImage() {
   } finally {
     panel.style.visibility = "visible";
     if (fab) fab.style.visibility = "visible";
-    if (chartSidebar) chartSidebar.style.visibility = "visible";
     showLoading(false);
   }
 }
@@ -915,7 +890,7 @@ async function downloadImage() {
 function escapeHtml(text) {
   if (!text) return "";
   return text.toString()
-    .replace(/&&/g, "&amp;")
+    .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
