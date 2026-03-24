@@ -43,7 +43,7 @@ button:active { transform: translateY(0); }
 .notification.warning { background: #f59e0b; }
 .notification.info { background: #3b82f6; }
 
-/* أنماط خرايطي للشبكة */
+/* كرت واحد كبير يحتوي على كل الأحياء */
 .kharaityGrid {
   position: absolute;
   top: 80px;
@@ -52,39 +52,103 @@ button:active { transform: translateY(0); }
   z-index: 500;
   pointer-events: none;
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-start;
-  align-content: flex-start;
+  justify-content: center;
   max-height: calc(100vh - 200px);
   overflow: visible;
 }
 
-.kharaityCard {
+/* الكرت الكبير - حدود خارجية متعرجة */
+.bigMapCard {
   pointer-events: auto;
   background: rgba(255, 255, 255, 0.98);
-  border-radius: 12px;
-  padding: 12px 16px;
-  min-width: 140px;
-  max-width: 180px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+  padding: 20px;
+  width: 90%;
+  max-width: 800px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
   backdrop-filter: blur(10px);
-  cursor: pointer;
-  transition: all 0.2s ease;
+  border: 3px solid rgba(0,0,0,0.2);
+  position: relative;
+  /* حدود خارجية متعرجة */
+  clip-path: polygon(
+    0% 10%, 5% 5%, 10% 0%, 20% 3%, 30% 0%, 40% 5%, 50% 0%, 60% 4%, 70% 0%, 80% 6%, 90% 2%, 100% 10%,
+    97% 20%, 100% 30%, 95% 40%, 100% 50%, 96% 60%, 100% 70%, 94% 80%, 100% 90%, 95% 95%, 90% 100%,
+    80% 97%, 70% 100%, 60% 96%, 50% 100%, 40% 95%, 30% 100%, 20% 97%, 10% 100%, 5% 95%, 0% 90%,
+    3% 80%, 0% 70%, 4% 60%, 0% 50%, 5% 40%, 0% 30%, 6% 20%, 0% 10%
+  );
+}
+
+.bigMapTitle {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1f2937;
+  text-align: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+/* حاوية الأحياء داخل الكرت */
+.districtsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  justify-content: flex-start;
+  padding: 10px;
+}
+
+/* كل حي داخل الكرت - حدود داخلية متعرجة */
+.innerDistrict {
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 15px;
+  min-width: 120px;
+  flex: 1;
+  min-height: 60px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  border: 2px solid transparent;
+  justify-content: center;
+  gap: 5px;
+  border: 2px solid rgba(0,0,0,0.15);
+  margin: -1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
-.kharaityCard:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.2), 0 0 0 2px currentColor;
+/* أشكال متعرجة مختلفة للأحياء الداخلية */
+.innerDistrict:nth-child(6n+1) {
+  clip-path: polygon(0% 15%, 10% 0%, 25% 10%, 40% 0%, 55% 12%, 70% 0%, 85% 10%, 100% 20%, 95% 40%, 100% 60%, 90% 80%, 100% 100%, 75% 90%, 50% 100%, 25% 90%, 0% 100%, 10% 80%, 0% 60%, 5% 40%, 0% 15%);
 }
 
-.kharaityName {
-  font-size: 13px;
+.innerDistrict:nth-child(6n+2) {
+  clip-path: polygon(5% 0%, 20% 15%, 35% 0%, 50% 10%, 65% 0%, 80% 15%, 100% 5%, 95% 30%, 100% 55%, 90% 80%, 100% 100%, 70% 90%, 50% 100%, 30% 90%, 0% 100%, 10% 75%, 0% 50%, 10% 25%, 5% 0%);
+}
+
+.innerDistrict:nth-child(6n+3) {
+  clip-path: polygon(0% 10%, 15% 0%, 30% 12%, 45% 0%, 60% 10%, 75% 0%, 90% 15%, 100% 30%, 90% 50%, 100% 70%, 85% 85%, 100% 100%, 70% 95%, 50% 100%, 30% 95%, 0% 100%, 15% 85%, 0% 70%, 10% 50%, 0% 30%, 0% 10%);
+}
+
+.innerDistrict:nth-child(6n+4) {
+  clip-path: polygon(10% 0%, 25% 10%, 40% 0%, 55% 15%, 70% 5%, 85% 0%, 100% 20%, 95% 40%, 100% 60%, 90% 80%, 100% 100%, 75% 95%, 50% 100%, 25% 95%, 0% 100%, 10% 80%, 0% 60%, 10% 40%, 0% 20%, 10% 0%);
+}
+
+.innerDistrict:nth-child(6n+5) {
+  clip-path: polygon(0% 20%, 15% 5%, 30% 15%, 45% 0%, 60% 10%, 75% 0%, 90% 20%, 100% 40%, 85% 60%, 100% 80%, 90% 100%, 65% 90%, 50% 100%, 35% 90%, 10% 100%, 0% 80%, 15% 60%, 0% 40%, 0% 20%);
+}
+
+.innerDistrict:nth-child(6n+6) {
+  clip-path: polygon(5% 10%, 20% 0%, 35% 12%, 50% 0%, 65% 10%, 80% 0%, 95% 15%, 100% 35%, 90% 55%, 100% 75%, 85% 90%, 100% 100%, 70% 95%, 50% 100%, 30% 95%, 0% 100%, 15% 85%, 0% 65%, 10% 45%, 0% 25%, 5% 10%);
+}
+
+.innerDistrict:hover {
+  background: rgba(102, 126, 234, 0.1);
+  transform: scale(1.02);
+  z-index: 10;
+}
+
+.innerDistrictName {
+  font-size: 11px;
   font-weight: 700;
   color: #1f2937;
   text-align: center;
@@ -92,31 +156,27 @@ button:active { transform: translateY(0); }
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
-  line-height: 1.3;
 }
 
-.kharaityCount {
-  font-size: 18px;
+.innerDistrictCount {
+  font-size: 14px;
   font-weight: 800;
   color: white;
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  width: 42px;
-  height: 42px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
 }
 
-.kharaityCount.high {
+.innerDistrictCount.high {
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.3);
 }
 
-.kharaityCount.medium {
+.innerDistrictCount.medium {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.3);
 }
 
 /* أنماط الرسم البياني الملصق */
@@ -355,7 +415,6 @@ function importExcel() {
 }
 
 function processExcelData(rows) {
-  // التحقق من وجود صفوف
   if (!rows || !Array.isArray(rows) || rows.length === 0) {
     showNotification("البيانات غير صالحة", "error");
     return;
@@ -363,15 +422,11 @@ function processExcelData(rows) {
   
   const headerRow = rows[0].map(normalizeHeader);
   
-  // البحث عن الأعمدة
   const latCol = findColumnIndex(headerRow, ["lat", "latitude", "خطالعرض", "الاحداثيx", "y", "خط_العرض"], 0);
   const lngCol = findColumnIndex(headerRow, ["lng", "lon", "longitude", "خطالطول", "الاحداثيy", "x", "خط_الطول"], 1);
   const districtCol = findColumnIndex(headerRow, ["الحي", "اسمالحي", "district", "neighborhood", "حي"], 2);
   const thirdCol = findColumnIndex(headerRow, ["التصنيف", "التصنيفالتخصصي", "العمودالرابع", "category", "third", "تصنيف"], 3);
   const municipalityCol = findColumnIndex(headerRow, ["البلديهالفرعيه", "بلديهفرعيه", "البلديه", "بلديه", "municipality", "submunicipality", "بلدية"], 4);
-
-  console.log("أعمدة البيانات:", { latCol, lngCol, districtCol, thirdCol, municipalityCol });
-  console.log("عناوين الأعمدة:", headerRow);
 
   districts = {};
   clearMap();
@@ -382,8 +437,6 @@ function processExcelData(rows) {
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    
-    // تخطي الصفوف الفارغة
     if (!row || row.length === 0) continue;
     
     const lat = parseFloat(row[latCol]);
@@ -392,10 +445,7 @@ function processExcelData(rows) {
     const third = String(row[thirdCol] || "بدون تصنيف").trim() || "بدون تصنيف";
     const municipality = String(row[municipalityCol] || "غير محددة").trim() || "غير محددة";
 
-    // التحقق من صحة البيانات
-    if (isNaN(lat) || isNaN(lng) || !district) {
-      continue;
-    }
+    if (isNaN(lat) || isNaN(lng) || !district) continue;
 
     const key = makeDistrictKey(municipality, district);
     bounds.extend({ lat: lat, lng: lng });
@@ -417,17 +467,12 @@ function processExcelData(rows) {
     districts[key].third[third]++;
   }
 
-  console.log("عدد النقاط الصالحة:", validCount);
-  console.log("عدد الأحياء:", Object.keys(districts).length);
-
   if (!hasValidPoint) {
     showNotification("لم يتم العثور على بيانات صالحة في الملف", "error");
     return;
   }
 
-  if (hasValidPoint) { 
-    map.fitBounds(bounds); 
-  }
+  if (hasValidPoint) { map.fitBounds(bounds); }
 
   selectedDistrict = "";
   selectedMunicipality = "";
@@ -647,11 +692,15 @@ function getTopCategory(thirdObj) {
 }
 
 // ============================================
-// تحديث شبكة خرايطي
+// تحديث كرت الأحياء الكبير
 // ============================================
 function updateKharaityGrid() {
+  const container = document.getElementById("districtsContainer");
   const grid = document.getElementById("kharaityGrid");
-  grid.innerHTML = "";
+  
+  if (!container) return;
+  
+  container.innerHTML = "";
   
   const rows = getCurrentReportRows();
   if (rows.length === 0) {
@@ -662,24 +711,23 @@ function updateKharaityGrid() {
   grid.style.display = "flex";
   
   rows.forEach((r, index) => {
-    const card = document.createElement("div");
-    const color = r.color;
+    const district = document.createElement("div");
     const countClass = r.count > 200 ? 'high' : r.count > 100 ? 'medium' : '';
     
-    card.className = "kharaityCard";
-    card.style.borderColor = color;
-    card.style.color = color;
+    district.className = "innerDistrict";
+    district.style.backgroundColor = r.color + "20";
+    district.style.borderColor = r.color;
     
-    card.innerHTML = `
-      <div class="kharaityName">${r.district}</div>
-      <div class="kharaityCount ${countClass}">${r.count}</div>
+    district.innerHTML = `
+      <div class="innerDistrictName">${r.district}</div>
+      <div class="innerDistrictCount ${countClass}">${r.count}</div>
     `;
     
-    card.addEventListener("click", () => {
+    district.addEventListener("click", () => {
       selectDistrict(r.key);
     });
     
-    grid.appendChild(card);
+    container.appendChild(district);
   });
 }
 
@@ -976,8 +1024,13 @@ async function downloadImage() {
   const fab = document.querySelector(".fabWrap");
   const mapSection = document.getElementById("mapSection");
 
-  // إضافة كلاس للتصدير
-  mapSection.classList.add("exporting");
+  // إخفاء النقاط (العدادات) فوق الأحياء
+  overlays.forEach(o => {
+    if (o.div) o.div.style.display = "none";
+  });
+  
+  // إخفاء نوافذ المعلومات
+  closeAllInfoWindows();
   
   panel.style.visibility = "hidden";
   if (fab) fab.style.visibility = "hidden";
@@ -993,11 +1046,7 @@ async function downloadImage() {
       useCORS: true,
       allowTaint: true,
       backgroundColor: "#ffffff",
-      logging: false,
-      ignoreElements: (element) => {
-        // تجاهل فقط الأزرار العائمة
-        return element.classList.contains('fabWrap');
-      }
+      logging: false
     });
 
     const link = document.createElement("a");
@@ -1010,7 +1059,11 @@ async function downloadImage() {
     console.error(err);
     showNotification("فشل في حفظ الصورة", "error");
   } finally {
-    mapSection.classList.remove("exporting");
+    // إعادة إظهار النقاط
+    overlays.forEach(o => {
+      if (o.div) o.div.style.display = "";
+    });
+    
     panel.style.visibility = "visible";
     if (fab) fab.style.visibility = "visible";
     showLoading(false);
