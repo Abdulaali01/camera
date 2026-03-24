@@ -176,6 +176,14 @@ function initMap() {
     zoomControl: true,
     zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM }
   });
+  
+  // التأكد من تحميل مكتبة geometry
+  if (!google.maps.geometry) {
+    showNotification("جاري تحميل المكتبات...", "info");
+    setTimeout(initMap, 500);
+    return;
+  }
+  
   initDrawing();
   initSearch();
   map.addListener("idle", adjustOverlays);
@@ -504,34 +512,37 @@ function getTopCategory(thirdObj) {
   return { name: entries[0][0], count: entries[0][1], total: total };
 }
 
-// توليد نقاط شبكية داخل المضلع
-function generateGridPoints(polygonPath, count, color) {
+// توليد نقاط شبكية داخل المضلع - طريقة محسنة
+function generateGridPointsInsidePolygon(polygonPath, count) {
   const bounds = new google.maps.LatLngBounds();
   polygonPath.forEach(p => bounds.extend(p));
   
   const ne = bounds.getNorthEast();
   const sw = bounds.getSouthWest();
   
-  const latRange = ne.lat() - sw.lat();
-  const lngRange = ne.lng() - sw.lng();
+  const latMin = sw.lat();
+  const latMax = ne.lat();
+  const lngMin = sw.lng();
+  const lngMax = ne.lng();
   
-  // حساب عدد الصفوف والأعمدة للشبكة
-  const area = latRange * lngRange;
-  const density = Math.sqrt(count / area);
-  const rows = Math.max(3, Math.ceil(latRange * density * 8));
-  const cols = Math.max(3, Math.ceil(lngRange * density * 8));
+  // حساب عدد الصفوف والأعمدة بناءً على العدد المطلوب
+  const aspectRatio = (lngMax - lngMin) / (latMax - latMin);
+  const totalCells = count * 2; // نضاعف للتأكد من وجود نقاط كافية
+  const rows = Math.ceil(Math.sqrt(totalCells / aspectRatio));
+  const cols = Math.ceil(totalCells / rows);
+  
+  const stepLat = (latMax - latMin) / rows;
+  const stepLng = (lngMax - lngMin) / cols;
   
   const gridPoints = [];
-  const stepLat = latRange / rows;
-  const stepLng = lngRange / cols;
   
-  // إنشاء مضلع للتحقق من النقاط الداخلية
+  // إنشاء مضلع للتحقق
   const poly = new google.maps.Polygon({ paths: polygonPath });
   
   for (let i = 0; i <= rows; i++) {
     for (let j = 0; j <= cols; j++) {
-      const lat = sw.lat() + (i * stepLat);
-      const lng = sw.lng() + (j * stepLng);
+      const lat = latMin + (i * stepLat) + (stepLat * 0.5); // منتصف الخلية
+      const lng = lngMin + (j * stepLng) + (stepLng * 0.5);
       const point = new google.maps.LatLng(lat, lng);
       
       // التحقق من أن النقطة داخل المضلع
@@ -541,62 +552,59 @@ function generateGridPoints(polygonPath, count, color) {
     }
   }
   
-  // إذا كانت النقاط قليلة، نضيف نقاط إضافية
-  if (gridPoints.length < count / 2) {
-    for (let i = 0; i <= rows * 2; i++) {
-      for (let j = 0; j <= cols * 2; j++) {
-        const lat = sw.lat() + (i * stepLat / 2);
-        const lng = sw.lng() + (j * stepLng / 2);
-        const point = new google.maps.LatLng(lat, lng);
-        
-        if (google.maps.geometry.poly.containsLocation(point, poly)) {
-          const exists = gridPoints.some(p => Math.abs(p.lat - lat) < 0.0001 && Math.abs(p.lng - lng) < 0.0001);
-          if (!exists) gridPoints.push({ lat, lng });
-        }
-      }
-    }
-  }
-  
-  return gridPoints.slice(0, count * 2); // نأخذ ضعف العدد للتنوع
+  return gridPoints;
 }
 
-function createGridMarkers(gridPoints, color, count, isStrong) {
-  // اختيار نقاط عشوائية من الشبكة لتجنب التكرار
-  const selectedPoints = [];
-  const step = Math.max(1, Math.floor(gridPoints.length / count));
-  
-  for (let i = 0; i < gridPoints.length && selectedPoints.length < count; i += step) {
-    selectedPoints.push(gridPoints[i]);
-  }
-  
-  // إذا كان العدد غير كافٍ، نكمل من النقاط المتبقية
-  while (selectedPoints.length < count && selectedPoints.length < gridPoints.length) {
-    const remaining = gridPoints.filter(p => !selectedPoints.includes(p));
-    if (remaining.length === 0) break;
-    selectedPoints.push(remaining[0]);
-  }
+// إنشاء علامات شبكية (مربعات)
+function createGridSquareMarkers(gridPoints, color, count, isStrong) {
+  // نأخذ أول 'count' نقطة من الشبكة
+  const selectedPoints = gridPoints.slice(0, Math.min(count, gridPoints.length));
   
   selectedPoints.forEach((p, index) => {
-    // تحديد الحجم والشكل حسب الأهمية
-    const isTop = index < count * 0.2; // أعلى 20% أكبر حجماً
-    const scale = isStrong ? (isTop ? 10 : 7) : (isTop ? 7 : 5);
-    const opacity = isTop ? 1.0 : 0.85;
+    const isTop = index < count * 0.2;
+    const size = isStrong ? (isTop ? 12 : 8) : (isTop ? 8 : 6);
     
+    // إنشاء مربع بدلاً من دائرة
     const marker = new google.maps.Marker({
       position: p,
       map: map,
       zIndex: isTop ? 400 : 300,
       icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: scale,
+        path: `M -${size/2},-${size/2} L ${size/2},-${size/2} L ${size/2},${size/2} L -${size/2},${size/2} Z`,
         fillColor: color,
-        fillOpacity: opacity,
+        fillOpacity: isTop ? 1.0 : 0.85,
         strokeColor: "#ffffff",
-        strokeWeight: isStrong ? 3 : 2
+        strokeWeight: isStrong ? 2 : 1,
+        anchor: new google.maps.Point(0, 0)
       }
     });
     gridMarkers.push(marker);
   });
+  
+  // إذا كانت النقاط أقل من المطلوب، نضيف نقاط عشوائية داخل المضلع
+  if (selectedPoints.length < count) {
+    const remaining = count - selectedPoints.length;
+    for (let i = 0; i < remaining; i++) {
+      // نضيف نقاط عشوائية من النقاط الأصلية
+      const randomPoint = gridPoints[Math.floor(Math.random() * gridPoints.length)];
+      if (randomPoint) {
+        const marker = new google.maps.Marker({
+          position: randomPoint,
+          map: map,
+          zIndex: 300,
+          icon: {
+            path: `M -4,-4 L 4,-4 L 4,4 L -4,4 Z`,
+            fillColor: color,
+            fillOpacity: 0.7,
+            strokeColor: "#ffffff",
+            strokeWeight: 1,
+            anchor: new google.maps.Point(0, 0)
+          }
+        });
+        gridMarkers.push(marker);
+      }
+    }
+  }
 }
 
 function drawDistricts() {
@@ -622,6 +630,9 @@ function drawDistricts() {
 
     const smoothBoundary = createSmoothBoundary(data.points);
     if (smoothBoundary && smoothBoundary.length >= 3) {
+      // تحويل النقاط إلى LatLng
+      const pathLatLng = smoothBoundary.map(p => new google.maps.LatLng(p.lat, p.lng));
+      
       const polygon = new google.maps.Polygon({
         paths: smoothBoundary,
         strokeColor: baseColor,
@@ -661,9 +672,9 @@ function drawDistricts() {
         hasVisible = true;
       });
 
-      // إنشاء نقاط شبكية داخل المضلع
-      const gridPoints = generateGridPoints(smoothBoundary.map(p => new google.maps.LatLng(p.lat, p.lng)), count, baseColor);
-      createGridMarkers(gridPoints, baseColor, count, isSelected || isFilteredView);
+      // إنشاء النقاط الشبكية داخل المضلع
+      const gridPoints = generateGridPointsInsidePolygon(pathLatLng, count);
+      createGridSquareMarkers(gridPoints, baseColor, count, isSelected || isFilteredView);
     }
 
     const center = getDistrictCenter(data.points);
