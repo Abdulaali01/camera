@@ -51,7 +51,10 @@ button:active { transform: translateY(0); }
 .fabWrap { position: fixed; left: 20px; bottom: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 12px; }
 .fabBtn { border: none; border-radius: 50px; padding: 14px 20px; font-size: 14px; font-weight: 700; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; min-width: 140px; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .fabBtn:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); }
+.fabBtn.stop { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
 .loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); display: flex; align-items: center; justify-content: center; z-index: 100000; font-size: 18px; color: #667eea; font-weight: 700; backdrop-filter: blur(5px); }
+.spinner { width: 40px; height: 40px; border: 4px solid #e0e7ff; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .notification { position: fixed; top: 20px; right: 20px; padding: 16px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 100000; transform: translateX(400px); transition: transform 0.3s ease; color: white; }
 .notification.success { background: #10b981; }
 .notification.error { background: #ef4444; }
@@ -65,6 +68,7 @@ button:active { transform: translateY(0); }
 <div id="loading" class="loadingOverlay" style="display: none;">جاري التحميل...<div class="spinner"></div></div>
 
 <div class="mainLayout">
+  <!-- اللوحة الجانبية -->
   <div class="sidePanel" id="sidePanel">
     <div class="sideHeader">
       <div class="sideTitle" id="panelTitle">ملخص حسب الفلتر</div>
@@ -80,6 +84,7 @@ button:active { transform: translateY(0); }
     </div>
   </div>
 
+  <!-- ✅ قسم الخريطة - هذا كان ناقص! -->
   <div class="mapSection" id="mapSection">
     <div class="topPanel">
       <div class="group"><input id="searchBox" placeholder="🔍 ابحث عن حي أو شارع..."></div>
@@ -89,6 +94,7 @@ button:active { transform: translateY(0); }
       <div class="group"><span class="titleMini">الأحياء</span><select id="districtList" onchange="selectDistrict(this.value)"><option value="">🏘️ كل الأحياء</option></select></div>
       <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورتين</button></div>
     </div>
+    <!-- ✅ عنصر الخريطة -->
     <div id="map"></div>
   </div>
 </div>
@@ -102,7 +108,18 @@ let map, districts = {}, polygons = [], pointMarkers = [], overlays = [], infoWi
 const COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140", "#30cfd0", "#330867", "#a8edea", "#fed6e3", "#d299c2", "#fef9d7"];
 
 function initMap() {
-  map = new google.maps.Map(document.getElementById("map"), { center: { lat: 24.7136, lng: 46.6753 }, zoom: 12, mapTypeId: "hybrid", gestureHandling: "greedy", mapTypeControl: true, mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR, position: google.maps.ControlPosition.TOP_RIGHT }, fullscreenControl: true, streetViewControl: true, zoomControl: true, zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM } });
+  map = new google.maps.Map(document.getElementById("map"), { 
+    center: { lat: 24.7136, lng: 46.6753 }, 
+    zoom: 12, 
+    mapTypeId: "hybrid", 
+    gestureHandling: "greedy", 
+    mapTypeControl: true, 
+    mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR, position: google.maps.ControlPosition.TOP_RIGHT }, 
+    fullscreenControl: true, 
+    streetViewControl: true, 
+    zoomControl: true, 
+    zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM } 
+  });
   initDrawing();
   initSearch();
   map.addListener("idle", adjustOverlays);
@@ -121,7 +138,11 @@ function initSearch() {
 }
 
 function initDrawing() {
-  drawingManager = new google.maps.drawing.DrawingManager({ drawingControl: false, drawingModes: ['polygon'], polygonOptions: { fillColor: '#667eea', fillOpacity: 0.3, strokeColor: '#764ba2', strokeWeight: 3, editable: true, draggable: true, clickable: true, zIndex: 1500 } });
+  drawingManager = new google.maps.drawing.DrawingManager({ 
+    drawingControl: false, 
+    drawingModes: ['polygon'], 
+    polygonOptions: { fillColor: '#667eea', fillOpacity: 0.3, strokeColor: '#764ba2', strokeWeight: 3, editable: true, draggable: true, clickable: true, zIndex: 1500 } 
+  });
   drawingManager.setMap(map);
   google.maps.event.addListener(drawingManager, 'overlaycomplete', function(event) {
     if (event.type !== "polygon") return;
@@ -134,12 +155,17 @@ function initDrawing() {
     updateDrawButtonUI();
     showNotification("تم رسم الحي", "success");
   });
-  document.getElementById("drawToggleBtn").onclick = function() { isDrawingMode = !isDrawingMode; drawingManager.setDrawingMode(isDrawingMode ? google.maps.drawing.OverlayType.POLYGON : null); updateDrawButtonUI(); };
+  document.getElementById("drawToggleBtn").onclick = function() { 
+    isDrawingMode = !isDrawingMode; 
+    drawingManager.setDrawingMode(isDrawingMode ? google.maps.drawing.OverlayType.POLYGON : null); 
+    updateDrawButtonUI(); 
+  };
 }
 
 function updateDrawButtonUI() {
   const btn = document.getElementById("drawToggleBtn");
-  if (isDrawingMode) { btn.classList.add("stop"); btn.innerHTML = "⛔ إيقاف"; } else { btn.classList.remove("stop"); btn.innerHTML = "✏️ رسم حي"; }
+  if (isDrawingMode) { btn.classList.add("stop"); btn.innerHTML = "⛔ إيقاف"; } 
+  else { btn.classList.remove("stop"); btn.innerHTML = "✏️ رسم حي"; }
 }
 
 function normalizeHeader(v) { return (v ?? "").toString().trim().replace(/\s+/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").toLowerCase(); }
@@ -160,7 +186,8 @@ function importExcel() {
       if (!rows || !rows.length) { showNotification("الملف فارغ", "error"); showLoading(false); return; }
       processExcelData(rows);
       showNotification("تم استيراد البيانات بنجاح!", "success");
-    } catch (err) { console.error(err); showNotification("خطأ في قراءة الملف", "error"); } finally { showLoading(false); }
+    } catch (err) { console.error(err); showNotification("خطأ في قراءة الملف", "error"); } 
+    finally { showLoading(false); }
   };
   reader.readAsArrayBuffer(file);
 }
@@ -388,9 +415,34 @@ function drawDistricts() {
     const pointStrong = isSelected || isFilteredView;
     const smoothBoundary = createSmoothBoundary(data.points);
     if (smoothBoundary && smoothBoundary.length >= 3) {
-      const polygon = new google.maps.Polygon({ paths: smoothBoundary, strokeColor: baseColor, strokeOpacity: 1, strokeWeight: polygonStrokeWeight, fillColor: baseColor, fillOpacity: polygonFillOpacity, map: map, zIndex: isSelected ? 100 : 50, draggable: true });
-      polygon.addListener("drag", () => { const overlay = overlayByKey[districtKey]; if (!overlay) return; const path = polygon.getPath(); let lat = 0, lng = 0; for (let i = 0; i < path.getLength(); i++) { lat += path.getAt(i).lat(); lng += path.getAt(i).lng(); } lat /= path.getLength(); lng /= path.getLength(); overlay.position = { lat, lng }; overlay.draw(); });
-      polygon.addListener("click", (e) => { closeAllInfoWindows(); const infoWindow = createDistrictInfoWindow(e.latLng || getDistrictCenter(data.points), originalData.name, count, originalData, baseColor); infoWindow.open({ map: map }); updatePanelDistrict(districtKey, originalData); });
+      const polygon = new google.maps.Polygon({ 
+        paths: smoothBoundary, 
+        strokeColor: baseColor, 
+        strokeOpacity: 1, 
+        strokeWeight: polygonStrokeWeight, 
+        fillColor: baseColor, 
+        fillOpacity: polygonFillOpacity, 
+        map: map, 
+        zIndex: isSelected ? 100 : 50, 
+        draggable: true 
+      });
+      polygon.addListener("drag", () => {
+        const overlay = overlayByKey[districtKey];
+        if (!overlay) return;
+        const path = polygon.getPath();
+        let lat = 0, lng = 0;
+        for (let i = 0; i < path.getLength(); i++) { lat += path.getAt(i).lat(); lng += path.getAt(i).lng(); }
+        lat /= path.getLength();
+        lng /= path.getLength();
+        overlay.position = { lat, lng };
+        overlay.draw();
+      });
+      polygon.addListener("click", (e) => {
+        closeAllInfoWindows();
+        const infoWindow = createDistrictInfoWindow(e.latLng || getDistrictCenter(data.points), originalData.name, count, originalData, baseColor);
+        infoWindow.open({ map: map });
+        updatePanelDistrict(districtKey, originalData);
+      });
       polygons.push(polygon);
       smoothBoundary.forEach(p => { visibleBounds.extend({ lat: p.lat, lng: p.lng }); hasVisible = true; });
     }
@@ -408,7 +460,19 @@ function drawDistricts() {
 
 function createPointMarkers(points, color, isStrong) {
   for (let p of points) {
-    const marker = new google.maps.Marker({ position: p, map: map, zIndex: isStrong ? 300 : 120, icon: { path: google.maps.SymbolPath.CIRCLE, scale: isStrong ? 6 : 4, fillColor: color, fillOpacity: 0.9, strokeColor: "#ffffff", strokeWeight: isStrong ? 2.5 : 1.5 } });
+    const marker = new google.maps.Marker({ 
+      position: p, 
+      map: map, 
+      zIndex: isStrong ? 300 : 120, 
+      icon: { 
+        path: google.maps.SymbolPath.CIRCLE, 
+        scale: isStrong ? 6 : 4, 
+        fillColor: color, 
+        fillOpacity: 0.9, 
+        strokeColor: "#ffffff", 
+        strokeWeight: isStrong ? 2.5 : 1.5 
+      } 
+    });
     pointMarkers.push(marker);
   }
 }
@@ -416,7 +480,9 @@ function createPointMarkers(points, color, isStrong) {
 function createDistrictInfoWindow(position, districtName, count, data, color) {
   const sortedThird = Object.entries(data.third).sort((a, b) => b[1] - a[1]);
   let smallLines = "";
-  for (let i = 0; i < sortedThird.length && i < 5; i++) { smallLines += `<div style="margin-top:4px; font-size:12px;">${escapeHtml(sortedThird[i][0])} : <b>${sortedThird[i][1]}</b></div>`; }
+  for (let i = 0; i < sortedThird.length && i < 5; i++) { 
+    smallLines += `<div style="margin-top:4px; font-size:12px;">${escapeHtml(sortedThird[i][0])} : <b>${sortedThird[i][1]}</b></div>`; 
+  }
   const html = `<div style="font-family:'Segoe UI';min-width:200px;max-width:260px;padding:8px;"><div style="font-weight:800;font-size:16px;color:${color};margin-bottom:8px;border-bottom:2px solid ${color};padding-bottom:6px;">${escapeHtml(districtName)}</div><div style="margin-bottom:6px;font-size:13px;color:#666;">البلدية: <b style="color:#333;">${escapeHtml(data.municipality)}</b></div><div style="font-size:14px;margin-bottom:8px;">عدد البلاغات: <b style="font-size:18px;color:${color};">${count}</b></div><div style="margin-top:10px;border-top:1px solid #eee;padding-top:8px;"><div style="font-weight:700;font-size:12px;color:#888;margin-bottom:4px;">التصنيفات:</div>${smallLines || '<div style="color:#999;font-size:12px;">لا توجد تصنيفات</div>'}</div></div>`;
   const win = new google.maps.InfoWindow({ content: html, position: position, maxWidth: 300 });
   infoWindows.push(win);
@@ -425,13 +491,36 @@ function createDistrictInfoWindow(position, districtName, count, data, color) {
 
 function createElegantOverlay(position, count, districtKey, color, infoWindow) {
   class ElegantOverlay extends google.maps.OverlayView {
-    constructor(pos) { super(); this.position = pos; this.div = null; this.isDragging = false; }
+    constructor(pos) { 
+      super(); 
+      this.position = pos; 
+      this.div = null; 
+      this.isDragging = false; 
+    }
     onAdd() {
       const data = districts[districtKey];
       this.div = document.createElement("div");
       this.div.style.cssText = "position:absolute;transform:translate(-50%,-100%);pointer-events:auto;display:flex;flex-direction:column;align-items:center;user-select:none;cursor:grab;z-index:250;touch-action:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.2));";
-      this.div.addEventListener("pointerdown", (e) => { this.isDragging = true; this.div.setPointerCapture(e.pointerId); this.div.style.cursor = "grabbing"; const rect = this.div.getBoundingClientRect(); this.offsetX = e.clientX - rect.left; this.offsetY = e.clientY - rect.top; });
-      this.div.addEventListener("pointermove", (e) => { if (!this.isDragging) return; const mapRect = document.getElementById("map").getBoundingClientRect(); const x = e.clientX - mapRect.left - this.offsetX + (this.div.offsetWidth / 2); const y = e.clientY - mapRect.top - this.offsetY + (this.div.offsetHeight / 2); const projection = this.getProjection(); if (!projection) return; const latLng = projection.fromDivPixelToLatLng(new google.maps.Point(x, y)); if (!latLng) return; this.position = latLng; this.draw(); });
+      this.div.addEventListener("pointerdown", (e) => { 
+        this.isDragging = true; 
+        this.div.setPointerCapture(e.pointerId); 
+        this.div.style.cursor = "grabbing"; 
+        const rect = this.div.getBoundingClientRect(); 
+        this.offsetX = e.clientX - rect.left; 
+        this.offsetY = e.clientY - rect.top; 
+      });
+      this.div.addEventListener("pointermove", (e) => {
+        if (!this.isDragging) return;
+        const mapRect = document.getElementById("map").getBoundingClientRect();
+        const x = e.clientX - mapRect.left - this.offsetX + (this.div.offsetWidth / 2);
+        const y = e.clientY - mapRect.top - this.offsetY + (this.div.offsetHeight / 2);
+        const projection = this.getProjection();
+        if (!projection) return;
+        const latLng = projection.fromDivPixelToLatLng(new google.maps.Point(x, y));
+        if (!latLng) return;
+        this.position = latLng;
+        this.draw();
+      });
       const stopDrag = () => { this.isDragging = false; this.div.style.cursor = "grab"; };
       this.div.addEventListener("pointerup", stopDrag);
       this.div.addEventListener("pointercancel", stopDrag);
@@ -444,11 +533,26 @@ function createElegantOverlay(position, count, districtKey, color, infoWindow) {
       this.nameChip.title = data.name;
       this.div.appendChild(this.countBadge);
       this.div.appendChild(this.nameChip);
-      this.div.addEventListener("click", (e) => { e.stopPropagation(); closeAllInfoWindows(); infoWindow.open({ map: map }); updatePanelDistrict(districtKey, districts[districtKey]); });
+      this.div.addEventListener("click", (e) => { 
+        e.stopPropagation(); 
+        closeAllInfoWindows(); 
+        infoWindow.open({ map: map }); 
+        updatePanelDistrict(districtKey, districts[districtKey]); 
+      });
       this.getPanes().overlayMouseTarget.appendChild(this.div);
     }
-    draw() { const projection = this.getProjection(); if (!projection || !this.div) return; const pos = projection.fromLatLngToDivPixel(new google.maps.LatLng(this.position.lat, this.position.lng)); if (!pos) return; this.div.style.left = pos.x + "px"; this.div.style.top = pos.y + "px"; }
-    onRemove() { if (this.div && this.div.parentNode) { this.div.parentNode.removeChild(this.div); } this.div = null; }
+    draw() {
+      const projection = this.getProjection();
+      if (!projection || !this.div) return;
+      const pos = projection.fromLatLngToDivPixel(new google.maps.LatLng(this.position.lat, this.position.lng));
+      if (!pos) return;
+      this.div.style.left = pos.x + "px";
+      this.div.style.top = pos.y + "px";
+    }
+    onRemove() { 
+      if (this.div && this.div.parentNode) { this.div.parentNode.removeChild(this.div); } 
+      this.div = null; 
+    }
   }
   const overlay = new ElegantOverlay(position);
   overlay.setMap(map);
@@ -484,7 +588,11 @@ function updatePanelDistrict(key, data) {
   const labels = [];
   const values = [];
   let html = "";
-  entries.forEach(([k, v], i) => { total += v; html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`; if (i < 10) { labels.push(k); values.push(v); } });
+  entries.forEach(([k, v], i) => {
+    total += v;
+    html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`;
+    if (i < 10) { labels.push(k); values.push(v); }
+  });
   document.getElementById("panelTitle").textContent = data.name;
   document.getElementById("panelSubTitle").textContent = `البلدية: ${data.municipality} | إجمالي النقاط: ${count}`;
   document.getElementById("totalCount").textContent = count;
@@ -507,7 +615,11 @@ function updatePanelSummary() {
   const labels = [];
   const values = [];
   let html = "";
-  entries.forEach(([k, v], i) => { totalTypes += v; html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`; if (i < 10) { labels.push(k); values.push(v); } });
+  entries.forEach(([k, v], i) => {
+    totalTypes += v;
+    html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`;
+    if (i < 10) { labels.push(k); values.push(v); }
+  });
   const filterText = document.getElementById("filterSelect").options[document.getElementById("filterSelect").selectedIndex].text;
   const municipalityText = selectedMunicipality || "كل البلديات";
   document.getElementById("panelTitle").textContent = "ملخص حسب الفلتر";
@@ -519,14 +631,50 @@ function updatePanelSummary() {
 }
 
 function updatePanelForCurrentView() {
-  if (selectedDistrict && districts[selectedDistrict]) { updatePanelDistrict(selectedDistrict, districts[selectedDistrict]); return; }
+  if (selectedDistrict && districts[selectedDistrict]) { 
+    updatePanelDistrict(selectedDistrict, districts[selectedDistrict]); 
+    return; 
+  }
   updatePanelSummary();
 }
 
 function drawSideChart(labels, values) {
   const ctx = document.getElementById("sideChart").getContext("2d");
   if (sideChart) { sideChart.destroy(); }
-  sideChart = new Chart(ctx, { type: "bar", data: { labels: labels, datasets: [{ label: "العدد", data: values, backgroundColor: "rgba(102, 126, 234, 0.8)", borderColor: "rgba(102, 126, 234, 1)", borderWidth: 2, borderRadius: 8, maxBarThickness: 32 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: "rgba(0,0,0,0.8)", titleFont: { size: 13 }, bodyFont: { size: 13 }, padding: 12, cornerRadius: 8 } }, scales: { x: { ticks: { display: false }, grid: { display: false } }, y: { beginAtZero: true, ticks: { font: { size: 11 }, color: "#6b7280" }, grid: { color: "rgba(0,0,0,0.05)" } } }, animation: { duration: 800, easing: 'easeOutQuart' } });
+  sideChart = new Chart(ctx, { 
+    type: "bar", 
+    data: { 
+      labels: labels, 
+      datasets: [{ 
+        label: "العدد", 
+        data: values, 
+        backgroundColor: "rgba(102, 126, 234, 0.8)", 
+        borderColor: "rgba(102, 126, 234, 1)", 
+        borderWidth: 2, 
+        borderRadius: 8, 
+        maxBarThickness: 32 
+      }] 
+    }, 
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false, 
+      plugins: { 
+        legend: { display: false }, 
+        tooltip: { 
+          backgroundColor: "rgba(0,0,0,0.8)", 
+          titleFont: { size: 13 }, 
+          bodyFont: { size: 13 }, 
+          padding: 12, 
+          cornerRadius: 8 
+        } 
+      }, 
+      scales: { 
+        x: { ticks: { display: false }, grid: { display: false } }, 
+        y: { beginAtZero: true, ticks: { font: { size: 11 }, color: "#6b7280" }, grid: { color: "rgba(0,0,0,0.05)" } } 
+      }, 
+      animation: { duration: 800, easing: 'easeOutQuart' } 
+    } 
+  });
 }
 
 function exportExcel() {
@@ -535,16 +683,35 @@ function exportExcel() {
     try {
       const dataToExport = [["البلدية", "الحي", "عدد البلاغات", "عدد التصنيفات", "أعلى تصنيف", "عدد أعلى تصنيف"]];
       const rows = getCurrentReportRows();
-      if (!rows.length) { dataToExport.push(["-", "-", "0", "0", "-", "0"]); } else { rows.forEach(r => { dataToExport.push([r.municipality, r.district, r.count, r.totalTypes, r.topCategory, r.topCount]); }); }
+      if (!rows.length) { dataToExport.push(["-", "-", "0", "0", "-", "0"]); } 
+      else { rows.forEach(r => { dataToExport.push([r.municipality, r.district, r.count, r.totalTypes, r.topCategory, r.topCount]); }); }
       const ws = XLSX.utils.aoa_to_sheet(dataToExport);
-      const headerStyle = { font: { bold: true, color: { rgb: "FFFFFF" }, size: 12 }, fill: { fgColor: { rgb: "667EEA" } }, alignment: { horizontal: "center", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "000000" } }, bottom: { style: "thin", color: { rgb: "000000" } }, left: { style: "thin", color: { rgb: "000000" } }, right: { style: "thin", color: { rgb: "000000" } } } };
-      for (let i = 0; i < 6; i++) { const cellRef = XLSX.utils.encode_cell({ r: 0, c: i }); if (!ws[cellRef]) ws[cellRef] = {}; ws[cellRef].s = headerStyle; }
+      const headerStyle = { 
+        font: { bold: true, color: { rgb: "FFFFFF" }, size: 12 }, 
+        fill: { fgColor: { rgb: "667EEA" } }, 
+        alignment: { horizontal: "center", vertical: "center" }, 
+        border: { 
+          top: { style: "thin", color: { rgb: "000000" } }, 
+          bottom: { style: "thin", color: { rgb: "000000" } }, 
+          left: { style: "thin", color: { rgb: "000000" } }, 
+          right: { style: "thin", color: { rgb: "000000" } } 
+        } 
+      };
+      for (let i = 0; i < 6; i++) { 
+        const cellRef = XLSX.utils.encode_cell({ r: 0, c: i }); 
+        if (!ws[cellRef]) ws[cellRef] = {}; 
+        ws[cellRef].s = headerStyle; 
+      }
       ws["!cols"] = [{ wch: 24 }, { wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 40 }, { wch: 16 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "التقرير");
       XLSX.writeFile(wb, "تقرير_البلاغات.xlsx");
       showNotification("تم تصدير Excel بنجاح!", "success");
-    } catch (err) { console.error(err); showNotification("خطأ في التصدير", "error"); } finally { showLoading(false); }
+    } catch (err) { 
+      console.error(err); 
+      showNotification("خطأ في التصدير", "error"); 
+    } 
+    finally { showLoading(false); }
   }, 100);
 }
 
@@ -562,7 +729,13 @@ async function downloadImage() {
     google.maps.event.trigger(map, "resize");
     await new Promise(r => setTimeout(r, 1000));
     
-    const mapCanvas = await html2canvas(document.querySelector(".mainLayout"), { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff", logging: false, onclone: (clonedDoc) => { const clonedMap = clonedDoc.getElementById("map"); if (clonedMap) { clonedMap.style.height = "100vh"; } } });
+    const mapCanvas = await html2canvas(document.querySelector(".mainLayout"), { 
+      scale: 2, 
+      useCORS: true, 
+      allowTaint: true, 
+      backgroundColor: "#ffffff", 
+      logging: false 
+    });
     
     const link1 = document.createElement("a");
     link1.download = `خريطة_البلاغات_${new Date().toLocaleDateString('ar-SA')}.png`;
@@ -575,7 +748,15 @@ async function downloadImage() {
     await exportPanelSplitImage();
     
     showNotification("تم حفظ الصورتين بنجاح!", "success");
-  } catch (err) { console.error(err); showNotification("فشل في حفظ الصورة", "error"); } finally { panel.style.visibility = "visible"; if (fab) fab.style.visibility = "visible"; showLoading(false); }
+  } catch (err) { 
+    console.error(err); 
+    showNotification("فشل في حفظ الصورة", "error"); 
+  } 
+  finally { 
+    panel.style.visibility = "visible"; 
+    if (fab) fab.style.visibility = "visible"; 
+    showLoading(false); 
+  }
 }
 
 // دالة تصدير لوحة المعلومات مقسمة (نصف جدول + نصف إحصائيات)
@@ -613,7 +794,7 @@ async function exportPanelSplitImage() {
             </thead>
             <tbody>
               ${rows.length ? rows.map((r,i) => `
-                <tr style="background:${i%2===0?'white':'#f8fafc'};transition:all 0.2s;">
+                <tr style="background:${i%2===0?'white':'#f8fafc'};">
                   <td style="padding:14px 12px;border-bottom:1px solid #e1e4e8;text-align:center;color:#4b5563;">${escapeHtml(r.municipality)}</td>
                   <td style="padding:14px 12px;border-bottom:1px solid #e1e4e8;text-align:center;font-weight:700;color:#1f2937;">${escapeHtml(r.district)}</td>
                   <td style="padding:14px 12px;border-bottom:1px solid #e1e4e8;text-align:center;"><span style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:6px 16px;border-radius:20px;font-weight:800;font-size:15px;">${r.count}</span></td>
@@ -664,7 +845,13 @@ async function exportPanelSplitImage() {
   
   try {
     await new Promise(r => setTimeout(r, 500));
-    const canvas = await html2canvas(exportDiv, { scale: 2, backgroundColor: "#f5f7fa", useCORS: true, allowTaint: true, logging: false });
+    const canvas = await html2canvas(exportDiv, { 
+      scale: 2, 
+      backgroundColor: "#f5f7fa", 
+      useCORS: true, 
+      allowTaint: true, 
+      logging: false 
+    });
     const link = document.createElement("a");
     link.download = `لوحة_المعلومات_${new Date().toLocaleDateString('ar-SA')}.png`;
     link.href = canvas.toDataURL("image/png", 1.0);
@@ -674,8 +861,13 @@ async function exportPanelSplitImage() {
   }
 }
 
-function escapeHtml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
-function showLoading(show) { document.getElementById("loading").style.display = show ? "flex" : "none"; }
+function escapeHtml(value) { 
+  return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); 
+}
+
+function showLoading(show) { 
+  document.getElementById("loading").style.display = show ? "flex" : "none"; 
+}
 
 function showNotification(message, type = "info") {
   const notification = document.createElement("div");
@@ -683,13 +875,26 @@ function showNotification(message, type = "info") {
   notification.textContent = message;
   document.body.appendChild(notification);
   setTimeout(() => { notification.style.transform = "translateX(0)"; }, 10);
-  setTimeout(() => { notification.style.transform = "translateX(400px)"; setTimeout(() => { if (notification.parentNode) { notification.parentNode.removeChild(notification); } }, 300); }, 3000);
+  setTimeout(() => { 
+    notification.style.transform = "translateX(400px)"; 
+    setTimeout(() => { 
+      if (notification.parentNode) { notification.parentNode.removeChild(notification); } 
+    }, 300); 
+  }, 3000);
 }
 
 document.addEventListener("keydown", (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === "e") { e.preventDefault(); exportExcel(); }
-  if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); downloadImage(); }
-  if (e.key === "Escape") { closeAllInfoWindows(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === "e") { 
+    e.preventDefault(); 
+    exportExcel(); 
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") { 
+    e.preventDefault(); 
+    downloadImage(); 
+  }
+  if (e.key === "Escape") { 
+    closeAllInfoWindows(); 
+  }
 });
 </script>
 
