@@ -67,7 +67,7 @@ button:active { transform: translateY(0); }
 
 <div id="loading" class="loadingOverlay" style="display: none;">جاري التحميل...<div class="spinner"></div></div>
 
-<div class="mainLayout">
+<div class="mainLayout" id="mainLayout">
   <!-- اللوحة الجانبية -->
   <div class="sidePanel" id="sidePanel">
     <div class="sideHeader">
@@ -84,7 +84,7 @@ button:active { transform: translateY(0); }
     </div>
   </div>
 
-  <!-- ✅ قسم الخريطة - هذا كان ناقص! -->
+  <!-- قسم الخريطة -->
   <div class="mapSection" id="mapSection">
     <div class="topPanel">
       <div class="group"><input id="searchBox" placeholder="🔍 ابحث عن حي أو شارع..."></div>
@@ -94,7 +94,6 @@ button:active { transform: translateY(0); }
       <div class="group"><span class="titleMini">الأحياء</span><select id="districtList" onchange="selectDistrict(this.value)"><option value="">🏘️ كل الأحياء</option></select></div>
       <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورتين</button></div>
     </div>
-    <!-- ✅ عنصر الخريطة -->
     <div id="map"></div>
   </div>
 </div>
@@ -286,11 +285,7 @@ function clearMap() {
   pointMarkers.forEach(m => m.setMap(null));
   overlays.forEach(o => o.setMap(null));
   infoWindows.forEach(w => w.close());
-  polygons = [];
-  pointMarkers = [];
-  overlays = [];
-  infoWindows = [];
-  overlayByKey = {};
+  polygons = []; pointMarkers = []; overlays = []; infoWindows = []; overlayByKey = {};
 }
 
 function convexHull(points) {
@@ -719,17 +714,19 @@ function exportExcel() {
 async function downloadImage() {
   const panel = document.querySelector(".topPanel");
   const fab = document.querySelector(".fabWrap");
+  const sidePanel = document.getElementById("sidePanel");
   
   panel.style.visibility = "hidden";
   if (fab) fab.style.visibility = "hidden";
   showLoading(true);
   
   try {
-    // الصورة الأولى: الخريطة
+    // ✅ الصورة الأولى: الخريطة فقط (بدون اللوحة الجانبية)
+    sidePanel.style.display = "none";
     google.maps.event.trigger(map, "resize");
     await new Promise(r => setTimeout(r, 1000));
     
-    const mapCanvas = await html2canvas(document.querySelector(".mainLayout"), { 
+    const mapCanvas = await html2canvas(document.getElementById("mapSection"), { 
       scale: 2, 
       useCORS: true, 
       allowTaint: true, 
@@ -738,13 +735,16 @@ async function downloadImage() {
     });
     
     const link1 = document.createElement("a");
-    link1.download = `خريطة_البلاغات_${new Date().toLocaleDateString('ar-SA')}.png`;
+    link1.download = `خريطة_${new Date().toLocaleDateString('ar-SA')}.png`;
     link1.href = mapCanvas.toDataURL("image/png", 1.0);
     link1.click();
     
+    // إرجاع اللوحة الجانبية
+    sidePanel.style.display = "";
+    google.maps.event.trigger(map, "resize");
     await new Promise(r => setTimeout(r, 500));
     
-    // الصورة الثانية: لوحة المعلومات مقسمة
+    // ✅ الصورة الثانية: اللوحة المقسمة مع الرسم البياني الحقيقي
     await exportPanelSplitImage();
     
     showNotification("تم حفظ الصورتين بنجاح!", "success");
@@ -753,13 +753,14 @@ async function downloadImage() {
     showNotification("فشل في حفظ الصورة", "error"); 
   } 
   finally { 
+    sidePanel.style.display = "";
     panel.style.visibility = "visible"; 
     if (fab) fab.style.visibility = "visible"; 
     showLoading(false); 
   }
 }
 
-// دالة تصدير لوحة المعلومات مقسمة (نصف جدول + نصف إحصائيات)
+// دالة تصدير لوحة المعلومات مقسمة مع الرسم البياني الحقيقي
 async function exportPanelSplitImage() {
   const rows = getCurrentReportRows();
   const totalCount = document.getElementById("totalCount").textContent;
@@ -767,6 +768,14 @@ async function exportPanelSplitImage() {
   const panelTitle = document.getElementById("panelTitle").textContent;
   const panelSubTitle = document.getElementById("panelSubTitle").textContent;
   const detailsHTML = document.getElementById("detailsList").innerHTML;
+  
+  // الحصول على بيانات الرسم البياني الحالية
+  let chartLabels = [];
+  let chartValues = [];
+  if (sideChart) {
+    chartLabels = sideChart.data.labels;
+    chartValues = sideChart.data.datasets[0].data;
+  }
   
   // إنشاء عنصر مؤقت للتصدير
   const exportDiv = document.createElement("div");
@@ -810,7 +819,7 @@ async function exportPanelSplitImage() {
         </div>
       </div>
       
-      <!-- النصف الثاني: الإحصائيات والرسم البياني -->
+      <!-- النصف الثاني: الإحصائيات والرسم البياني الحقيقي -->
       <div style="width:50%;display:flex;flex-direction:column;gap:20px;">
         <!-- الإحصائيات العامة -->
         <div style="background:white;border-radius:20px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
@@ -825,8 +834,9 @@ async function exportPanelSplitImage() {
               <div style="font-size:42px;font-weight:800;">${totalTypes}</div>
             </div>
           </div>
-          <div style="height:200px;background:linear-gradient(135deg,#667eea15 0%,#764ba215 100%);border-radius:16px;display:flex;align-items:center;justify-content:center;border:3px dashed #667eea40;color:#667eea;font-weight:700;font-size:18px;">
-            📊 منطقة الرسم البياني
+          <!-- ✅ الرسم البياني الحقيقي -->
+          <div style="height:220px;background:white;border-radius:16px;padding:16px;border:2px solid #e1e4e8;">
+            <canvas id="exportChart"></canvas>
           </div>
         </div>
         
@@ -843,8 +853,52 @@ async function exportPanelSplitImage() {
   
   document.body.appendChild(exportDiv);
   
+  // ✅ رسم الرسم البياني الحقيقي في الصورة الثانية
+  let exportChart = null;
+  if (chartLabels.length > 0) {
+    const ctx = document.getElementById("exportChart").getContext("2d");
+    exportChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: chartLabels,
+        datasets: [{
+          label: "العدد",
+          data: chartValues,
+          backgroundColor: "rgba(102, 126, 234, 0.8)",
+          borderColor: "rgba(102, 126, 234, 1)",
+          borderWidth: 2,
+          borderRadius: 8,
+          maxBarThickness: 40
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            ticks: {
+              font: { size: 11 },
+              color: "#6b7280",
+              maxRotation: 45,
+              minRotation: 45
+            },
+            grid: { display: false }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { font: { size: 12 }, color: "#6b7280" },
+            grid: { color: "rgba(0,0,0,0.05)" }
+          }
+        }
+      }
+    });
+  }
+  
   try {
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 800)); // انتظر رسم الرسم البياني
     const canvas = await html2canvas(exportDiv, { 
       scale: 2, 
       backgroundColor: "#f5f7fa", 
@@ -857,6 +911,7 @@ async function exportPanelSplitImage() {
     link.href = canvas.toDataURL("image/png", 1.0);
     link.click();
   } finally {
+    if (exportChart) exportChart.destroy();
     document.body.removeChild(exportDiv);
   }
 }
