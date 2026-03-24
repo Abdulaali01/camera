@@ -23,7 +23,7 @@ body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
 .statCard:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
 .statLabel { font-size: 12px; color: #6b7280; margin-bottom: 6px; font-weight: 600; }
 .statValue { font-size: 26px; font-weight: 800; color: #1f2937; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.chartCard, .listCard, .tableCard { background: #ffffff; border: 1px solid #e1e4e8; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
+.chartCard, .listCard { background: #ffffff; border: 1px solid #e1e4e8; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
 .cardTitle { font-size: 14px; font-weight: 700; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 #sideChart { width: 100% !important; height: 220px !important; }
 .summaryList { display: flex; flex-direction: column; gap: 8px; }
@@ -32,12 +32,6 @@ body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
 .summaryName { font-size: 13px; color: #1f2937; font-weight: 500; word-break: break-word; flex: 1; }
 .summaryVal { font-size: 14px; font-weight: 700; color: #4f46e5; min-width: 40px; text-align: left; background: #e0e7ff; padding: 4px 10px; border-radius: 20px; }
 .emptyBox { font-size: 14px; color: #6b7280; line-height: 1.8; text-align: center; padding: 20px; background: #f9fafb; border-radius: 12px; border: 2px dashed #e5e7eb; }
-.dataTableWrap { max-height: 280px; overflow: auto; border: 1px solid #e1e4e8; border-radius: 12px; background: white; }
-.dataTable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
-.dataTable th, .dataTable td { border-bottom: 1px solid #e1e4e8; padding: 10px 12px; text-align: center; vertical-align: middle; }
-.dataTable th { position: sticky; top: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); z-index: 2; font-weight: 700; color: white; font-size: 12px; }
-.dataTable tbody tr:nth-child(even) { background: #f8fafc; }
-.dataTable tbody tr:hover { background: #f1f5f9; }
 .mapSection { position: relative; flex: 1; height: 100vh; overflow: hidden; }
 #map { width: 100%; height: 100vh; }
 .topPanel { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12); padding: 12px 16px; z-index: 1000; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 340px; max-width: 95%; border: 1px solid rgba(255, 255, 255, 0.3); }
@@ -57,73 +51,12 @@ button:active { transform: translateY(0); }
 .fabWrap { position: fixed; left: 20px; bottom: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 12px; }
 .fabBtn { border: none; border-radius: 50px; padding: 14px 20px; font-size: 14px; font-weight: 700; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; min-width: 140px; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .fabBtn:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); }
-.fabBtn.stop { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
-.fabBtn.gray { background: linear-gradient(135deg, #4b5563 0%, #374151 100%); }
-.fabBtn.green { background: linear-gradient(135deg, #0b8f55 0%, #0a7a48 100%); }
-.manualLabel { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 8px; cursor: grab; user-select: none; touch-action: none; z-index: 5000; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15)); }
-.manualLabel.dragging { cursor: grabbing; opacity: 0.8; }
-.manualCount { min-width: 38px; height: 34px; padding: 0 12px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1f2937 0%, #111827 100%); color: #fff; border-radius: 50px; font-size: 14px; font-weight: 800; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); border: 2px solid rgba(255, 255, 255, 0.1); }
-.manualName { padding: 8px 14px; background: #ffffff; color: #1f2937; border: 2px solid #667eea; border-radius: 50px; font-size: 13px; font-weight: 700; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); white-space: nowrap; }
-@media (max-width: 1100px) { .mainLayout { flex-direction: column; } .sidePanel { width: 100%; min-width: unset; max-width: none; height: 40vh; border-left: none; border-bottom: 1px solid #e1e4e8; order: 2; } .mapSection { height: 60vh; order: 1; } .topPanel { width: 95%; padding: 12px; top: 12px; } #searchBox { width: 100%; } .topPanel .group { width: 100%; } .fileInput, select, button { width: 100%; } .fabWrap { left: 12px; bottom: 12px; } .fabBtn { min-width: 120px; padding: 12px 16px; font-size: 13px; } .dataTableWrap { max-height: 200px; } }
 .loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); display: flex; align-items: center; justify-content: center; z-index: 100000; font-size: 18px; color: #667eea; font-weight: 700; backdrop-filter: blur(5px); }
-.spinner { width: 40px; height: 40px; border: 4px solid #e0e7ff; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 12px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.notification { position: fixed; top: 20px; right: 20px; padding: 16px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 100000; transform: translateX(400px); transition: transform 0.3s ease; max-width: 300px; word-wrap: break-word; color: white; }
+.notification { position: fixed; top: 20px; right: 20px; padding: 16px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 100000; transform: translateX(400px); transition: transform 0.3s ease; color: white; }
 .notification.success { background: #10b981; }
 .notification.error { background: #ef4444; }
 .notification.warning { background: #f59e0b; }
 .notification.info { background: #3b82f6; }
-
-/* ===== جدول داخل الخريطة ===== */
-.mapTableContainer {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  right: 400px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  padding: 16px;
-  z-index: 1000;
-  max-height: 250px;
-  display: none;
-}
-.mapTableContainer.visible {
-  display: block;
-}
-.mapTableContainer .cardTitle {
-  margin-bottom: 10px;
-  font-size: 14px;
-}
-.mapTableWrap {
-  max-height: 180px;
-  overflow: auto;
-  border-radius: 12px;
-  border: 1px solid #e1e4e8;
-}
-.mapTable {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 12px;
-  background: white;
-}
-.mapTable th, .mapTable td {
-  border-bottom: 1px solid #e1e4e8;
-  padding: 8px 10px;
-  text-align: center;
-}
-.mapTable th {
-  position: sticky;
-  top: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  font-weight: 700;
-}
-.mapTable tbody tr:nth-child(even) {
-  background: #f8fafc;
-}
 </style>
 </head>
 
@@ -132,13 +65,13 @@ button:active { transform: translateY(0); }
 <div id="loading" class="loadingOverlay" style="display: none;">جاري التحميل...<div class="spinner"></div></div>
 
 <div class="mainLayout">
-  <div class="sidePanel">
+  <div class="sidePanel" id="sidePanel">
     <div class="sideHeader">
       <div class="sideTitle" id="panelTitle">ملخص حسب الفلتر</div>
-      <div class="sideSub" id="panelSubTitle">استورد ملف Excel ثم اختر البلدية والفلترة أو اضغط على حي في الخريطة.</div>
+      <div class="sideSub" id="panelSubTitle">استورد ملف Excel ثم اختر البلدية والفلترة</div>
     </div>
-    <div class="sideBody">
-      <div class="statGrid">
+    <div class="sideBody" id="sideBody">
+      <div class="statGrid" id="statGrid">
         <div class="statCard"><div class="statLabel">عدد البلاغات</div><div class="statValue" id="totalCount">0</div></div>
         <div class="statCard"><div class="statLabel">إجمالي التصنيفات</div><div class="statValue" id="totalTypes">0</div></div>
       </div>
@@ -147,57 +80,32 @@ button:active { transform: translateY(0); }
     </div>
   </div>
 
-  <div class="mapSection">
+  <div class="mapSection" id="mapSection">
     <div class="topPanel">
       <div class="group"><input id="searchBox" placeholder="🔍 ابحث عن حي أو شارع..."></div>
       <div class="group"><span class="titleMini">الملف</span><input type="file" id="excelFile" class="fileInput" accept=".xlsx,.xls"><button onclick="importExcel()">📥 استيراد</button></div>
       <div class="group"><span class="titleMini">البلدية</span><select id="municipalityList" onchange="setMunicipalityFilter(this.value)"><option value="">🏛️ كل البلديات</option></select></div>
       <div class="group"><span class="titleMini">الفلترة</span><select id="filterSelect" onchange="setFilter(this.value)"><option value="all">📊 عرض الكل</option><option value="top3">🥇 أعلى 3</option><option value="top3_2">🥈 ثاني أعلى 3</option><option value="top3_3">🥉 ثالث أعلى 3</option><option value="top3_4">🏅 رابع أعلى 3</option><option value="200">🔥 أكثر من 200</option><option value="100_200">⚡ من 100 إلى 200</option><option value="100">💤 أقل من 100</option></select></div>
       <div class="group"><span class="titleMini">الأحياء</span><select id="districtList" onchange="selectDistrict(this.value)"><option value="">🏘️ كل الأحياء</option></select></div>
-      <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورة</button></div>
+      <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورتين</button></div>
     </div>
     <div id="map"></div>
-    
-    <!-- جدول داخل الخريطة -->
-    <div id="mapTableContainer" class="mapTableContainer">
-      <div class="cardTitle">📑 جدول البيانات الحالي</div>
-      <div class="mapTableWrap">
-        <table class="mapTable">
-          <thead>
-            <tr>
-              <th>البلدية</th>
-              <th>الحي</th>
-              <th>البلاغات</th>
-              <th>أعلى تصنيف</th>
-              <th>العدد</th>
-            </tr>
-          </thead>
-          <tbody id="mapTableBody">
-            <tr><td colspan="5">لا توجد بيانات.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
   </div>
 </div>
 
 <div class="fabWrap">
   <button class="fabBtn" id="drawToggleBtn" type="button">✏️ رسم حي</button>
-  <button class="fabBtn gray" id="renameLastBtn" type="button">📝 تسمية</button>
-  <button class="fabBtn green" id="centerLastBtn" type="button">🎯 توسيط</button>
-  <button class="fabBtn stop" id="deleteLastBtn" type="button">🗑️ حذف</button>
 </div>
 
 <script>
-let map, districts = {}, polygons = [], markers = [], pointMarkers = [], overlays = [], infoWindows = [], currentFilter = "all", selectedDistrict = "", selectedMunicipality = "", sideChart = null, drawingManager = null, isDrawingMode = false, manualZones = [], overlayByKey = {}, autocomplete;
+let map, districts = {}, polygons = [], pointMarkers = [], overlays = [], infoWindows = [], currentFilter = "all", selectedDistrict = "", selectedMunicipality = "", sideChart = null, drawingManager = null, isDrawingMode = false, manualZones = [], overlayByKey = {}, autocomplete;
 const COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140", "#30cfd0", "#330867", "#a8edea", "#fed6e3", "#d299c2", "#fef9d7"];
 
 function initMap() {
   map = new google.maps.Map(document.getElementById("map"), { center: { lat: 24.7136, lng: 46.6753 }, zoom: 12, mapTypeId: "hybrid", gestureHandling: "greedy", mapTypeControl: true, mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR, position: google.maps.ControlPosition.TOP_RIGHT }, fullscreenControl: true, streetViewControl: true, zoomControl: true, zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM } });
-  initDrawingTools();
+  initDrawing();
   initSearch();
-  bindFloatingButtons();
-  map.addListener("idle", () => { adjustOverlays(); });
+  map.addListener("idle", adjustOverlays);
   map.addListener("click", () => { closeAllInfoWindows(); updatePanelForCurrentView(); });
 }
 
@@ -212,7 +120,7 @@ function initSearch() {
   });
 }
 
-function initDrawingTools() {
+function initDrawing() {
   drawingManager = new google.maps.drawing.DrawingManager({ drawingControl: false, drawingModes: ['polygon'], polygonOptions: { fillColor: '#667eea', fillOpacity: 0.3, strokeColor: '#764ba2', strokeWeight: 3, editable: true, draggable: true, clickable: true, zIndex: 1500 } });
   drawingManager.setMap(map);
   google.maps.event.addListener(drawingManager, 'overlaycomplete', function(event) {
@@ -220,105 +128,18 @@ function initDrawingTools() {
     const polygon = event.overlay;
     polygon.setEditable(true);
     polygon.setDraggable(true);
-    const center = getPolygonCenterFromPath(polygon.getPath());
-    const zoneIndex = manualZones.length + 1;
-    const zone = createManualZone(polygon, center, "حي جديد", String(zoneIndex));
-    manualZones.push(zone);
-    attachPolygonSync(zone);
+    manualZones.push({ polygon: polygon });
     drawingManager.setDrawingMode(null);
     isDrawingMode = false;
     updateDrawButtonUI();
-    showNotification(`تم إنشاء الحي رقم ${zoneIndex}`, "success");
+    showNotification("تم رسم الحي", "success");
   });
-}
-
-function bindFloatingButtons() {
   document.getElementById("drawToggleBtn").onclick = function() { isDrawingMode = !isDrawingMode; drawingManager.setDrawingMode(isDrawingMode ? google.maps.drawing.OverlayType.POLYGON : null); updateDrawButtonUI(); };
-  document.getElementById("renameLastBtn").onclick = function() {
-    const zone = getLastManualZone();
-    if (!zone) { showNotification("لا يوجد حي مرسوم", "warning"); return; }
-    const newName = prompt("اكتب اسم الحي:", zone.label.nameText);
-    if (newName !== null && newName.trim() !== "") { zone.label.nameText = newName.trim(); zone.label.refresh(); }
-    const newNum = prompt("اكتب الرقم:", zone.label.countText);
-    if (newNum !== null && newNum.trim() !== "") { zone.label.countText = newNum.trim(); zone.label.refresh(); }
-  };
-  document.getElementById("centerLastBtn").onclick = function() {
-    const zone = getLastManualZone();
-    if (!zone) { showNotification("لا يوجد حي مرسوم", "warning"); return; }
-    const center = getPolygonCenterFromPath(zone.polygon.getPath());
-    zone.label.setPosition(center);
-    zone.label.wasMovedManually = false;
-    showNotification("تم توسيط الملصق", "success");
-  };
-  document.getElementById("deleteLastBtn").onclick = function() {
-    const zone = getLastManualZone();
-    if (!zone) { showNotification("لا يوجد حي مرسوم", "warning"); return; }
-    if (confirm("هل أنت متأكد من حذف آخر حي مرسوم؟")) {
-      zone.polygon.setMap(null);
-      zone.label.setMap(null);
-      manualZones.pop();
-      renumberManualZones();
-      showNotification("تم الحذف بنجاح", "success");
-    }
-  };
 }
 
 function updateDrawButtonUI() {
   const btn = document.getElementById("drawToggleBtn");
   if (isDrawingMode) { btn.classList.add("stop"); btn.innerHTML = "⛔ إيقاف"; } else { btn.classList.remove("stop"); btn.innerHTML = "✏️ رسم حي"; }
-}
-
-function getLastManualZone() { if (!manualZones.length) return null; return manualZones[manualZones.length - 1]; }
-function renumberManualZones() { manualZones.forEach((zone, i) => { zone.label.countText = String(i + 1); zone.label.refresh(); }); }
-function getPolygonCenterFromPath(path) { const bounds = new google.maps.LatLngBounds(); for (let i = 0; i < path.getLength(); i++) { bounds.extend(path.getAt(i)); } return bounds.getCenter(); }
-
-function attachPolygonSync(zone) {
-  const syncCenter = () => { const center = getPolygonCenterFromPath(zone.polygon.getPath()); if (!zone.label.wasMovedManually) { zone.label.setPosition(center); } };
-  google.maps.event.addListener(zone.polygon.getPath(), "set_at", syncCenter);
-  google.maps.event.addListener(zone.polygon.getPath(), "insert_at", syncCenter);
-  google.maps.event.addListener(zone.polygon.getPath(), "remove_at", syncCenter);
-  google.maps.event.addListener(zone.polygon, "dragend", syncCenter);
-}
-
-function createManualZone(polygon, position, nameText, countText) { const label = new ManualLabelOverlay(position, nameText, countText); label.setMap(map); return { polygon: polygon, label: label }; }
-
-class ManualLabelOverlay extends google.maps.OverlayView {
-  constructor(position, nameText, countText) {
-    super();
-    this.position = position;
-    this.nameText = nameText || "حي جديد";
-    this.countText = countText || "1";
-    this.wasMovedManually = false;
-    this.div = null;
-    this.isDragging = false;
-  }
-  onAdd() {
-    this.div = document.createElement("div");
-    this.div.className = "manualLabel";
-    this.countEl = document.createElement("div");
-    this.countEl.className = "manualCount";
-    this.countEl.textContent = this.countText;
-    this.nameEl = document.createElement("div");
-    this.nameEl.className = "manualName";
-    this.nameEl.textContent = this.nameText;
-    this.div.appendChild(this.countEl);
-    this.div.appendChild(this.nameEl);
-    this.div.addEventListener("click", (e) => e.stopPropagation());
-    this.div.addEventListener("dblclick", (e) => e.stopPropagation());
-    this.nameEl.addEventListener("dblclick", (e) => { e.stopPropagation(); const v = prompt("اسم الحي:", this.nameText); if (v !== null && v.trim() !== "") { this.nameText = v.trim(); this.refresh(); } });
-    this.countEl.addEventListener("dblclick", (e) => { e.stopPropagation(); const v = prompt("الرقم:", this.countText); if (v !== null && v.trim() !== "") { this.countText = v.trim(); this.refresh(); } });
-    this.div.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); this.isDragging = true; this.div.setPointerCapture(e.pointerId); this.div.classList.add("dragging"); const rect = this.div.getBoundingClientRect(); this.pointerOffsetX = e.clientX - rect.left; this.pointerOffsetY = e.clientY - rect.top; });
-    this.div.addEventListener("pointermove", (e) => { if (!this.isDragging) return; e.preventDefault(); e.stopPropagation(); const mapRect = document.getElementById("map").getBoundingClientRect(); const x = e.clientX - mapRect.left - this.pointerOffsetX + (this.div.offsetWidth / 2); const y = e.clientY - mapRect.top - this.pointerOffsetY + (this.div.offsetHeight / 2); const projection = this.getProjection(); if (!projection) return; const latLng = projection.fromDivPixelToLatLng(new google.maps.Point(x, y)); if (!latLng) return; this.position = latLng; this.wasMovedManually = true; this.draw(); });
-    const stopDrag = (e) => { if (!this.isDragging) return; e.preventDefault(); e.stopPropagation(); this.isDragging = false; this.div.classList.remove("dragging"); try { this.div.releasePointerCapture(e.pointerId); } catch (err) {} };
-    this.div.addEventListener("pointerup", stopDrag);
-    this.div.addEventListener("pointercancel", stopDrag);
-    this.getPanes().overlayMouseTarget.appendChild(this.div);
-    this.refresh();
-  }
-  refresh() { if (this.countEl) this.countEl.textContent = this.countText; if (this.nameEl) this.nameEl.textContent = this.nameText; }
-  setPosition(pos) { this.position = pos; this.draw(); }
-  draw() { if (!this.div) return; const projection = this.getProjection(); if (!projection) return; const point = projection.fromLatLngToDivPixel(this.position); if (!point) return; this.div.style.left = point.x + "px"; this.div.style.top = point.y + "px"; }
-  onRemove() { if (this.div && this.div.parentNode) { this.div.parentNode.removeChild(this.div); } this.div = null; }
 }
 
 function normalizeHeader(v) { return (v ?? "").toString().trim().replace(/\s+/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").toLowerCase(); }
@@ -435,12 +256,10 @@ function closeAllInfoWindows() { infoWindows.forEach(w => w.close()); }
 
 function clearMap() {
   polygons.forEach(p => p.setMap(null));
-  markers.forEach(m => m.setMap(null));
   pointMarkers.forEach(m => m.setMap(null));
   overlays.forEach(o => o.setMap(null));
   infoWindows.forEach(w => w.close());
   polygons = [];
-  markers = [];
   pointMarkers = [];
   overlays = [];
   infoWindows = [];
@@ -528,8 +347,6 @@ function passesFilter(districtKey, count) {
 }
 
 function getColumnColor(count) { if (count > 200) return "#dc2626"; if (count > 100) return "#f59e0b"; return "#10b981"; }
-function getCurrentVisibleDistrictKeys() { return Object.keys(districts).filter(key => { const data = districts[key]; return passesFilter(key, data.points.length); }); }
-
 function getTopCategory(thirdObj) {
   const entries = Object.entries(thirdObj || {}).sort((a, b) => b[1] - a[1]);
   if (!entries.length) { return { name: "-", count: 0, total: 0 }; }
@@ -539,36 +356,15 @@ function getTopCategory(thirdObj) {
 
 function getCurrentReportRows() {
   const rows = [];
-  getCurrentVisibleDistrictKeys().forEach(key => {
+  for (let key in districts) {
     const data = districts[key];
+    const count = data.points.length;
+    if (!passesFilter(key, count)) continue;
     const top = getTopCategory(data.third);
-    rows.push({ municipality: data.municipality, district: data.name, count: data.points.length, topCategory: top.name, topCount: top.count, totalTypes: top.total });
-  });
+    rows.push({ municipality: data.municipality, district: data.name, count: count, topCategory: top.name, topCount: top.count, totalTypes: top.total });
+  }
   rows.sort((a, b) => b.count - a.count || a.district.localeCompare(b.district, 'ar'));
   return rows;
-}
-
-// ===== عرض الجدول داخل الخريطة =====
-function renderMapTable() {
-  const container = document.getElementById("mapTableContainer");
-  const body = document.getElementById("mapTableBody");
-  const rows = getCurrentReportRows();
-  
-  if (!rows.length) {
-    container.classList.remove("visible");
-    return;
-  }
-  
-  container.classList.add("visible");
-  body.innerHTML = rows.map(r => `
-    <tr>
-      <td>${escapeHtml(r.municipality)}</td>
-      <td><strong>${escapeHtml(r.district)}</strong></td>
-      <td><strong>${r.count}</strong></td>
-      <td>${escapeHtml(r.topCategory)}</td>
-      <td>${r.topCount}</td>
-    </tr>
-  `).join("");
 }
 
 function drawDistricts() {
@@ -593,23 +389,8 @@ function drawDistricts() {
     const smoothBoundary = createSmoothBoundary(data.points);
     if (smoothBoundary && smoothBoundary.length >= 3) {
       const polygon = new google.maps.Polygon({ paths: smoothBoundary, strokeColor: baseColor, strokeOpacity: 1, strokeWeight: polygonStrokeWeight, fillColor: baseColor, fillOpacity: polygonFillOpacity, map: map, zIndex: isSelected ? 100 : 50, draggable: true });
-      polygon.addListener("drag", () => {
-        const overlay = overlayByKey[districtKey];
-        if (!overlay) return;
-        const path = polygon.getPath();
-        let lat = 0, lng = 0;
-        for (let i = 0; i < path.getLength(); i++) { lat += path.getAt(i).lat(); lng += path.getAt(i).lng(); }
-        lat /= path.getLength();
-        lng /= path.getLength();
-        overlay.position = { lat, lng };
-        overlay.draw();
-      });
-      polygon.addListener("click", (e) => {
-        closeAllInfoWindows();
-        const infoWindow = createDistrictInfoWindow(e.latLng || getDistrictCenter(data.points), originalData.name, count, originalData, baseColor);
-        infoWindow.open({ map: map });
-        updatePanelDistrict(districtKey, originalData);
-      });
+      polygon.addListener("drag", () => { const overlay = overlayByKey[districtKey]; if (!overlay) return; const path = polygon.getPath(); let lat = 0, lng = 0; for (let i = 0; i < path.getLength(); i++) { lat += path.getAt(i).lat(); lng += path.getAt(i).lng(); } lat /= path.getLength(); lng /= path.getLength(); overlay.position = { lat, lng }; overlay.draw(); });
+      polygon.addListener("click", (e) => { closeAllInfoWindows(); const infoWindow = createDistrictInfoWindow(e.latLng || getDistrictCenter(data.points), originalData.name, count, originalData, baseColor); infoWindow.open({ map: map }); updatePanelDistrict(districtKey, originalData); });
       polygons.push(polygon);
       smoothBoundary.forEach(p => { visibleBounds.extend({ lat: p.lat, lng: p.lng }); hasVisible = true; });
     }
@@ -636,7 +417,7 @@ function createDistrictInfoWindow(position, districtName, count, data, color) {
   const sortedThird = Object.entries(data.third).sort((a, b) => b[1] - a[1]);
   let smallLines = "";
   for (let i = 0; i < sortedThird.length && i < 5; i++) { smallLines += `<div style="margin-top:4px; font-size:12px;">${escapeHtml(sortedThird[i][0])} : <b>${sortedThird[i][1]}</b></div>`; }
-  const html = `<div style="font-family: 'Segoe UI', Tahoma; min-width: 200px; max-width: 260px; padding: 8px;"><div style="font-weight: 800; font-size: 16px; color: ${color}; margin-bottom: 8px; border-bottom: 2px solid ${color}; padding-bottom: 6px;">${escapeHtml(districtName)}</div><div style="margin-bottom: 6px; font-size: 13px; color: #666;">البلدية: <b style="color: #333;">${escapeHtml(data.municipality)}</b></div><div style="font-size: 14px; margin-bottom: 8px;">عدد البلاغات: <b style="font-size: 18px; color: ${color};">${count}</b></div><div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px;"><div style="font-weight: 700; font-size: 12px; color: #888; margin-bottom: 4px;">التصنيفات:</div>${smallLines || '<div style="color: #999; font-size: 12px;">لا توجد تصنيفات</div>'}</div></div>`;
+  const html = `<div style="font-family:'Segoe UI';min-width:200px;max-width:260px;padding:8px;"><div style="font-weight:800;font-size:16px;color:${color};margin-bottom:8px;border-bottom:2px solid ${color};padding-bottom:6px;">${escapeHtml(districtName)}</div><div style="margin-bottom:6px;font-size:13px;color:#666;">البلدية: <b style="color:#333;">${escapeHtml(data.municipality)}</b></div><div style="font-size:14px;margin-bottom:8px;">عدد البلاغات: <b style="font-size:18px;color:${color};">${count}</b></div><div style="margin-top:10px;border-top:1px solid #eee;padding-top:8px;"><div style="font-weight:700;font-size:12px;color:#888;margin-bottom:4px;">التصنيفات:</div>${smallLines || '<div style="color:#999;font-size:12px;">لا توجد تصنيفات</div>'}</div></div>`;
   const win = new google.maps.InfoWindow({ content: html, position: position, maxWidth: 300 });
   infoWindows.push(win);
   return win;
@@ -644,37 +425,21 @@ function createDistrictInfoWindow(position, districtName, count, data, color) {
 
 function createElegantOverlay(position, count, districtKey, color, infoWindow) {
   class ElegantOverlay extends google.maps.OverlayView {
-    constructor(pos) {
-      super();
-      this.position = pos;
-      this.div = null;
-      this.isDragging = false;
-    }
+    constructor(pos) { super(); this.position = pos; this.div = null; this.isDragging = false; }
     onAdd() {
       const data = districts[districtKey];
       this.div = document.createElement("div");
-      this.div.style.cssText = "position: absolute; transform: translate(-50%, -100%); pointer-events: auto; display: flex; flex-direction: column; align-items: center; user-select: none; cursor: grab; z-index: 250; touch-action: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));";
+      this.div.style.cssText = "position:absolute;transform:translate(-50%,-100%);pointer-events:auto;display:flex;flex-direction:column;align-items:center;user-select:none;cursor:grab;z-index:250;touch-action:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.2));";
       this.div.addEventListener("pointerdown", (e) => { this.isDragging = true; this.div.setPointerCapture(e.pointerId); this.div.style.cursor = "grabbing"; const rect = this.div.getBoundingClientRect(); this.offsetX = e.clientX - rect.left; this.offsetY = e.clientY - rect.top; });
-      this.div.addEventListener("pointermove", (e) => {
-        if (!this.isDragging) return;
-        const mapRect = document.getElementById("map").getBoundingClientRect();
-        const x = e.clientX - mapRect.left - this.offsetX + (this.div.offsetWidth / 2);
-        const y = e.clientY - mapRect.top - this.offsetY + (this.div.offsetHeight / 2);
-        const projection = this.getProjection();
-        if (!projection) return;
-        const latLng = projection.fromDivPixelToLatLng(new google.maps.Point(x, y));
-        if (!latLng) return;
-        this.position = latLng;
-        this.draw();
-      });
+      this.div.addEventListener("pointermove", (e) => { if (!this.isDragging) return; const mapRect = document.getElementById("map").getBoundingClientRect(); const x = e.clientX - mapRect.left - this.offsetX + (this.div.offsetWidth / 2); const y = e.clientY - mapRect.top - this.offsetY + (this.div.offsetHeight / 2); const projection = this.getProjection(); if (!projection) return; const latLng = projection.fromDivPixelToLatLng(new google.maps.Point(x, y)); if (!latLng) return; this.position = latLng; this.draw(); });
       const stopDrag = () => { this.isDragging = false; this.div.style.cursor = "grab"; };
       this.div.addEventListener("pointerup", stopDrag);
       this.div.addEventListener("pointercancel", stopDrag);
       this.countBadge = document.createElement("div");
-      this.countBadge.style.cssText = `min-width: 46px; height: 32px; padding: 0 12px; border-radius: 50px; background: linear-gradient(135deg, ${color} 0%, ${adjustColor(color, -20)} 100%); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); border: 2px solid rgba(255,255,255,0.3);`;
+      this.countBadge.style.cssText = `min-width:46px;height:32px;padding:0 12px;border-radius:50px;background:linear-gradient(135deg,${color} 0%,${adjustColor(color,-20)} 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;box-shadow:0 4px 12px rgba(0,0,0,0.25);border:2px solid rgba(255,255,255,0.3);`;
       this.countBadge.textContent = count;
       this.nameChip = document.createElement("div");
-      this.nameChip.style.cssText = `margin-top: 6px; padding: 6px 12px; border-radius: 50px; background: #ffffff; font-size: 12px; font-weight: 700; color: #1f2937; border: 2px solid ${color}; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis;`;
+      this.nameChip.style.cssText = `margin-top:6px;padding:6px 12px;border-radius:50px;background:#ffffff;font-size:12px;font-weight:700;color:#1f2937;border:2px solid ${color};box-shadow:0 4px 12px rgba(0,0,0,0.15);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;`;
       this.nameChip.textContent = data.name;
       this.nameChip.title = data.name;
       this.div.appendChild(this.countBadge);
@@ -682,14 +447,7 @@ function createElegantOverlay(position, count, districtKey, color, infoWindow) {
       this.div.addEventListener("click", (e) => { e.stopPropagation(); closeAllInfoWindows(); infoWindow.open({ map: map }); updatePanelDistrict(districtKey, districts[districtKey]); });
       this.getPanes().overlayMouseTarget.appendChild(this.div);
     }
-    draw() {
-      const projection = this.getProjection();
-      if (!projection || !this.div) return;
-      const pos = projection.fromLatLngToDivPixel(new google.maps.LatLng(this.position.lat, this.position.lng));
-      if (!pos) return;
-      this.div.style.left = pos.x + "px";
-      this.div.style.top = pos.y + "px";
-    }
+    draw() { const projection = this.getProjection(); if (!projection || !this.div) return; const pos = projection.fromLatLngToDivPixel(new google.maps.LatLng(this.position.lat, this.position.lng)); if (!pos) return; this.div.style.left = pos.x + "px"; this.div.style.top = pos.y + "px"; }
     onRemove() { if (this.div && this.div.parentNode) { this.div.parentNode.removeChild(this.div); } this.div = null; }
   }
   const overlay = new ElegantOverlay(position);
@@ -715,7 +473,6 @@ function resetPanel() {
   document.getElementById("totalCount").textContent = "0";
   document.getElementById("totalTypes").textContent = "0";
   document.getElementById("detailsList").innerHTML = '<div class="emptyBox">لا توجد بيانات حتى الآن.</div>';
-  document.getElementById("mapTableContainer").classList.remove("visible");
   if (sideChart) { sideChart.destroy(); sideChart = null; }
 }
 
@@ -727,18 +484,13 @@ function updatePanelDistrict(key, data) {
   const labels = [];
   const values = [];
   let html = "";
-  entries.forEach(([k, v], i) => {
-    total += v;
-    html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`;
-    if (i < 10) { labels.push(k); values.push(v); }
-  });
+  entries.forEach(([k, v], i) => { total += v; html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`; if (i < 10) { labels.push(k); values.push(v); } });
   document.getElementById("panelTitle").textContent = data.name;
   document.getElementById("panelSubTitle").textContent = `البلدية: ${data.municipality} | إجمالي النقاط: ${count}`;
   document.getElementById("totalCount").textContent = count;
   document.getElementById("totalTypes").textContent = total;
   document.getElementById("detailsList").innerHTML = html || '<div class="emptyBox">لا توجد بيانات.</div>';
   drawSideChart(labels, values);
-  renderMapTable();
 }
 
 function updatePanelSummary() {
@@ -755,11 +507,7 @@ function updatePanelSummary() {
   const labels = [];
   const values = [];
   let html = "";
-  entries.forEach(([k, v], i) => {
-    totalTypes += v;
-    html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`;
-    if (i < 10) { labels.push(k); values.push(v); }
-  });
+  entries.forEach(([k, v], i) => { totalTypes += v; html += `<div class="summaryRow"><div class="summaryName">${escapeHtml(k)}</div><div class="summaryVal">${v}</div></div>`; if (i < 10) { labels.push(k); values.push(v); } });
   const filterText = document.getElementById("filterSelect").options[document.getElementById("filterSelect").selectedIndex].text;
   const municipalityText = selectedMunicipality || "كل البلديات";
   document.getElementById("panelTitle").textContent = "ملخص حسب الفلتر";
@@ -768,7 +516,6 @@ function updatePanelSummary() {
   document.getElementById("totalTypes").textContent = totalTypes;
   document.getElementById("detailsList").innerHTML = html || '<div class="emptyBox">لا توجد بيانات مطابقة للفلترة الحالية.</div>';
   drawSideChart(labels, values);
-  renderMapTable();
 }
 
 function updatePanelForCurrentView() {
@@ -779,11 +526,7 @@ function updatePanelForCurrentView() {
 function drawSideChart(labels, values) {
   const ctx = document.getElementById("sideChart").getContext("2d");
   if (sideChart) { sideChart.destroy(); }
-  sideChart = new Chart(ctx, {
-    type: "bar",
-    data: { labels: labels, datasets: [{ label: "العدد", data: values, backgroundColor: "rgba(102, 126, 234, 0.8)", borderColor: "rgba(102, 126, 234, 1)", borderWidth: 2, borderRadius: 8, maxBarThickness: 32 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: "rgba(0,0,0,0.8)", titleFont: { size: 13 }, bodyFont: { size: 13 }, padding: 12, cornerRadius: 8 } }, scales: { x: { ticks: { display: false }, grid: { display: false } }, y: { beginAtZero: true, ticks: { font: { size: 11 }, color: "#6b7280" }, grid: { color: "rgba(0,0,0,0.05)" } } }, animation: { duration: 800, easing: 'easeOutQuart' } }
-  });
+  sideChart = new Chart(ctx, { type: "bar", data: { labels: labels, datasets: [{ label: "العدد", data: values, backgroundColor: "rgba(102, 126, 234, 0.8)", borderColor: "rgba(102, 126, 234, 1)", borderWidth: 2, borderRadius: 8, maxBarThickness: 32 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: "rgba(0,0,0,0.8)", titleFont: { size: 13 }, bodyFont: { size: 13 }, padding: 12, cornerRadius: 8 } }, scales: { x: { ticks: { display: false }, grid: { display: false } }, y: { beginAtZero: true, ticks: { font: { size: 11 }, color: "#6b7280" }, grid: { color: "rgba(0,0,0,0.05)" } } }, animation: { duration: 800, easing: 'easeOutQuart' } });
 }
 
 function exportExcel() {
@@ -805,26 +548,134 @@ function exportExcel() {
   }, 100);
 }
 
+// ===== دالة تصدير صورتين =====
 async function downloadImage() {
   const panel = document.querySelector(".topPanel");
   const fab = document.querySelector(".fabWrap");
+  
   panel.style.visibility = "hidden";
   if (fab) fab.style.visibility = "hidden";
   showLoading(true);
+  
   try {
+    // الصورة الأولى: الخريطة
     google.maps.event.trigger(map, "resize");
     await new Promise(r => setTimeout(r, 1000));
-    const canvas = await html2canvas(document.querySelector(".mainLayout"), { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff", logging: false, onclone: (clonedDoc) => { const clonedMap = clonedDoc.getElementById("map"); if (clonedMap) { clonedMap.style.height = "100vh"; } } });
-    const link = document.createElement("a");
-    link.download = `خريطة_البلاغات_${new Date().toLocaleDateString('ar-SA')}.png`;
-    link.href = canvas.toDataURL("image/png", 1.0);
-    link.click();
-    showNotification("تم حفظ الصورة بنجاح!", "success");
+    
+    const mapCanvas = await html2canvas(document.querySelector(".mainLayout"), { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff", logging: false, onclone: (clonedDoc) => { const clonedMap = clonedDoc.getElementById("map"); if (clonedMap) { clonedMap.style.height = "100vh"; } } });
+    
+    const link1 = document.createElement("a");
+    link1.download = `خريطة_البلاغات_${new Date().toLocaleDateString('ar-SA')}.png`;
+    link1.href = mapCanvas.toDataURL("image/png", 1.0);
+    link1.click();
+    
+    await new Promise(r => setTimeout(r, 500));
+    
+    // الصورة الثانية: لوحة المعلومات مقسمة
+    await exportPanelSplitImage();
+    
+    showNotification("تم حفظ الصورتين بنجاح!", "success");
   } catch (err) { console.error(err); showNotification("فشل في حفظ الصورة", "error"); } finally { panel.style.visibility = "visible"; if (fab) fab.style.visibility = "visible"; showLoading(false); }
 }
 
+// دالة تصدير لوحة المعلومات مقسمة (نصف جدول + نصف إحصائيات)
+async function exportPanelSplitImage() {
+  const rows = getCurrentReportRows();
+  const totalCount = document.getElementById("totalCount").textContent;
+  const totalTypes = document.getElementById("totalTypes").textContent;
+  const panelTitle = document.getElementById("panelTitle").textContent;
+  const panelSubTitle = document.getElementById("panelSubTitle").textContent;
+  const detailsHTML = document.getElementById("detailsList").innerHTML;
+  
+  // إنشاء عنصر مؤقت للتصدير
+  const exportDiv = document.createElement("div");
+  exportDiv.style.cssText = "position:fixed;right:0;top:0;width:1400px;height:100vh;background:linear-gradient(135deg,#f5f7fa 0%,#e4e8ec 100%);z-index:99999;direction:rtl;overflow:hidden;";
+  
+  exportDiv.innerHTML = `
+    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:24px 32px;box-shadow:0 8px 32px rgba(102,126,234,0.3);">
+      <h1 style="margin:0;font-size:28px;font-weight:800;">${panelTitle}</h1>
+      <p style="margin:8px 0 0;font-size:14px;opacity:0.9;">${panelSubTitle}</p>
+    </div>
+    <div style="display:flex;gap:24px;padding:24px;height:calc(100vh - 100px);">
+      <!-- النصف الأول: الجدول -->
+      <div style="width:50%;background:white;border-radius:20px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.12);display:flex;flex-direction:column;">
+        <h2 style="margin:0 0 20px;font-size:20px;color:#374151;display:flex;align-items:center;gap:8px;border-bottom:3px solid #667eea;padding-bottom:16px;">📑 جدول البيانات التفصيلي</h2>
+        <div style="flex:1;overflow:auto;border:2px solid #e1e4e8;border-radius:16px;">
+          <table style="width:100%;border-collapse:separate;border-spacing:0;font-size:14px;">
+            <thead style="position:sticky;top:0;z-index:10;">
+              <tr>
+                <th style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:16px 14px;text-align:center;font-weight:700;font-size:14px;border-bottom:2px solid #e1e4e8;">البلدية</th>
+                <th style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:16px 14px;text-align:center;font-weight:700;font-size:14px;border-bottom:2px solid #e1e4e8;">الحي</th>
+                <th style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:16px 14px;text-align:center;font-weight:700;font-size:14px;border-bottom:2px solid #e1e4e8;">البلاغات</th>
+                <th style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:16px 14px;text-align:center;font-weight:700;font-size:14px;border-bottom:2px solid #e1e4e8;">أعلى تصنيف</th>
+                <th style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:16px 14px;text-align:center;font-weight:700;font-size:14px;border-bottom:2px solid #e1e4e8;">العدد</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.length ? rows.map((r,i) => `
+                <tr style="background:${i%2===0?'white':'#f8fafc'};transition:all 0.2s;">
+                  <td style="padding:14px 12px;border-bottom:1px solid #e1e4e8;text-align:center;color:#4b5563;">${escapeHtml(r.municipality)}</td>
+                  <td style="padding:14px 12px;border-bottom:1px solid #e1e4e8;text-align:center;font-weight:700;color:#1f2937;">${escapeHtml(r.district)}</td>
+                  <td style="padding:14px 12px;border-bottom:1px solid #e1e4e8;text-align:center;"><span style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:6px 16px;border-radius:20px;font-weight:800;font-size:15px;">${r.count}</span></td>
+                  <td style="padding:14px 12px;border-bottom:1px solid #e1e4e8;text-align:center;color:#6b7280;">${escapeHtml(r.topCategory)}</td>
+                  <td style="padding:14px 12px;border-bottom:1px solid #e1e4e8;text-align:center;font-weight:700;color:#4f46e5;background:#e0e7ff;border-radius:20px;margin:4px;">${r.topCount}</td>
+                </tr>
+              `).join('') : '<tr><td colspan="5" style="padding:40px;text-align:center;color:#9ca3af;font-size:16px;">لا توجد بيانات للعرض</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:16px;padding:16px;background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border-radius:12px;border:2px dashed #cbd5e1;text-align:center;color:#6b7280;font-size:13px;">
+          إجمالي السجلات: <strong style="color:#667eea;font-size:16px;">${rows.length}</strong> حي
+        </div>
+      </div>
+      
+      <!-- النصف الثاني: الإحصائيات والرسم البياني -->
+      <div style="width:50%;display:flex;flex-direction:column;gap:20px;">
+        <!-- الإحصائيات العامة -->
+        <div style="background:white;border-radius:20px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+          <h2 style="margin:0 0 20px;font-size:20px;color:#374151;display:flex;align-items:center;gap:8px;">📊 الإحصائيات العامة</h2>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+            <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:16px;padding:24px;text-align:center;color:white;box-shadow:0 8px 24px rgba(102,126,234,0.3);">
+              <div style="font-size:14px;opacity:0.9;margin-bottom:8px;">عدد البلاغات</div>
+              <div style="font-size:42px;font-weight:800;">${totalCount}</div>
+            </div>
+            <div style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);border-radius:16px;padding:24px;text-align:center;color:white;box-shadow:0 8px 24px rgba(245,87,108,0.3);">
+              <div style="font-size:14px;opacity:0.9;margin-bottom:8px;">إجمالي التصنيفات</div>
+              <div style="font-size:42px;font-weight:800;">${totalTypes}</div>
+            </div>
+          </div>
+          <div style="height:200px;background:linear-gradient(135deg,#667eea15 0%,#764ba215 100%);border-radius:16px;display:flex;align-items:center;justify-content:center;border:3px dashed #667eea40;color:#667eea;font-weight:700;font-size:18px;">
+            📊 منطقة الرسم البياني
+          </div>
+        </div>
+        
+        <!-- ملخص التصنيفات -->
+        <div style="background:white;border-radius:20px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.12);flex:1;display:flex;flex-direction:column;">
+          <h2 style="margin:0 0 20px;font-size:20px;color:#374151;display:flex;align-items:center;gap:8px;">📋 ملخص التصنيفات</h2>
+          <div style="flex:1;overflow:auto;padding-right:8px;">
+            ${detailsHTML.includes('emptyBox') ? '<div style="text-align:center;padding:40px;color:#9ca3af;">لا توجد بيانات</div>' : detailsHTML}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(exportDiv);
+  
+  try {
+    await new Promise(r => setTimeout(r, 500));
+    const canvas = await html2canvas(exportDiv, { scale: 2, backgroundColor: "#f5f7fa", useCORS: true, allowTaint: true, logging: false });
+    const link = document.createElement("a");
+    link.download = `لوحة_المعلومات_${new Date().toLocaleDateString('ar-SA')}.png`;
+    link.href = canvas.toDataURL("image/png", 1.0);
+    link.click();
+  } finally {
+    document.body.removeChild(exportDiv);
+  }
+}
+
 function escapeHtml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
-function showLoading(show) { const loading = document.getElementById("loading"); loading.style.display = show ? "flex" : "none"; }
+function showLoading(show) { document.getElementById("loading").style.display = show ? "flex" : "none"; }
 
 function showNotification(message, type = "info") {
   const notification = document.createElement("div");
@@ -839,28 +690,6 @@ document.addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === "e") { e.preventDefault(); exportExcel(); }
   if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); downloadImage(); }
   if (e.key === "Escape") { closeAllInfoWindows(); }
-  if (e.key === "Delete" && manualZones.length > 0) {
-    const zone = getLastManualZone();
-    if (zone && confirm("هل تريد حذف آخر حي مرسوم؟")) {
-      zone.polygon.setMap(null);
-      zone.label.setMap(null);
-      manualZones.pop();
-      renumberManualZones();
-      showNotification("تم الحذف بنجاح", "success");
-    }
-  }
-});
-
-window.addEventListener("error", (e) => { console.error("خطأ في التطبيق:", e.error); showNotification("حدث خطأ غير متوقع", "error"); });
-window.addEventListener("unhandledrejection", (e) => { console.error("وعد مرفوض:", e.reason); showNotification("حدث خطأ في معالجة البيانات", "error"); });
-
-document.addEventListener("DOMContentLoaded", () => {
-  if (!window.google || !google.maps) { showNotification("جاري تحميل خرائط Google...", "info"); }
-  const buttons = document.querySelectorAll("button");
-  buttons.forEach(btn => {
-    btn.addEventListener("mouseenter", () => { btn.style.transform = "translateY(-2px)"; });
-    btn.addEventListener("mouseleave", () => { btn.style.transform = "translateY(0)"; });
-  });
 });
 </script>
 
