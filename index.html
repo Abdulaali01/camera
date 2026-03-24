@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>تحليل الأحياء + الأعمدة على الخريطة</title>
+<title>تحليل الأحياء - عرض شبكي</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -43,148 +43,7 @@ button:active { transform: translateY(0); }
 .notification.warning { background: #f59e0b; }
 .notification.info { background: #3b82f6; }
 
-/* أنماط الجدول الشبكي الجديد */
-.gridTableContainer { 
-  position: absolute; 
-  bottom: 20px; 
-  left: 20px; 
-  right: 20px; 
-  background: rgba(255, 255, 255, 0.98); 
-  backdrop-filter: blur(15px); 
-  border-radius: 20px; 
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15); 
-  padding: 20px; 
-  z-index: 1000; 
-  max-height: 350px; 
-  overflow: hidden;
-  display: none;
-  flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-}
-.gridTableHeader { 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  margin-bottom: 15px; 
-  padding-bottom: 15px; 
-  border-bottom: 2px solid #e5e7eb; 
-}
-.gridTableTitle { 
-  font-size: 18px; 
-  font-weight: 800; 
-  color: #1f2937; 
-  display: flex; 
-  align-items: center; 
-  gap: 10px; 
-}
-.gridTableScroll { 
-  overflow-y: auto; 
-  flex: 1; 
-  border-radius: 12px; 
-  background: #f8fafc;
-}
-.gridTable { 
-  width: 100%; 
-  border-collapse: separate; 
-  border-spacing: 0; 
-  font-size: 13px; 
-}
-.gridTable th { 
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-  color: white; 
-  padding: 14px 12px; 
-  font-weight: 700; 
-  text-align: center; 
-  position: sticky; 
-  top: 0; 
-  z-index: 10;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.gridTable th:first-child { border-radius: 0 12px 0 0; }
-.gridTable th:last-child { border-radius: 12px 0 0 0; }
-.gridTable td { 
-  padding: 12px; 
-  text-align: center; 
-  border-bottom: 1px solid #e5e7eb; 
-  font-weight: 600;
-}
-.gridTable tr:hover td { background: #e0e7ff; }
-.gridTable tr:nth-child(even) { background: #f1f5f9; }
-.gridTable tr:nth-child(even):hover td { background: #dbeafe; }
-.districtCell { 
-  text-align: right !important; 
-  font-weight: 700 !important; 
-  color: #1f2937;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.districtColor { 
-  width: 12px; 
-  height: 12px; 
-  border-radius: 50%; 
-  display: inline-block; 
-  flex-shrink: 0;
-}
-.countBadge { 
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-  color: white; 
-  padding: 6px 14px; 
-  border-radius: 20px; 
-  font-weight: 800; 
-  font-size: 14px;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-.countBadge.high { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3); }
-.countBadge.medium { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3); }
-.countBadge.low { background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3); }
-.categoryTag { 
-  background: #f3f4f6; 
-  color: #4b5563; 
-  padding: 4px 10px; 
-  border-radius: 12px; 
-  font-size: 11px; 
-  font-weight: 600;
-  border: 1px solid #e5e7eb;
-}
-.municipalityTag { 
-  background: #ede9fe; 
-  color: #7c3aed; 
-  padding: 4px 10px; 
-  border-radius: 12px; 
-  font-size: 11px; 
-  font-weight: 600;
-  border: 1px solid #ddd6fe;
-}
-.gridStats { 
-  display: flex; 
-  gap: 15px; 
-  margin-top: 15px; 
-  padding-top: 15px; 
-  border-top: 2px solid #e5e7eb; 
-}
-.gridStat { 
-  flex: 1; 
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%); 
-  padding: 12px; 
-  border-radius: 12px; 
-  text-align: center; 
-}
-.gridStatLabel { 
-  font-size: 11px; 
-  color: #6b7280; 
-  margin-bottom: 4px; 
-  font-weight: 600;
-}
-.gridStatValue { 
-  font-size: 20px; 
-  font-weight: 800; 
-  color: #1f2937;
-}
-
-/* أنماط الرسم البياني الجانبي المحسن */
+/* أنماط الرسم البياني الجانبي */
 .chartSidebar {
   position: absolute;
   top: 100px;
@@ -243,20 +102,6 @@ button:active { transform: translateY(0); }
 <div id="loading" class="loadingOverlay" style="display: none;">جاري التحميل...<div class="spinner"></div></div>
 
 <div class="mainLayout" id="mainLayout">
-  <div class="sidePanel" id="sidePanel">
-    <div class="sideHeader">
-      <div class="sideTitle" id="panelTitle">ملخص حسب الفلتر</div>
-      <div class="sideSub" id="panelSubTitle">استورد ملف Excel ثم اختر البلدية والفلترة</div>
-    </div>
-    <div class="sideBody" id="sideBody">
-      <div class="statGrid" id="statGrid">
-        <div class="statCard"><div class="statLabel">عدد البلاغات</div><div class="statValue" id="totalCount">0</div></div>
-        <div class="statCard"><div class="statLabel">إجمالي التصنيفات</div><div class="statValue" id="totalTypes">0</div></div>
-      </div>
-      <div class="chartCard"><div class="cardTitle">📊 الرسم البياني</div><canvas id="sideChart"></canvas></div>
-    </div>
-  </div>
-
   <div class="mapSection" id="mapSection">
     <div class="topPanel">
       <div class="group"><input id="searchBox" placeholder="🔍 ابحث عن حي أو شارع..."></div>
@@ -282,46 +127,8 @@ button:active { transform: translateY(0); }
       <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورة</button></div>
     </div>
     <div id="map"></div>
-    
-    <!-- الجدول الشبكي الجديد -->
-    <div id="gridTableContainer" class="gridTableContainer">
-      <div class="gridTableHeader">
-        <div class="gridTableTitle">📋 جدول الأحياء</div>
-        <div style="display: flex; gap: 10px;">
-          <span id="gridFilterBadge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;">الكل</span>
-        </div>
-      </div>
-      <div class="gridTableScroll">
-        <table class="gridTable" id="gridTable">
-          <thead>
-            <tr>
-              <th>الحي</th>
-              <th>البلدية</th>
-              <th>البلاغات</th>
-              <th>أعلى تصنيف</th>
-              <th>التصنيفات</th>
-            </tr>
-          </thead>
-          <tbody id="gridTableBody"></tbody>
-        </table>
-      </div>
-      <div class="gridStats">
-        <div class="gridStat">
-          <div class="gridStatLabel">إجمالي البلاغات</div>
-          <div class="gridStatValue" id="gridTotalCount">0</div>
-        </div>
-        <div class="gridStat">
-          <div class="gridStatLabel">عدد الأحياء</div>
-          <div class="gridStatValue" id="gridDistrictCount">0</div>
-        </div>
-        <div class="gridStat">
-          <div class="gridStatLabel">المتوسط</div>
-          <div class="gridStatValue" id="gridAvgCount">0</div>
-        </div>
-      </div>
-    </div>
 
-    <!-- الرسم البياني الجانبي المحسن -->
+    <!-- الرسم البياني الجانبي -->
     <div id="chartSidebar" class="chartSidebar">
       <div class="chartSidebarHeader">
         <div class="chartSidebarTitle">📊 تحليل التصنيفات</div>
@@ -352,7 +159,7 @@ button:active { transform: translateY(0); }
 </div>
 
 <script>
-let map, districts = {}, polygons = [], pointMarkers = [], overlays = [], infoWindows = [], currentFilter = "all", selectedDistrict = "", selectedMunicipality = "", drawingManager = null, isDrawingMode = false, manualZones = [], overlayByKey = {}, autocomplete;
+let map, districts = {}, polygons = [], gridMarkers = [], overlays = [], infoWindows = [], currentFilter = "all", selectedDistrict = "", selectedMunicipality = "", drawingManager = null, isDrawingMode = false, manualZones = [], overlayByKey = {}, autocomplete;
 let categoryBarChart = null, categoryPieChart = null, categoryDoughnutChart = null;
 const COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140", "#30cfd0", "#330867", "#a8edea", "#fed6e3", "#d299c2", "#fef9d7"];
 
@@ -501,7 +308,6 @@ function processExcelData(rows) {
   fillMunicipalityList();
   fillDistrictList();
   drawDistricts();
-  updateGridTable();
 }
 
 function fillMunicipalityList() {
@@ -540,7 +346,6 @@ function setMunicipalityFilter(name) {
   fillDistrictList();
   clearMap();
   drawDistricts();
-  updateGridTable();
   updateChartSidebar();
 }
 
@@ -549,7 +354,6 @@ function setFilter(type) {
   selectedDistrict = document.getElementById("districtList").value || "";
   clearMap();
   drawDistricts();
-  updateGridTable();
   updateChartSidebar();
 }
 
@@ -558,7 +362,6 @@ function selectDistrict(key) {
   document.getElementById("districtList").value = selectedDistrict;
   clearMap();
   drawDistricts();
-  updateGridTable();
   updateChartSidebar();
 
   if (key && districts[key]) {
@@ -573,11 +376,11 @@ function closeAllInfoWindows() { infoWindows.forEach(w => w.close()); }
 
 function clearMap() {
   polygons.forEach(p => p.setMap(null));
-  pointMarkers.forEach(m => m.setMap(null));
+  gridMarkers.forEach(m => m.setMap(null));
   overlays.forEach(o => o.setMap(null));
   infoWindows.forEach(w => w.close());
   polygons = [];
-  pointMarkers = [];
+  gridMarkers = [];
   overlays = [];
   infoWindows = [];
   overlayByKey = {};
@@ -701,6 +504,299 @@ function getTopCategory(thirdObj) {
   return { name: entries[0][0], count: entries[0][1], total: total };
 }
 
+// توليد نقاط شبكية داخل المضلع
+function generateGridPoints(polygonPath, count, color) {
+  const bounds = new google.maps.LatLngBounds();
+  polygonPath.forEach(p => bounds.extend(p));
+  
+  const ne = bounds.getNorthEast();
+  const sw = bounds.getSouthWest();
+  
+  const latRange = ne.lat() - sw.lat();
+  const lngRange = ne.lng() - sw.lng();
+  
+  // حساب عدد الصفوف والأعمدة للشبكة
+  const area = latRange * lngRange;
+  const density = Math.sqrt(count / area);
+  const rows = Math.max(3, Math.ceil(latRange * density * 8));
+  const cols = Math.max(3, Math.ceil(lngRange * density * 8));
+  
+  const gridPoints = [];
+  const stepLat = latRange / rows;
+  const stepLng = lngRange / cols;
+  
+  // إنشاء مضلع للتحقق من النقاط الداخلية
+  const poly = new google.maps.Polygon({ paths: polygonPath });
+  
+  for (let i = 0; i <= rows; i++) {
+    for (let j = 0; j <= cols; j++) {
+      const lat = sw.lat() + (i * stepLat);
+      const lng = sw.lng() + (j * stepLng);
+      const point = new google.maps.LatLng(lat, lng);
+      
+      // التحقق من أن النقطة داخل المضلع
+      if (google.maps.geometry.poly.containsLocation(point, poly)) {
+        gridPoints.push({ lat, lng });
+      }
+    }
+  }
+  
+  // إذا كانت النقاط قليلة، نضيف نقاط إضافية
+  if (gridPoints.length < count / 2) {
+    for (let i = 0; i <= rows * 2; i++) {
+      for (let j = 0; j <= cols * 2; j++) {
+        const lat = sw.lat() + (i * stepLat / 2);
+        const lng = sw.lng() + (j * stepLng / 2);
+        const point = new google.maps.LatLng(lat, lng);
+        
+        if (google.maps.geometry.poly.containsLocation(point, poly)) {
+          const exists = gridPoints.some(p => Math.abs(p.lat - lat) < 0.0001 && Math.abs(p.lng - lng) < 0.0001);
+          if (!exists) gridPoints.push({ lat, lng });
+        }
+      }
+    }
+  }
+  
+  return gridPoints.slice(0, count * 2); // نأخذ ضعف العدد للتنوع
+}
+
+function createGridMarkers(gridPoints, color, count, isStrong) {
+  // اختيار نقاط عشوائية من الشبكة لتجنب التكرار
+  const selectedPoints = [];
+  const step = Math.max(1, Math.floor(gridPoints.length / count));
+  
+  for (let i = 0; i < gridPoints.length && selectedPoints.length < count; i += step) {
+    selectedPoints.push(gridPoints[i]);
+  }
+  
+  // إذا كان العدد غير كافٍ، نكمل من النقاط المتبقية
+  while (selectedPoints.length < count && selectedPoints.length < gridPoints.length) {
+    const remaining = gridPoints.filter(p => !selectedPoints.includes(p));
+    if (remaining.length === 0) break;
+    selectedPoints.push(remaining[0]);
+  }
+  
+  selectedPoints.forEach((p, index) => {
+    // تحديد الحجم والشكل حسب الأهمية
+    const isTop = index < count * 0.2; // أعلى 20% أكبر حجماً
+    const scale = isStrong ? (isTop ? 10 : 7) : (isTop ? 7 : 5);
+    const opacity = isTop ? 1.0 : 0.85;
+    
+    const marker = new google.maps.Marker({
+      position: p,
+      map: map,
+      zIndex: isTop ? 400 : 300,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: scale,
+        fillColor: color,
+        fillOpacity: opacity,
+        strokeColor: "#ffffff",
+        strokeWeight: isStrong ? 3 : 2
+      }
+    });
+    gridMarkers.push(marker);
+  });
+}
+
+function drawDistricts() {
+  let index = 0;
+  const visibleBounds = new google.maps.LatLngBounds();
+  let hasVisible = false;
+
+  for (let districtKey in districts) {
+    const originalData = districts[districtKey];
+    const count = originalData.points.length;
+    if (!passesFilter(districtKey, count)) continue;
+    if (count < 1) continue;
+
+    const data = districts[districtKey];
+    const baseColor = COLORS[index % COLORS.length];
+    const columnColor = getColumnColor(count);
+    const isSelected = (selectedDistrict && districtKey === selectedDistrict);
+    const isFilteredView = (currentFilter !== "all" || selectedDistrict !== "" || selectedMunicipality !== "");
+    index++;
+
+    const polygonFillOpacity = isSelected ? 0.35 : (isFilteredView ? 0.25 : 0.15);
+    const polygonStrokeWeight = isSelected ? 4 : 2;
+
+    const smoothBoundary = createSmoothBoundary(data.points);
+    if (smoothBoundary && smoothBoundary.length >= 3) {
+      const polygon = new google.maps.Polygon({
+        paths: smoothBoundary,
+        strokeColor: baseColor,
+        strokeOpacity: 1,
+        strokeWeight: polygonStrokeWeight,
+        fillColor: baseColor,
+        fillOpacity: polygonFillOpacity,
+        map: map,
+        zIndex: isSelected ? 100 : 50,
+        draggable: true
+      });
+
+      polygon.addListener("drag", () => {
+        const overlay = overlayByKey[districtKey];
+        if (!overlay) return;
+        const path = polygon.getPath();
+        let lat = 0, lng = 0;
+        for (let i = 0; i < path.getLength(); i++) {
+          lat += path.getAt(i).lat();
+          lng += path.getAt(i).lng();
+        }
+        lat /= path.getLength();
+        lng /= path.getLength();
+        overlay.position = { lat, lng };
+        overlay.draw();
+      });
+
+      polygon.addListener("click", (e) => {
+        closeAllInfoWindows();
+        const infoWindow = createDistrictInfoWindow(e.latLng || getDistrictCenter(data.points), originalData.name, count, originalData, baseColor);
+        infoWindow.open({ map: map });
+      });
+
+      polygons.push(polygon);
+      smoothBoundary.forEach(p => {
+        visibleBounds.extend({ lat: p.lat, lng: p.lng });
+        hasVisible = true;
+      });
+
+      // إنشاء نقاط شبكية داخل المضلع
+      const gridPoints = generateGridPoints(smoothBoundary.map(p => new google.maps.LatLng(p.lat, p.lng)), count, baseColor);
+      createGridMarkers(gridPoints, baseColor, count, isSelected || isFilteredView);
+    }
+
+    const center = getDistrictCenter(data.points);
+    visibleBounds.extend(center);
+    hasVisible = true;
+
+    const infoWindow = createDistrictInfoWindow(center, originalData.name, count, originalData, baseColor);
+    const overlay = createElegantOverlay(center, count, districtKey, columnColor, infoWindow);
+    overlayByKey[districtKey] = overlay;
+  }
+
+  if (hasVisible && !selectedDistrict) { map.fitBounds(visibleBounds); }
+  setTimeout(adjustOverlays, 400);
+}
+
+function createDistrictInfoWindow(position, districtName, count, data, color) {
+  const sortedThird = Object.entries(data.third).sort((a, b) => b[1] - a[1]);
+  let smallLines = "";
+  for (let i = 0; i < sortedThird.length && i < 5; i++) {
+    smallLines += `<div style="margin-top:4px; font-size:12px;">${escapeHtml(sortedThird[i][0])} : <b>${sortedThird[i][1]}</b></div>`;
+  }
+
+  const html = `<div style="font-family:'Segoe UI';min-width:200px;max-width:260px;padding:8px;">
+    <div style="font-weight:800;font-size:16px;color:${color};margin-bottom:8px;border-bottom:2px solid ${color};padding-bottom:6px;">${escapeHtml(districtName)}</div>
+    <div style="margin-bottom:6px;font-size:13px;color:#666;">البلدية: <b style="color:#333;">${escapeHtml(data.municipality)}</b></div>
+    <div style="font-size:14px;margin-bottom:8px;">عدد البلاغات: <b style="font-size:18px;color:${color};">${count}</b></div>
+    <div style="margin-top:10px;border-top:1px solid #eee;padding-top:8px;">
+      <div style="font-weight:700;font-size:12px;color:#888;margin-bottom:4px;">التصنيفات:</div>
+      ${smallLines || '<div style="color:#999;font-size:12px;">لا توجد تصنيفات</div>'}
+    </div>
+  </div>`;
+
+  const win = new google.maps.InfoWindow({ content: html, position: position, maxWidth: 300 });
+  infoWindows.push(win);
+  return win;
+}
+
+function createElegantOverlay(position, count, districtKey, color, infoWindow) {
+  class ElegantOverlay extends google.maps.OverlayView {
+    constructor(pos) {
+      super();
+      this.position = pos;
+      this.div = null;
+      this.isDragging = false;
+    }
+
+    onAdd() {
+      const data = districts[districtKey];
+      this.div = document.createElement("div");
+      this.div.style.cssText = "position:absolute;transform:translate(-50%,-100%);pointer-events:auto;display:flex;flex-direction:column;align-items:center;user-select:none;cursor:grab;z-index:250;touch-action:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.2));";
+
+      this.div.addEventListener("pointerdown", (e) => {
+        this.isDragging = true;
+        this.div.setPointerCapture(e.pointerId);
+        this.div.style.cursor = "grabbing";
+        const rect = this.div.getBoundingClientRect();
+        this.offsetX = e.clientX - rect.left;
+        this.offsetY = e.clientY - rect.top;
+      });
+
+      this.div.addEventListener("pointermove", (e) => {
+        if (!this.isDragging) return;
+        const mapRect = document.getElementById("map").getBoundingClientRect();
+        const x = e.clientX - mapRect.left - this.offsetX + (this.div.offsetWidth / 2);
+        const y = e.clientY - mapRect.top - this.offsetY + (this.div.offsetHeight / 2);
+        const projection = this.getProjection();
+        if (!projection) return;
+        const latLng = projection.fromDivPixelToLatLng(new google.maps.Point(x, y));
+        if (!latLng) return;
+        this.position = latLng;
+        this.draw();
+      });
+
+      const stopDrag = () => {
+        this.isDragging = false;
+        this.div.style.cursor = "grab";
+      };
+      this.div.addEventListener("pointerup", stopDrag);
+      this.div.addEventListener("pointercancel", stopDrag);
+
+      this.countBadge = document.createElement("div");
+      this.countBadge.style.cssText = `min-width:46px;height:32px;padding:0 12px;border-radius:50px;background:linear-gradient(135deg,${color} 0%,${adjustColor(color,-20)} 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;box-shadow:0 4px 12px rgba(0,0,0,0.25);border:2px solid rgba(255,255,255,0.3);`;
+      this.countBadge.textContent = count;
+
+      this.nameChip = document.createElement("div");
+      this.nameChip.style.cssText = `margin-top:6px;padding:6px 12px;border-radius:50px;background:#ffffff;font-size:12px;font-weight:700;color:#1f2937;border:2px solid ${color};box-shadow:0 4px 12px rgba(0,0,0,0.15);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;`;
+      this.nameChip.textContent = data.name;
+      this.nameChip.title = data.name;
+
+      this.div.appendChild(this.countBadge);
+      this.div.appendChild(this.nameChip);
+
+      this.div.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeAllInfoWindows();
+        infoWindow.open({ map: map });
+      });
+
+      this.getPanes().overlayMouseTarget.appendChild(this.div);
+    }
+
+    draw() {
+      const projection = this.getProjection();
+      if (!projection || !this.div) return;
+      const pos = projection.fromLatLngToDivPixel(new google.maps.LatLng(this.position.lat, this.position.lng));
+      if (!pos) return;
+      this.div.style.left = pos.x + "px";
+      this.div.style.top = pos.y + "px";
+    }
+
+    onRemove() {
+      if (this.div && this.div.parentNode) this.div.parentNode.removeChild(this.div);
+      this.div = null;
+    }
+  }
+
+  const overlay = new ElegantOverlay(position);
+  overlay.setMap(map);
+  overlays.push(overlay);
+  return overlay;
+}
+
+function adjustColor(color, amount) {
+  const num = parseInt(color.replace("#", ""), 16);
+  const amt = Math.round(2.55 * amount);
+  const R = (num >> 16) + amt;
+  const G = (num >> 8 & 0x00FF) + amt;
+  const B = (num & 0x0000FF) + amt;
+  return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+}
+
+function adjustOverlays() { overlays.forEach(o => { if (o.draw) o.draw(); }); }
+
 function getCurrentReportRows() {
   const rows = [];
   let colorIndex = 0;
@@ -725,49 +821,6 @@ function getCurrentReportRows() {
   return rows;
 }
 
-// تحديث الجدول الشبكي
-function updateGridTable() {
-  const rows = getCurrentReportRows();
-  const container = document.getElementById("gridTableContainer");
-  const tbody = document.getElementById("gridTableBody");
-  const filterBadge = document.getElementById("gridFilterBadge");
-  
-  if (rows.length === 0) {
-    container.style.display = "none";
-    return;
-  }
-  
-  container.style.display = "flex";
-  
-  // تحديث شارة الفلتر
-  const filterSelect = document.getElementById("filterSelect");
-  filterBadge.textContent = filterSelect.options[filterSelect.selectedIndex].text;
-  
-  // تحديث الجدول
-  tbody.innerHTML = rows.map((r, i) => {
-    const countClass = r.count > 200 ? 'high' : r.count > 100 ? 'medium' : 'low';
-    return `
-      <tr onclick="selectDistrict('${r.key}')" style="cursor: pointer;">
-        <td class="districtCell">
-          <span class="districtColor" style="background: ${r.color};"></span>
-          ${escapeHtml(r.district)}
-        </td>
-        <td><span class="municipalityTag">${escapeHtml(r.municipality)}</span></td>
-        <td><span class="countBadge ${countClass}">${r.count}</span></td>
-        <td><span class="categoryTag">${escapeHtml(r.topCategory)}</span></td>
-        <td><span class="categoryTag">${r.totalTypes}</span></td>
-      </tr>
-    `;
-  }).join('');
-  
-  // تحديث الإحصائيات
-  const totalCount = rows.reduce((sum, r) => sum + r.count, 0);
-  document.getElementById("gridTotalCount").textContent = totalCount.toLocaleString('ar-SA');
-  document.getElementById("gridDistrictCount").textContent = rows.length;
-  document.getElementById("gridAvgCount").textContent = Math.round(totalCount / rows.length).toLocaleString('ar-SA');
-}
-
-// تحديث الرسوم البيانية الجانبية
 function updateChartSidebar() {
   if (!document.getElementById("chartSidebar").classList.contains("visible")) return;
   
@@ -890,223 +943,6 @@ function updateChartSidebar() {
   });
 }
 
-function drawDistricts() {
-  let index = 0;
-  const visibleBounds = new google.maps.LatLngBounds();
-  let hasVisible = false;
-
-  for (let districtKey in districts) {
-    const originalData = districts[districtKey];
-    const count = originalData.points.length;
-    if (!passesFilter(districtKey, count)) continue;
-    if (count < 1) continue;
-
-    const data = districts[districtKey];
-    const baseColor = COLORS[index % COLORS.length];
-    const columnColor = getColumnColor(count);
-    const isSelected = (selectedDistrict && districtKey === selectedDistrict);
-    const isFilteredView = (currentFilter !== "all" || selectedDistrict !== "" || selectedMunicipality !== "");
-    index++;
-
-    const polygonFillOpacity = isSelected ? 0.45 : (isFilteredView ? 0.35 : 0.25);
-    const polygonStrokeWeight = isSelected ? 4 : 2;
-    const pointColor = isSelected ? "#00e5ff" : baseColor;
-    const pointStrong = isSelected || isFilteredView;
-
-    const smoothBoundary = createSmoothBoundary(data.points);
-    if (smoothBoundary && smoothBoundary.length >= 3) {
-      const polygon = new google.maps.Polygon({
-        paths: smoothBoundary,
-        strokeColor: baseColor,
-        strokeOpacity: 1,
-        strokeWeight: polygonStrokeWeight,
-        fillColor: baseColor,
-        fillOpacity: polygonFillOpacity,
-        map: map,
-        zIndex: isSelected ? 100 : 50,
-        draggable: true
-      });
-
-      polygon.addListener("drag", () => {
-        const overlay = overlayByKey[districtKey];
-        if (!overlay) return;
-        const path = polygon.getPath();
-        let lat = 0, lng = 0;
-        for (let i = 0; i < path.getLength(); i++) {
-          lat += path.getAt(i).lat();
-          lng += path.getAt(i).lng();
-        }
-        lat /= path.getLength();
-        lng /= path.getLength();
-        overlay.position = { lat, lng };
-        overlay.draw();
-      });
-
-      polygon.addListener("click", (e) => {
-        closeAllInfoWindows();
-        const infoWindow = createDistrictInfoWindow(e.latLng || getDistrictCenter(data.points), originalData.name, count, originalData, baseColor);
-        infoWindow.open({ map: map });
-      });
-
-      polygons.push(polygon);
-      smoothBoundary.forEach(p => {
-        visibleBounds.extend({ lat: p.lat, lng: p.lng });
-        hasVisible = true;
-      });
-    }
-
-    createPointMarkers(data.points, pointColor, pointStrong);
-
-    const center = getDistrictCenter(data.points);
-    visibleBounds.extend(center);
-    hasVisible = true;
-
-    const infoWindow = createDistrictInfoWindow(center, originalData.name, count, originalData, baseColor);
-    const overlay = createElegantOverlay(center, count, districtKey, columnColor, infoWindow);
-    overlayByKey[districtKey] = overlay;
-  }
-
-  if (hasVisible && !selectedDistrict) { map.fitBounds(visibleBounds); }
-  setTimeout(adjustOverlays, 400);
-}
-
-function createPointMarkers(points, color, isStrong) {
-  for (let p of points) {
-    const marker = new google.maps.Marker({
-      position: p,
-      map: map,
-      zIndex: isStrong ? 300 : 120,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: isStrong ? 6 : 4,
-        fillColor: color,
-        fillOpacity: 0.9,
-        strokeColor: "#ffffff",
-        strokeWeight: isStrong ? 2.5 : 1.5
-      }
-    });
-    pointMarkers.push(marker);
-  }
-}
-
-function createDistrictInfoWindow(position, districtName, count, data, color) {
-  const sortedThird = Object.entries(data.third).sort((a, b) => b[1] - a[1]);
-  let smallLines = "";
-  for (let i = 0; i < sortedThird.length && i < 5; i++) {
-    smallLines += `<div style="margin-top:4px; font-size:12px;">${escapeHtml(sortedThird[i][0])} : <b>${sortedThird[i][1]}</b></div>`;
-  }
-
-  const html = `<div style="font-family:'Segoe UI';min-width:200px;max-width:260px;padding:8px;">
-    <div style="font-weight:800;font-size:16px;color:${color};margin-bottom:8px;border-bottom:2px solid ${color};padding-bottom:6px;">${escapeHtml(districtName)}</div>
-    <div style="margin-bottom:6px;font-size:13px;color:#666;">البلدية: <b style="color:#333;">${escapeHtml(data.municipality)}</b></div>
-    <div style="font-size:14px;margin-bottom:8px;">عدد البلاغات: <b style="font-size:18px;color:${color};">${count}</b></div>
-    <div style="margin-top:10px;border-top:1px solid #eee;padding-top:8px;">
-      <div style="font-weight:700;font-size:12px;color:#888;margin-bottom:4px;">التصنيفات:</div>
-      ${smallLines || '<div style="color:#999;font-size:12px;">لا توجد تصنيفات</div>'}
-    </div>
-  </div>`;
-
-  const win = new google.maps.InfoWindow({ content: html, position: position, maxWidth: 300 });
-  infoWindows.push(win);
-  return win;
-}
-
-function createElegantOverlay(position, count, districtKey, color, infoWindow) {
-  class ElegantOverlay extends google.maps.OverlayView {
-    constructor(pos) {
-      super();
-      this.position = pos;
-      this.div = null;
-      this.isDragging = false;
-    }
-
-    onAdd() {
-      const data = districts[districtKey];
-      this.div = document.createElement("div");
-      this.div.style.cssText = "position:absolute;transform:translate(-50%,-100%);pointer-events:auto;display:flex;flex-direction:column;align-items:center;user-select:none;cursor:grab;z-index:250;touch-action:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.2));";
-
-      this.div.addEventListener("pointerdown", (e) => {
-        this.isDragging = true;
-        this.div.setPointerCapture(e.pointerId);
-        this.div.style.cursor = "grabbing";
-        const rect = this.div.getBoundingClientRect();
-        this.offsetX = e.clientX - rect.left;
-        this.offsetY = e.clientY - rect.top;
-      });
-
-      this.div.addEventListener("pointermove", (e) => {
-        if (!this.isDragging) return;
-        const mapRect = document.getElementById("map").getBoundingClientRect();
-        const x = e.clientX - mapRect.left - this.offsetX + (this.div.offsetWidth / 2);
-        const y = e.clientY - mapRect.top - this.offsetY + (this.div.offsetHeight / 2);
-        const projection = this.getProjection();
-        if (!projection) return;
-        const latLng = projection.fromDivPixelToLatLng(new google.maps.Point(x, y));
-        if (!latLng) return;
-        this.position = latLng;
-        this.draw();
-      });
-
-      const stopDrag = () => {
-        this.isDragging = false;
-        this.div.style.cursor = "grab";
-      };
-      this.div.addEventListener("pointerup", stopDrag);
-      this.div.addEventListener("pointercancel", stopDrag);
-
-      this.countBadge = document.createElement("div");
-      this.countBadge.style.cssText = `min-width:46px;height:32px;padding:0 12px;border-radius:50px;background:linear-gradient(135deg,${color} 0%,${adjustColor(color,-20)} 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;box-shadow:0 4px 12px rgba(0,0,0,0.25);border:2px solid rgba(255,255,255,0.3);`;
-      this.countBadge.textContent = count;
-
-      this.nameChip = document.createElement("div");
-      this.nameChip.style.cssText = `margin-top:6px;padding:6px 12px;border-radius:50px;background:#ffffff;font-size:12px;font-weight:700;color:#1f2937;border:2px solid ${color};box-shadow:0 4px 12px rgba(0,0,0,0.15);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;`;
-      this.nameChip.textContent = data.name;
-      this.nameChip.title = data.name;
-
-      this.div.appendChild(this.countBadge);
-      this.div.appendChild(this.nameChip);
-
-      this.div.addEventListener("click", (e) => {
-        e.stopPropagation();
-        closeAllInfoWindows();
-        infoWindow.open({ map: map });
-      });
-
-      this.getPanes().overlayMouseTarget.appendChild(this.div);
-    }
-
-    draw() {
-      const projection = this.getProjection();
-      if (!projection || !this.div) return;
-      const pos = projection.fromLatLngToDivPixel(new google.maps.LatLng(this.position.lat, this.position.lng));
-      if (!pos) return;
-      this.div.style.left = pos.x + "px";
-      this.div.style.top = pos.y + "px";
-    }
-
-    onRemove() {
-      if (this.div && this.div.parentNode) this.div.parentNode.removeChild(this.div);
-      this.div = null;
-    }
-  }
-
-  const overlay = new ElegantOverlay(position);
-  overlay.setMap(map);
-  overlays.push(overlay);
-  return overlay;
-}
-
-function adjustColor(color, amount) {
-  const num = parseInt(color.replace("#", ""), 16);
-  const amt = Math.round(2.55 * amount);
-  const R = (num >> 16) + amt;
-  const G = (num >> 8 & 0x00FF) + amt;
-  const B = (num & 0x0000FF) + amt;
-  return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
-}
-
-function adjustOverlays() { overlays.forEach(o => { if (o.draw) o.draw(); }); }
-
 function exportExcel() {
   showLoading(true);
   setTimeout(() => {
@@ -1139,12 +975,10 @@ function exportExcel() {
 async function downloadImage() {
   const panel = document.querySelector(".topPanel");
   const fab = document.querySelector(".fabWrap");
-  const gridTable = document.getElementById("gridTableContainer");
   const chartSidebar = document.getElementById("chartSidebar");
 
   panel.style.visibility = "hidden";
   if (fab) fab.style.visibility = "hidden";
-  if (gridTable) gridTable.style.visibility = "hidden";
   if (chartSidebar) chartSidebar.style.visibility = "hidden";
   showLoading(true);
 
@@ -1172,7 +1006,6 @@ async function downloadImage() {
   } finally {
     panel.style.visibility = "visible";
     if (fab) fab.style.visibility = "visible";
-    if (gridTable) gridTable.style.visibility = "visible";
     if (chartSidebar) chartSidebar.style.visibility = "visible";
     showLoading(false);
   }
@@ -1209,6 +1042,6 @@ function showNotification(message, type = "info") {
 }
 </script>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=drawing,places&callback=initMap&language=ar&region=SA" async defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=drawing,places,geometry&callback=initMap&language=ar&region=SA" async defer></script>
 </body>
 </html>
