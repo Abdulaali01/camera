@@ -1005,11 +1005,7 @@ async function downloadImage() {
     console.error(err);
     showNotification("فشل في حفظ الصورة", "error");
   } finally {
-    // إعادة إظهار النقاط الخضراء
-    overlays.forEach(o => {
-      if (o.div) o.div.style.display = "";
-    });
-
+    mapSection.classList.remove("exporting");
     panel.style.visibility = "visible";
     if (fab) fab.style.visibility = "visible";
     showLoading(false);
