@@ -132,7 +132,7 @@ button:active { transform: translateY(0); }
 <div id="loading" class="loadingOverlay" style="display: none;">جاري التحميل...<div class="spinner"></div></div>
 
 <div class="mainLayout">
-  <div class="sidePanel">
+  <div class="sidePanel" id="sidePanel">
     <div class="sideHeader">
       <div class="sideTitle" id="panelTitle">ملخص حسب الفلتر</div>
       <div class="sideSub" id="panelSubTitle">استورد ملف Excel ثم اختر البلدية والفلترة أو اضغط على حي في الخريطة.</div>
@@ -147,14 +147,14 @@ button:active { transform: translateY(0); }
     </div>
   </div>
 
-  <div class="mapSection">
+  <div class="mapSection" id="mapSection">
     <div class="topPanel">
       <div class="group"><input id="searchBox" placeholder="🔍 ابحث عن حي أو شارع..."></div>
       <div class="group"><span class="titleMini">الملف</span><input type="file" id="excelFile" class="fileInput" accept=".xlsx,.xls"><button onclick="importExcel()">📥 استيراد</button></div>
       <div class="group"><span class="titleMini">البلدية</span><select id="municipalityList" onchange="setMunicipalityFilter(this.value)"><option value="">🏛️ كل البلديات</option></select></div>
       <div class="group"><span class="titleMini">الفلترة</span><select id="filterSelect" onchange="setFilter(this.value)"><option value="all">📊 عرض الكل</option><option value="top3">🥇 أعلى 3</option><option value="top3_2">🥈 ثاني أعلى 3</option><option value="top3_3">🥉 ثالث أعلى 3</option><option value="top3_4">🏅 رابع أعلى 3</option><option value="200">🔥 أكثر من 200</option><option value="100_200">⚡ من 100 إلى 200</option><option value="100">💤 أقل من 100</option></select></div>
       <div class="group"><span class="titleMini">الأحياء</span><select id="districtList" onchange="selectDistrict(this.value)"><option value="">🏘️ كل الأحياء</option></select></div>
-      <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورة</button></div>
+      <div class="group"><button id="excelBtn" onclick="exportExcel()">📤 Excel</button><button onclick="downloadImage()">📷 صورتين</button></div>
     </div>
     <div id="map"></div>
     
@@ -805,22 +805,110 @@ function exportExcel() {
   }, 100);
 }
 
+// ===== دالة تصدير صورتين منفصلتين =====
 async function downloadImage() {
   const panel = document.querySelector(".topPanel");
   const fab = document.querySelector(".fabWrap");
+  const dateStr = new Date().toLocaleDateString('ar-SA');
+  
+  // إخفاء العناصر المؤقتة
   panel.style.visibility = "hidden";
   if (fab) fab.style.visibility = "hidden";
+  
   showLoading(true);
+  
   try {
+    // ===== الصورة الأولى: الخريطة =====
     google.maps.event.trigger(map, "resize");
-    await new Promise(r => setTimeout(r, 1000));
-    const canvas = await html2canvas(document.querySelector(".mainLayout"), { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff", logging: false, onclone: (clonedDoc) => { const clonedMap = clonedDoc.getElementById("map"); if (clonedMap) { clonedMap.style.height = "100vh"; } } });
-    const link = document.createElement("a");
-    link.download = `خريطة_البلاغات_${new Date().toLocaleDateString('ar-SA')}.png`;
-    link.href = canvas.toDataURL("image/png", 1.0);
-    link.click();
-    showNotification("تم حفظ الصورة بنجاح!", "success");
-  } catch (err) { console.error(err); showNotification("فشل في حفظ الصورة", "error"); } finally { panel.style.visibility = "visible"; if (fab) fab.style.visibility = "visible"; showLoading(false); }
+    await new Promise(r => setTimeout(r, 800));
+    
+    // إخفاء اللوحة الجانبية مؤقتاً
+    const sidePanel = document.getElementById("sidePanel");
+    sidePanel.style.display = "none";
+    
+    // توسيع الخريطة لتملأ الشاشة
+    const mapSection = document.getElementById("mapSection");
+    const originalMapWidth = mapSection.style.width;
+    mapSection.style.width = "100vw";
+    
+    await new Promise(r => setTimeout(r, 500));
+    
+    const mapCanvas = await html2canvas(document.body, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      x: 0,
+      y: 0,
+      width: window.innerWidth,
+      height: window.innerHeight
+    });
+    
+    // حفظ صورة الخريطة
+    const mapLink = document.createElement("a");
+    mapLink.download = `خريطة_البلاغات_${dateStr}.png`;
+    mapLink.href = mapCanvas.toDataURL("image/png", 1.0);
+    mapLink.click();
+    
+    // إعادة إظهار اللوحة الجانبية
+    sidePanel.style.display = "";
+    mapSection.style.width = originalMapWidth;
+    
+    await new Promise(r => setTimeout(r, 500));
+    
+    // ===== الصورة الثانية: اللوحة الجانبية =====
+    // إخفاء الخريطة والعناصر الأخرى
+    mapSection.style.visibility = "hidden";
+    document.querySelector(".fabWrap").style.visibility = "hidden";
+    
+    // توسيع اللوحة الجانبية
+    sidePanel.style.width = "100vw";
+    sidePanel.style.maxWidth = "none";
+    sidePanel.style.position = "fixed";
+    sidePanel.style.top = "0";
+    sidePanel.style.right = "0";
+    sidePanel.style.zIndex = "99999";
+    
+    await new Promise(r => setTimeout(r, 500));
+    
+    const panelCanvas = await html2canvas(sidePanel, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+      logging: false
+    });
+    
+    // حفظ صورة اللوحة
+    const panelLink = document.createElement("a");
+    panelLink.download = `إحصائيات_البلاغات_${dateStr}.png`;
+    panelLink.href = panelCanvas.toDataURL("image/png", 1.0);
+    panelLink.click();
+    
+    // إعادة كل شيء كما كان
+    sidePanel.style.width = "";
+    sidePanel.style.maxWidth = "";
+    sidePanel.style.position = "";
+    sidePanel.style.top = "";
+    sidePanel.style.right = "";
+    sidePanel.style.zIndex = "";
+    mapSection.style.visibility = "visible";
+    
+    showNotification("تم حفظ الصورتين بنجاح! 📸📸", "success");
+    
+  } catch (err) { 
+    console.error(err); 
+    showNotification("فشل في حفظ الصور", "error"); 
+  } finally { 
+    // إعادة إظهار كل العناصر
+    panel.style.visibility = "visible"; 
+    if (fab) fab.style.visibility = "visible";
+    document.getElementById("sidePanel").style.display = "";
+    document.getElementById("mapSection").style.visibility = "visible";
+    document.getElementById("mapSection").style.width = "";
+    showLoading(false); 
+  }
 }
 
 function escapeHtml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
