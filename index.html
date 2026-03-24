@@ -372,14 +372,25 @@ const COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe"
 const today = new Date();
 document.getElementById("reportDate").textContent = today.toLocaleDateString("ar-SA", { year: 'numeric', month: 'long', day: 'numeric' });
 
+let markers = [];
+
 function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
     center: { lat: 24.7136, lng: 46.6753 },
     zoom: 11,
     mapTypeId: "hybrid",
     mapTypeControl: true,
-    fullscreenControl: true
+    fullscreenControl: true,
+    streetViewControl: false
   });
+}
+
+function clearMarkers() {
+  markers.forEach(m => {
+    if (m.circle) m.circle.setMap(null);
+    if (m.label) m.label.setMap(null);
+  });
+  markers = [];
 }
 
 function importExcel() {
@@ -470,7 +481,7 @@ function updateReport() {
 
 function updateMap(data) {
   // مسح العلامات القديمة
-  map.setZoom(11);
+  clearMarkers();
 
   const bounds = new google.maps.LatLngBounds();
 
@@ -482,18 +493,37 @@ function updateMap(data) {
       center: { lat: d.lat, lng: d.lng },
       radius: 500 + (d.count * 50),
       fillColor: color,
-      fillOpacity: 0.5,
+      fillOpacity: 0.6,
       strokeColor: color,
-      strokeWeight: 2,
+      strokeWeight: 3,
       map: map
+    });
+
+    // علامة نصية
+    const label = new google.maps.Marker({
+      position: { lat: d.lat, lng: d.lng },
+      map: map,
+      label: {
+        text: d.count.toString(),
+        color: 'white',
+        fontSize: '14px',
+        fontWeight: 'bold'
+      },
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 0
+      }
     });
 
     // نافذة معلومات
     const info = new google.maps.InfoWindow({
-      content: `<div style="text-align:center;padding:10px;"><h3>${d.name}</h3><p>البلدية: ${d.municipality}</p><p style="font-size:24px;font-weight:bold;color:${color};">${d.count}</p></div>`
+      content: `<div style="text-align:center;padding:10px;direction:rtl;"><h3>${d.name}</h3><p>البلدية: ${d.municipality}</p><p style="font-size:24px;font-weight:bold;color:${color};">${d.count} بلاغ</p></div>`
     });
 
     circle.addListener('click', () => info.open(map, circle));
+    label.addListener('click', () => info.open(map, label));
+
+    markers.push({ circle, label });
     bounds.extend({ lat: d.lat, lng: d.lng });
   });
 
@@ -567,8 +597,8 @@ function exportReport() {
 }
 </script>
 
-<!-- 🔑 مفتاح Google Maps API - استبدل YOUR_API_KEY بمفتاحك -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=geometry&callback=initMap&language=ar&region=SA" async defer></script>
+<!-- 🔑 مفتاح Google Maps API - استبدل AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y بمفتاحك -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=geometry&callback=initMap&language=ar&region=SA" async defer></script>
 
 </body>
 </html>
