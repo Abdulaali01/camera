@@ -874,7 +874,7 @@ async function downloadImage() {
     google.maps.event.trigger(map, "resize");
     await new Promise(r => setTimeout(r, 500));
 
-    await exportProfessionalReport();
+    await exportSimpleTable();
 
     showNotification("تم حفظ الصورتين بنجاح!", "success");
   } catch (err) {
@@ -888,248 +888,86 @@ async function downloadImage() {
   }
 }
 
-async function exportProfessionalReport() {
+async function exportSimpleTable() {
   const rows = getCurrentReportRows();
-  const totalCount = document.getElementById("totalCount").textContent;
-  const totalTypes = document.getElementById("totalTypes").textContent;
-  const panelTitle = document.getElementById("panelTitle").textContent;
-  const panelSubTitle = document.getElementById("panelSubTitle").textContent;
-
-  let chartLabels = [];
-  let chartValues = [];
-  if (sideChart) {
-    chartLabels = sideChart.data.labels;
-    chartValues = sideChart.data.datasets[0].data;
-  }
-
+  const totalCount = rows.reduce((sum, r) => sum + r.count, 0);
+  
   const exportDiv = document.createElement("div");
-  exportDiv.style.cssText = "position:fixed;right:0;top:0;width:1200px;height:auto;min-height:100vh;background:#0f172a;z-index:99999;direction:rtl;padding:40px;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;";
+  exportDiv.style.cssText = "position:fixed;right:0;top:0;width:800px;height:auto;background:#ffffff;z-index:99999;direction:rtl;padding:30px;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;";
 
-  const headerSection = `
-    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:24px;padding:40px;margin-bottom:30px;box-shadow:0 25px 50px -12px rgba(102,126,234,0.4);position:relative;overflow:hidden;">
-      <div style="position:absolute;top:0;right:0;width:300px;height:300px;background:rgba(255,255,255,0.1);border-radius:50%;transform:translate(50%,-50%);"></div>
-      <div style="position:absolute;bottom:0;left:0;width:200px;height:200px;background:rgba(255,255,255,0.05);border-radius:50%;transform:translate(-30%,30%);"></div>
-      <div style="position:relative;z-index:1;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
-          <div>
-            <h1 style="margin:0;font-size:42px;font-weight:800;color:white;letter-spacing:-1px;">تقرير تحليل الأحياء</h1>
-            <p style="margin:12px 0 0;font-size:18px;color:rgba(255,255,255,0.85);font-weight:500;">${panelSubTitle}</p>
-          </div>
-          <div style="background:rgba(255,255,255,0.2);backdrop-filter:blur(10px);padding:16px 24px;border-radius:16px;border:1px solid rgba(255,255,255,0.3);">
-            <div style="font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:4px;">تاريخ التقرير</div>
-            <div style="font-size:16px;font-weight:700;color:white;">${new Date().toLocaleDateString('ar-SA')}</div>
-          </div>
-        </div>
-      </div>
+  const header = `
+    <div style="text-align:center;margin-bottom:25px;padding-bottom:20px;border-bottom:3px solid #667eea;">
+      <h1 style="margin:0 0 10px;font-size:28px;font-weight:800;color:#1f2937;">تقرير الأحياء</h1>
+      <p style="margin:0;font-size:14px;color:#6b7280;">${new Date().toLocaleDateString('ar-SA')} - إجمالي البلاغات: ${totalCount}</p>
     </div>
   `;
 
-  const statsSection = `
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:30px;">
-      <div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:20px;padding:28px;border:1px solid rgba(102,126,234,0.3);box-shadow:0 10px 40px rgba(0,0,0,0.3);position:relative;overflow:hidden;">
-        <div style="position:absolute;top:-20px;left:-20px;width:100px;height:100px;background:rgba(102,126,234,0.1);border-radius:50%;"></div>
-        <div style="font-size:14px;color:#94a3b8;margin-bottom:8px;font-weight:600;">إجمالي البلاغات</div>
-        <div style="font-size:48px;font-weight:800;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${totalCount}</div>
-        <div style="margin-top:8px;font-size:13px;color:#64748b;">بلاغ مسجل</div>
-      </div>
-      <div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:20px;padding:28px;border:1px solid rgba(16,185,129,0.3);box-shadow:0 10px 40px rgba(0,0,0,0.3);position:relative;overflow:hidden;">
-        <div style="position:absolute;top:-20px;left:-20px;width:100px;height:100px;background:rgba(16,185,129,0.1);border-radius:50%;"></div>
-        <div style="font-size:14px;color:#94a3b8;margin-bottom:8px;font-weight:600;">إجمالي التصنيفات</div>
-        <div style="font-size:48px;font-weight:800;color:#10b981;">${totalTypes}</div>
-        <div style="margin-top:8px;font-size:13px;color:#64748b;">تصنيف مختلف</div>
-      </div>
-      <div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:20px;padding:28px;border:1px solid rgba(245,158,11,0.3);box-shadow:0 10px 40px rgba(0,0,0,0.3);position:relative;overflow:hidden;">
-        <div style="position:absolute;top:-20px;left:-20px;width:100px;height:100px;background:rgba(245,158,11,0.1);border-radius:50%;"></div>
-        <div style="font-size:14px;color:#94a3b8;margin-bottom:8px;font-weight:600;">عدد الأحياء</div>
-        <div style="font-size:48px;font-weight:800;color:#f59e0b;">${rows.length}</div>
-        <div style="margin-top:8px;font-size:13px;color:#64748b;">حي مغطى</div>
-      </div>
-    </div>
-  `;
-
-  const tableRows = rows.length ? rows.map((r, i) => {
-    const rank = i + 1;
-    let rankBadge = '';
-    if (rank === 1) rankBadge = '<span style="background:linear-gradient(135deg,#fbbf24 0%,#f59e0b 100%);color:#1f2937;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;box-shadow:0 4px 12px rgba(245,158,11,0.4);">1</span>';
-    else if (rank === 2) rankBadge = '<span style="background:linear-gradient(135deg,#94a3b8 0%,#64748b 100%);color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;box-shadow:0 4px 12px rgba(100,116,139,0.4);">2</span>';
-    else if (rank === 3) rankBadge = '<span style="background:linear-gradient(135deg,#cd7f32 0%,#b45309 100%);color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;box-shadow:0 4px 12px rgba(180,83,9,0.4);">3</span>';
-    else rankBadge = `<span style="background:#1e293b;color:#94a3b8;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;border:2px solid #334155;">${rank}</span>`;
-    
-    const countColor = r.count > 200 ? '#ef4444' : r.count > 100 ? '#f59e0b' : '#10b981';
+  const tableRows = rows.map((r, i) => {
+    const bgColor = i % 2 === 0 ? '#ffffff' : '#f8fafc';
+    const countColor = r.count > 200 ? '#dc2626' : r.count > 100 ? '#f59e0b' : '#10b981';
     
     return `
-      <tr style="transition:all 0.3s;">
-        <td style="padding:20px 16px;border-bottom:1px solid rgba(148,163,184,0.1);">
-          <div style="display:flex;align-items:center;gap:12px;">
-            ${rankBadge}
-          </div>
+      <tr style="background:${bgColor};">
+        <td style="padding:15px 20px;border-bottom:1px solid #e5e7eb;font-size:16px;font-weight:700;color:#1f2937;text-align:right;">
+          ${escapeHtml(r.district)}
         </td>
-        <td style="padding:20px 16px;border-bottom:1px solid rgba(148,163,184,0.1);">
-          <div style="font-size:16px;font-weight:700;color:#f1f5f9;">${escapeHtml(r.municipality)}</div>
-        </td>
-        <td style="padding:20px 16px;border-bottom:1px solid rgba(148,163,184,0.1);">
-          <div style="font-size:16px;font-weight:700;color:#f8fafc;">${escapeHtml(r.district)}</div>
-        </td>
-        <td style="padding:20px 16px;border-bottom:1px solid rgba(148,163,184,0.1);text-align:center;">
-          <span style="background:${countColor}20;color:${countColor};padding:10px 20px;border-radius:50px;font-weight:800;font-size:18px;border:2px solid ${countColor}40;display:inline-block;min-width:80px;">${r.count}</span>
-        </td>
-        <td style="padding:20px 16px;border-bottom:1px solid rgba(148,163,184,0.1);">
-          <div style="font-size:15px;color:#e2e8f0;font-weight:600;">${escapeHtml(r.topCategory)}</div>
-        </td>
-        <td style="padding:20px 16px;border-bottom:1px solid rgba(148,163,184,0.1);text-align:center;">
-          <span style="background:linear-gradient(135deg,#667eea20 0%,#764ba220 100%);color:#a5b4fc;padding:8px 16px;border-radius:12px;font-weight:700;font-size:14px;border:1px solid rgba(102,126,234,0.3);">${r.topCount}</span>
+        <td style="padding:15px 20px;border-bottom:1px solid #e5e7eb;text-align:center;width:120px;">
+          <span style="background:${countColor}15;color:${countColor};padding:8px 16px;border-radius:20px;font-weight:800;font-size:18px;border:2px solid ${countColor}30;">
+            ${r.count}
+          </span>
         </td>
       </tr>
     `;
-  }).join('') : `
-    <tr>
-      <td colspan="6" style="padding:60px;text-align:center;">
-        <div style="color:#64748b;font-size:18px;">
-          <div style="font-size:48px;margin-bottom:16px;">📭</div>
-          لا توجد بيانات مطابقة للفلترة الحالية
-        </div>
-      </td>
-    </tr>
+  }).join('');
+
+  const table = `
+    <table style="width:100%;border-collapse:collapse;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+      <thead>
+        <tr style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
+          <th style="padding:18px 20px;color:white;font-weight:700;font-size:16px;text-align:right;">اسم الحي</th>
+          <th style="padding:18px 20px;color:white;font-weight:700;font-size:16px;text-align:center;width:120px;">البلاغات</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRows}
+      </tbody>
+    </table>
   `;
 
-  const tableSection = `
-    <div style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:24px;padding:32px;margin-bottom:30px;border:1px solid rgba(102,126,234,0.2);box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-        <h2 style="margin:0;font-size:24px;font-weight:700;color:#f8fafc;display:flex;align-items:center;gap:12px;">
-          <span style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;">📊</span>
-          تفاصيل الأحياء
-        </h2>
-        <div style="background:rgba(102,126,234,0.1);padding:8px 16px;border-radius:12px;border:1px solid rgba(102,126,234,0.2);">
-          <span style="color:#94a3b8;font-size:13px;">الترتيب حسب: </span>
-          <span style="color:#667eea;font-weight:700;font-size:13px;">عدد البلاغات ↓</span>
-        </div>
+  const summary = `
+    <div style="margin-top:25px;display:grid;grid-template-columns:repeat(3,1fr);gap:15px;">
+      <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:20px;border-radius:12px;text-align:center;color:white;">
+        <div style="font-size:12px;opacity:0.9;margin-bottom:5px;">إجمالي البلاغات</div>
+        <div style="font-size:28px;font-weight:800;">${totalCount}</div>
       </div>
-      <div style="overflow:hidden;border-radius:16px;border:1px solid rgba(148,163,184,0.1);">
-        <table style="width:100%;border-collapse:separate;border-spacing:0;">
-          <thead>
-            <tr style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
-              <th style="padding:20px 16px;color:white;font-weight:700;font-size:14px;text-align:center;width:80px;">الترتيب</th>
-              <th style="padding:20px 16px;color:white;font-weight:700;font-size:14px;text-align:right;">البلدية</th>
-              <th style="padding:20px 16px;color:white;font-weight:700;font-size:14px;text-align:right;">الحي</th>
-              <th style="padding:20px 16px;color:white;font-weight:700;font-size:14px;text-align:center;">البلاغات</th>
-              <th style="padding:20px 16px;color:white;font-weight:700;font-size:14px;text-align:right;">أعلى تصنيف</th>
-              <th style="padding:20px 16px;color:white;font-weight:700;font-size:14px;text-align:center;">العدد</th>
-            </tr>
-          </thead>
-          <tbody style="background:#0f172a;">
-            ${tableRows}
-          </tbody>
-        </table>
+      <div style="background:#f0f9ff;padding:20px;border-radius:12px;text-align:center;border:2px solid #0ea5e9;">
+        <div style="font-size:12px;color:#0ea5e9;margin-bottom:5px;">عدد الأحياء</div>
+        <div style="font-size:28px;font-weight:800;color:#0369a1;">${rows.length}</div>
+      </div>
+      <div style="background:#f0fdf4;padding:20px;border-radius:12px;text-align:center;border:2px solid #22c55e;">
+        <div style="font-size:12px;color:#22c55e;margin-bottom:5px;">متوسط البلاغات</div>
+        <div style="font-size:28px;font-weight:800;color:#15803d;">${Math.round(totalCount / rows.length) || 0}</div>
       </div>
     </div>
   `;
 
-  let chartSection = '';
-  if (chartLabels.length > 0) {
-    chartSection = `
-      <div style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:24px;padding:32px;border:1px solid rgba(102,126,234,0.2);box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
-        <h2 style="margin:0 0 24px;font-size:24px;font-weight:700;color:#f8fafc;display:flex;align-items:center;gap:12px;">
-          <span style="background:linear-gradient(135deg,#10b981 0%,#059669 100%);width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;">📈</span>
-          تحليل التصنيفات - أعلى 10
-        </h2>
-        <div style="height:400px;position:relative;">
-          <canvas id="exportChart"></canvas>
-        </div>
-      </div>
-    `;
-  }
-
-  const footerSection = `
-    <div style="margin-top:40px;padding-top:30px;border-top:1px solid rgba(148,163,184,0.2);display:flex;justify-content:space-between;align-items:center;color:#64748b;font-size:13px;">
-      <div>تم إنشاء هذا التقرير تلقائياً بواسطة نظام تحليل الأحياء</div>
-      <div style="display:flex;gap:20px;">
-        <span>⏰ ${new Date().toLocaleTimeString('ar-SA')}</span>
-        <span>📅 ${new Date().toLocaleDateString('ar-SA')}</span>
-      </div>
-    </div>
-  `;
-
-  exportDiv.innerHTML = headerSection + statsSection + tableSection + chartSection + footerSection;
+  exportDiv.innerHTML = header + table + summary;
   document.body.appendChild(exportDiv);
 
-  if (chartLabels.length > 0) {
-    const ctx = document.getElementById("exportChart").getContext("2d");
-    new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: chartLabels,
-        datasets: [{
-          label: "العدد",
-          data: chartValues,
-          backgroundColor: chartValues.map((_,i) => {
-            const colors = ["#667eea","#764ba2","#f093fb","#f5576c","#4facfe","#00f2fe","#43e97b","#38f9d7","#fa709a","#fee140"];
-            return colors[i % colors.length];
-          }),
-          borderColor: "transparent",
-          borderWidth: 0,
-          borderRadius: 12,
-          borderSkipped: false,
-          maxBarThickness: 60
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: "rgba(15,23,42,0.95)",
-            titleColor: "#f8fafc",
-            bodyColor: "#e2e8f0",
-            titleFont: { size: 16, family: "Segoe UI", weight: "700" },
-            bodyFont: { size: 14, family: "Segoe UI" },
-            padding: 16,
-            cornerRadius: 12,
-            displayColors: false,
-            borderColor: "rgba(102,126,234,0.3)",
-            borderWidth: 1
-          }
-        },
-        scales: {
-          x: {
-            ticks: {
-              font: { size: 13, family: "Segoe UI", weight: "600" },
-              color: "#94a3b8",
-              maxRotation: 45,
-              minRotation: 45
-            },
-            grid: { display: false, drawBorder: false }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              font: { size: 12, family: "Segoe UI" },
-              color: "#64748b",
-              padding: 10,
-              callback: function(value) { return value.toLocaleString('ar-SA'); }
-            },
-            grid: { color: "rgba(148,163,184,0.1)", drawBorder: false }
-          }
-        },
-        animation: { duration: 0 }
-      }
-    });
-  }
-
-  await new Promise(r => setTimeout(r, 800));
+  await new Promise(r => setTimeout(r, 500));
 
   const canvas = await html2canvas(exportDiv, {
     scale: 2,
     useCORS: true,
     allowTaint: true,
-    backgroundColor: "#0f172a",
+    backgroundColor: "#ffffff",
     logging: false,
-    windowWidth: 1200,
+    width: 800,
     height: exportDiv.scrollHeight
   });
 
   const link = document.createElement("a");
-  link.download = `تقرير_الأحياء_${new Date().toLocaleDateString('ar-SA')}.png`;
+  link.download = `جدول_الأحياء_${new Date().toLocaleDateString('ar-SA')}.png`;
   link.href = canvas.toDataURL("image/png", 1.0);
   link.click();
 
