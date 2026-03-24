@@ -61,39 +61,6 @@ button:active { transform: translateY(0); }
   display: none;
 }
 .chartSidebar.visible { display: block; }
-.chartSidebarHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #e5e7eb;
-}
-.chartSidebarTitle {
-  font-size: 16px;
-  font-weight: 800;
-  color: #1f2937;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.chartContainer {
-  margin-bottom: 20px;
-  padding: 15px;
-  background: #f8fafc;
-  border-radius: 16px;
-  border: 1px solid #e5e7eb;
-}
-.chartContainerTitle {
-  font-size: 13px;
-  font-weight: 700;
-  color: #4b5563;
-  margin-bottom: 12px;
-  text-align: center;
-}
-.categoryChart { height: 220px !important; }
-.pieChart { height: 200px !important; }
-.doughnutChart { height: 180px !important; }
 </style>
 </head>
 
@@ -128,26 +95,14 @@ button:active { transform: translateY(0); }
     </div>
     <div id="map"></div>
 
-    <!-- الرسم البياني الجانبي -->
     <div id="chartSidebar" class="chartSidebar">
-      <div class="chartSidebarHeader">
-        <div class="chartSidebarTitle">📊 تحليل التصنيفات</div>
-        <button onclick="toggleChartSidebar()" style="padding: 8px 12px; font-size: 12px; min-width: auto; background: #ef4444;">✕</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:15px;border-bottom:2px solid #e5e7eb;">
+        <div style="font-size:16px;font-weight:800;color:#1f2937;">📊 تحليل التصنيفات</div>
+        <button onclick="toggleChartSidebar()" style="padding:8px 12px;font-size:12px;min-width:auto;background:#ef4444;">✕</button>
       </div>
-      
-      <div class="chartContainer">
-        <div class="chartContainerTitle">توزيع التصنيفات الرئيسية</div>
-        <canvas id="categoryBarChart" class="categoryChart"></canvas>
-      </div>
-      
-      <div class="chartContainer">
-        <div class="chartContainerTitle">نسب التصنيفات</div>
-        <canvas id="categoryPieChart" class="pieChart"></canvas>
-      </div>
-      
-      <div class="chartContainer">
-        <div class="chartContainerTitle">Top 5 تصنيفات</div>
-        <canvas id="categoryDoughnutChart" class="doughnutChart"></canvas>
+      <div style="margin-bottom:20px;padding:15px;background:#f8fafc;border-radius:16px;border:1px solid #e5e7eb;">
+        <div style="font-size:13px;font-weight:700;color:#4b5563;margin-bottom:12px;text-align:center;">توزيع التصنيفات</div>
+        <canvas id="categoryBarChart" style="height:220px!important;"></canvas>
       </div>
     </div>
   </div>
@@ -160,7 +115,7 @@ button:active { transform: translateY(0); }
 
 <script>
 let map, districts = {}, polygons = [], gridMarkers = [], overlays = [], infoWindows = [], currentFilter = "all", selectedDistrict = "", selectedMunicipality = "", drawingManager = null, isDrawingMode = false, manualZones = [], overlayByKey = {}, autocomplete;
-let categoryBarChart = null, categoryPieChart = null, categoryDoughnutChart = null;
+let categoryBarChart = null;
 const COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140", "#30cfd0", "#330867", "#a8edea", "#fed6e3", "#d299c2", "#fef9d7"];
 
 function initMap() {
@@ -176,13 +131,6 @@ function initMap() {
     zoomControl: true,
     zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM }
   });
-  
-  // التأكد من تحميل مكتبة geometry
-  if (!google.maps.geometry) {
-    showNotification("جاري تحميل المكتبات...", "info");
-    setTimeout(initMap, 500);
-    return;
-  }
   
   initDrawing();
   initSearch();
@@ -512,8 +460,11 @@ function getTopCategory(thirdObj) {
   return { name: entries[0][0], count: entries[0][1], total: total };
 }
 
-// توليد نقاط شبكية داخل المضلع - طريقة محسنة
-function generateGridPointsInsidePolygon(polygonPath, count) {
+// ============================================
+// الدالة الأساسية لإنشاء الشبكة داخل المضلع
+// ============================================
+function createGridInsidePolygon(polygonPath, count, color) {
+  // الحصول على حدود المضلع
   const bounds = new google.maps.LatLngBounds();
   polygonPath.forEach(p => bounds.extend(p));
   
@@ -525,29 +476,38 @@ function generateGridPointsInsidePolygon(polygonPath, count) {
   const lngMin = sw.lng();
   const lngMax = ne.lng();
   
-  // حساب عدد الصفوف والأعمدة بناءً على العدد المطلوب
-  const aspectRatio = (lngMax - lngMin) / (latMax - latMin);
-  const totalCells = count * 2; // نضاعف للتأكد من وجود نقاط كافية
-  const rows = Math.ceil(Math.sqrt(totalCells / aspectRatio));
-  const cols = Math.ceil(totalCells / rows);
+  // حساب عدد الصفوف والأعمدة لجعل الشبكة مربعة الشكل تقريباً
+  const latRange = latMax - latMin;
+  const lngRange = lngMax - lngMin;
+  const aspectRatio = lngRange / latRange;
   
-  const stepLat = (latMax - latMin) / rows;
-  const stepLng = (lngMax - lngMin) / cols;
+  // عدد الخلايا الإجمالي (نضاعف للتأكد من تغطية المساحة)
+  const totalCellsNeeded = count * 3;
   
-  const gridPoints = [];
+  // حساب الصفوف والأعمدة
+  const cols = Math.ceil(Math.sqrt(totalCellsNeeded * aspectRatio));
+  const rows = Math.ceil(totalCellsNeeded / cols);
+  
+  const stepLat = latRange / rows;
+  const stepLng = lngRange / cols;
   
   // إنشاء مضلع للتحقق
   const poly = new google.maps.Polygon({ paths: polygonPath });
   
-  for (let i = 0; i <= rows; i++) {
-    for (let j = 0; j <= cols; j++) {
-      const lat = latMin + (i * stepLat) + (stepLat * 0.5); // منتصف الخلية
-      const lng = lngMin + (j * stepLng) + (stepLng * 0.5);
+  const gridPoints = [];
+  
+  // توليد نقاط الشبكة
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      // منتصف الخلية
+      const lat = latMin + (row * stepLat) + (stepLat / 2);
+      const lng = lngMin + (col * stepLng) + (stepLng / 2);
+      
       const point = new google.maps.LatLng(lat, lng);
       
       // التحقق من أن النقطة داخل المضلع
       if (google.maps.geometry.poly.containsLocation(point, poly)) {
-        gridPoints.push({ lat, lng });
+        gridPoints.push({ lat, lng, row, col });
       }
     }
   }
@@ -555,55 +515,40 @@ function generateGridPointsInsidePolygon(polygonPath, count) {
   return gridPoints;
 }
 
-// إنشاء علامات شبكية (مربعات)
-function createGridSquareMarkers(gridPoints, color, count, isStrong) {
-  // نأخذ أول 'count' نقطة من الشبكة
+// إنشاء علامات الشبكة (مربعات صغيرة)
+function createGridMarkers(gridPoints, color, count, isStrong) {
+  // نأخذ أول 'count' نقطة
   const selectedPoints = gridPoints.slice(0, Math.min(count, gridPoints.length));
   
   selectedPoints.forEach((p, index) => {
-    const isTop = index < count * 0.2;
-    const size = isStrong ? (isTop ? 12 : 8) : (isTop ? 8 : 6);
+    // حجم المربع يعتمد على الأهمية
+    const isTop = index < count * 0.1; // أعلى 10% أكبر
+    const size = isStrong ? (isTop ? 10 : 6) : (isTop ? 8 : 5);
     
-    // إنشاء مربع بدلاً من دائرة
+    // إنشاء مربع باستخدام SVG path
+    const halfSize = size / 2;
+    const squarePath = `M ${-halfSize},${-halfSize} L ${halfSize},${-halfSize} L ${halfSize},${halfSize} L ${-halfSize},${halfSize} Z`;
+    
     const marker = new google.maps.Marker({
       position: p,
       map: map,
-      zIndex: isTop ? 400 : 300,
+      zIndex: isTop ? 500 : 400,
       icon: {
-        path: `M -${size/2},-${size/2} L ${size/2},-${size/2} L ${size/2},${size/2} L -${size/2},${size/2} Z`,
+        path: squarePath,
         fillColor: color,
-        fillOpacity: isTop ? 1.0 : 0.85,
+        fillOpacity: isTop ? 1.0 : 0.9,
         strokeColor: "#ffffff",
         strokeWeight: isStrong ? 2 : 1,
-        anchor: new google.maps.Point(0, 0)
+        anchor: new google.maps.Point(0, 0),
+        scale: 1
       }
     });
     gridMarkers.push(marker);
   });
   
-  // إذا كانت النقاط أقل من المطلوب، نضيف نقاط عشوائية داخل المضلع
+  // إذا لم تكن النقاط كافية، نكمل بالنقاط الأصلية
   if (selectedPoints.length < count) {
-    const remaining = count - selectedPoints.length;
-    for (let i = 0; i < remaining; i++) {
-      // نضيف نقاط عشوائية من النقاط الأصلية
-      const randomPoint = gridPoints[Math.floor(Math.random() * gridPoints.length)];
-      if (randomPoint) {
-        const marker = new google.maps.Marker({
-          position: randomPoint,
-          map: map,
-          zIndex: 300,
-          icon: {
-            path: `M -4,-4 L 4,-4 L 4,4 L -4,4 Z`,
-            fillColor: color,
-            fillOpacity: 0.7,
-            strokeColor: "#ffffff",
-            strokeWeight: 1,
-            anchor: new google.maps.Point(0, 0)
-          }
-        });
-        gridMarkers.push(marker);
-      }
-    }
+    console.warn(`الحي يحتاج ${count} نقطة لكن الشبكة تحتوي على ${selectedPoints.length} فقط`);
   }
 }
 
@@ -672,9 +617,11 @@ function drawDistricts() {
         hasVisible = true;
       });
 
-      // إنشاء النقاط الشبكية داخل المضلع
-      const gridPoints = generateGridPointsInsidePolygon(pathLatLng, count);
-      createGridSquareMarkers(gridPoints, baseColor, count, isSelected || isFilteredView);
+      // ============================================
+      // إنشاء الشبكة داخل المضلع
+      // ============================================
+      const gridPoints = createGridInsidePolygon(pathLatLng, count, baseColor);
+      createGridMarkers(gridPoints, baseColor, count, isSelected || isFilteredView);
     }
 
     const center = getDistrictCenter(data.points);
@@ -849,12 +796,10 @@ function updateChartSidebar() {
   
   const sortedCategories = Object.entries(allCategories).sort((a, b) => b[1] - a[1]);
   const topCategories = sortedCategories.slice(0, 10);
-  const top5Categories = sortedCategories.slice(0, 5);
   
   const labels = topCategories.map(x => x[0]);
   const values = topCategories.map(x => x[1]);
   
-  // رسم بياني عمودي
   const barCtx = document.getElementById("categoryBarChart").getContext("2d");
   if (categoryBarChart) categoryBarChart.destroy();
   
@@ -893,61 +838,6 @@ function updateChartSidebar() {
           beginAtZero: true,
           ticks: { font: { size: 11 } },
           grid: { color: 'rgba(0,0,0,0.05)' }
-        }
-      }
-    }
-  });
-  
-  // رسم بياني دائري
-  const pieCtx = document.getElementById("categoryPieChart").getContext("2d");
-  if (categoryPieChart) categoryPieChart.destroy();
-  
-  categoryPieChart = new Chart(pieCtx, {
-    type: 'pie',
-    data: {
-      labels: labels.slice(0, 8),
-      datasets: [{
-        data: values.slice(0, 8),
-        backgroundColor: COLORS.slice(0, 8),
-        borderWidth: 2,
-        borderColor: '#ffffff'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { font: { size: 10 }, boxWidth: 12 }
-        }
-      }
-    }
-  });
-  
-  // رسم بياني دونات للـ Top 5
-  const doughnutCtx = document.getElementById("categoryDoughnutChart").getContext("2d");
-  if (categoryDoughnutChart) categoryDoughnutChart.destroy();
-  
-  categoryDoughnutChart = new Chart(doughnutCtx, {
-    type: 'doughnut',
-    data: {
-      labels: top5Categories.map(x => x[0]),
-      datasets: [{
-        data: top5Categories.map(x => x[1]),
-        backgroundColor: COLORS.slice(0, 5),
-        borderWidth: 2,
-        borderColor: '#ffffff',
-        cutout: '60%'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'right',
-          labels: { font: { size: 11 }, boxWidth: 12 }
         }
       }
     }
@@ -1025,7 +915,7 @@ async function downloadImage() {
 function escapeHtml(text) {
   if (!text) return "";
   return text.toString()
-    .replace(/&/g, "&amp;")
+    .replace(/&&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
