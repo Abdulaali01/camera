@@ -6,28 +6,15 @@
 <title>تحليل الأحياء + الأعمدة على الخريطة</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
 * { box-sizing: border-box; }
 body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; overflow: hidden; }
 .mainLayout { display: flex; width: 100%; height: 100vh; }
-.sidePanel { width: 380px; min-width: 380px; max-width: 380px; height: 100vh; background: #ffffff; border-left: 1px solid #e1e4e8; box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08); display: flex; flex-direction: column; overflow: hidden; z-index: 100; }
-.sideHeader { padding: 20px; border-bottom: 1px solid #e1e4e8; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-.sideTitle { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: white; }
-.sideSub { font-size: 13px; color: rgba(255, 255, 255, 0.9); line-height: 1.5; }
-.sideBody { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; flex: 1; }
-.statGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.statCard { background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%); border: 1px solid #d1d5db; border-radius: 16px; padding: 16px; transition: transform 0.2s, box-shadow 0.2s; }
-.statCard:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
-.statLabel { font-size: 12px; color: #6b7280; margin-bottom: 6px; font-weight: 600; }
-.statValue { font-size: 26px; font-weight: 800; color: #1f2937; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.chartCard { background: #ffffff; border: 1px solid #e1e4e8; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
-.cardTitle { font-size: 14px; font-weight: 700; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-#sideChart { width: 100% !important; height: 220px !important; }
-.emptyBox { font-size: 14px; color: #6b7280; line-height: 1.8; text-align: center; padding: 20px; background: #f9fafb; border-radius: 12px; border: 2px dashed #e5e7eb; }
-.mapSection { position: relative; flex: 1; height: 100vh; overflow: hidden; }
+.sidePanel { display: none !important; }
+.mapSection { position: relative; flex: 1; height: 100vh; width: 100%; overflow: hidden; }
 #map { width: 100%; height: 100vh; }
 .topPanel { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12); padding: 12px 16px; z-index: 1000; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 340px; max-width: 95%; border: 1px solid rgba(255, 255, 255, 0.3); }
 .topPanel .group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -61,7 +48,7 @@ button:active { transform: translateY(0); }
   position: absolute; 
   bottom: 20px; 
   left: 20px; 
-  right: 420px; 
+  right: 20px; 
   background: rgba(255, 255, 255, 0.98); 
   backdrop-filter: blur(15px); 
   border-radius: 20px; 
@@ -70,7 +57,7 @@ button:active { transform: translateY(0); }
   z-index: 1000; 
   max-height: 350px; 
   overflow: hidden;
-  display: flex;
+  display: none;
   flex-direction: column;
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
@@ -202,7 +189,7 @@ button:active { transform: translateY(0); }
   position: absolute;
   top: 100px;
   left: 20px;
-  width: 350px;
+  width: 380px;
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(15px);
   border-radius: 20px;
@@ -245,14 +232,9 @@ button:active { transform: translateY(0); }
   margin-bottom: 12px;
   text-align: center;
 }
-.categoryChart { height: 200px !important; }
-.pieChart { height: 180px !important; }
-.doughnutChart { height: 160px !important; }
-
-/* إخفاء اللوحة الجانبية */
-.sidePanel { display: none !important; }
-.mapSection { flex: 1 !important; width: 100% !important; }
-.gridTableContainer { right: 20px; }
+.categoryChart { height: 220px !important; }
+.pieChart { height: 200px !important; }
+.doughnutChart { height: 180px !important; }
 </style>
 </head>
 
@@ -302,7 +284,7 @@ button:active { transform: translateY(0); }
     <div id="map"></div>
     
     <!-- الجدول الشبكي الجديد -->
-    <div id="gridTableContainer" class="gridTableContainer" style="display: none;">
+    <div id="gridTableContainer" class="gridTableContainer">
       <div class="gridTableHeader">
         <div class="gridTableTitle">📋 جدول الأحياء</div>
         <div style="display: flex; gap: 10px;">
@@ -343,7 +325,7 @@ button:active { transform: translateY(0); }
     <div id="chartSidebar" class="chartSidebar">
       <div class="chartSidebarHeader">
         <div class="chartSidebarTitle">📊 تحليل التصنيفات</div>
-        <button onclick="toggleChartSidebar()" style="padding: 8px 12px; font-size: 12px; min-width: auto;">✕</button>
+        <button onclick="toggleChartSidebar()" style="padding: 8px 12px; font-size: 12px; min-width: auto; background: #ef4444;">✕</button>
       </div>
       
       <div class="chartContainer">
@@ -370,7 +352,7 @@ button:active { transform: translateY(0); }
 </div>
 
 <script>
-let map, districts = {}, polygons = [], pointMarkers = [], overlays = [], infoWindows = [], currentFilter = "all", selectedDistrict = "", selectedMunicipality = "", sideChart = null, drawingManager = null, isDrawingMode = false, manualZones = [], overlayByKey = {}, autocomplete;
+let map, districts = {}, polygons = [], pointMarkers = [], overlays = [], infoWindows = [], currentFilter = "all", selectedDistrict = "", selectedMunicipality = "", drawingManager = null, isDrawingMode = false, manualZones = [], overlayByKey = {}, autocomplete;
 let categoryBarChart = null, categoryPieChart = null, categoryDoughnutChart = null;
 const COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140", "#30cfd0", "#330867", "#a8edea", "#fed6e3", "#d299c2", "#fef9d7"];
 
@@ -482,7 +464,6 @@ function processExcelData(rows) {
 
   districts = {};
   clearMap();
-  resetPanel();
 
   const bounds = new google.maps.LatLngBounds();
   let hasValidPoint = false;
@@ -722,6 +703,7 @@ function getTopCategory(thirdObj) {
 
 function getCurrentReportRows() {
   const rows = [];
+  let colorIndex = 0;
   for (let key in districts) {
     const data = districts[key];
     const count = data.points.length;
@@ -734,8 +716,10 @@ function getCurrentReportRows() {
       topCategory: top.name,
       topCount: top.count,
       totalTypes: top.total,
-      color: COLORS[rows.length % COLORS.length]
+      color: COLORS[colorIndex % COLORS.length],
+      key: key
     });
+    colorIndex++;
   }
   rows.sort((a, b) => b.count - a.count || a.district.localeCompare(b.district, 'ar'));
   return rows;
@@ -763,7 +747,7 @@ function updateGridTable() {
   tbody.innerHTML = rows.map((r, i) => {
     const countClass = r.count > 200 ? 'high' : r.count > 100 ? 'medium' : 'low';
     return `
-      <tr onclick="selectDistrict('${makeDistrictKey(r.municipality, r.district)}')" style="cursor: pointer;">
+      <tr onclick="selectDistrict('${r.key}')" style="cursor: pointer;">
         <td class="districtCell">
           <span class="districtColor" style="background: ${r.color};"></span>
           ${escapeHtml(r.district)}
@@ -779,7 +763,7 @@ function updateGridTable() {
   // تحديث الإحصائيات
   const totalCount = rows.reduce((sum, r) => sum + r.count, 0);
   document.getElementById("gridTotalCount").textContent = totalCount.toLocaleString('ar-SA');
-  document.getElementById("gridDistrictCount').textContent = rows.length;
+  document.getElementById("gridDistrictCount").textContent = rows.length;
   document.getElementById("gridAvgCount").textContent = Math.round(totalCount / rows.length).toLocaleString('ar-SA');
 }
 
@@ -791,7 +775,7 @@ function updateChartSidebar() {
   const allCategories = {};
   
   rows.forEach(r => {
-    const district = districts[makeDistrictKey(r.municipality, r.district)];
+    const district = districts[r.key];
     if (district) {
       Object.entries(district.third).forEach(([cat, count]) => {
         allCategories[cat] = (allCategories[cat] || 0) + count;
@@ -805,8 +789,6 @@ function updateChartSidebar() {
   
   const labels = topCategories.map(x => x[0]);
   const values = topCategories.map(x => x[1]);
-  const pieLabels = topCategories.map(x => x[0]);
-  const pieValues = topCategories.map(x => x[1]);
   
   // رسم بياني عمودي
   const barCtx = document.getElementById("categoryBarChart").getContext("2d");
@@ -819,7 +801,7 @@ function updateChartSidebar() {
       datasets: [{
         label: 'عدد البلاغات',
         data: values,
-        backgroundColor: COLORS.slice(0, labels.length).map(c => c + '80'),
+        backgroundColor: COLORS.slice(0, labels.length).map(c => c + 'CC'),
         borderColor: COLORS.slice(0, labels.length),
         borderWidth: 2,
         borderRadius: 8
@@ -859,10 +841,10 @@ function updateChartSidebar() {
   categoryPieChart = new Chart(pieCtx, {
     type: 'pie',
     data: {
-      labels: pieLabels,
+      labels: labels.slice(0, 8),
       datasets: [{
-        data: pieValues,
-        backgroundColor: COLORS.slice(0, pieLabels.length),
+        data: values.slice(0, 8),
+        backgroundColor: COLORS.slice(0, 8),
         borderWidth: 2,
         borderColor: '#ffffff'
       }]
@@ -1125,11 +1107,6 @@ function adjustColor(color, amount) {
 
 function adjustOverlays() { overlays.forEach(o => { if (o.draw) o.draw(); }); }
 
-function resetPanel() {
-  // تم إخفاء اللوحة الجانبية
-  document.getElementById("gridTableContainer").style.display = "none";
-}
-
 function exportExcel() {
   showLoading(true);
   setTimeout(() => {
@@ -1146,26 +1123,6 @@ function exportExcel() {
       }
 
       const ws = XLSX.utils.aoa_to_sheet(dataToExport);
-      const headerStyle = {
-        font: { bold: true, color: { rgb: "FFFFFF" }, size: 12 },
-        fill: { fgColor: { rgb: "667EEA" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "000000" } },
-          bottom: { style: "thin", color: { rgb: "000000" } },
-          left: { style: "thin", color: { rgb: "000000" } },
-          right: { style: "thin", color: { rgb: "000000" } }
-        }
-      };
-
-      for (let i = 0; i < 6; i++) {
-        const cellRef = XLSX.utils.encode_cell({ r: 0, c: i });
-        if (!ws[cellRef]) ws[cellRef] = {};
-        ws[cellRef].s = headerStyle;
-      }
-
-      ws["!cols"] = [{ wch: 24 }, { wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 40 }, { wch: 16 }];
-
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "التقرير");
       XLSX.writeFile(wb, "تقرير_البلاغات.xlsx");
