@@ -1005,7 +1005,11 @@ async function downloadImage() {
     console.error(err);
     showNotification("فشل في حفظ الصورة", "error");
   } finally {
-    mapSection.classList.remove("exporting");
+    // إعادة إظهار النقاط
+    overlays.forEach(o => {
+      if (o.div) o.div.style.display = "";
+    });
+
     panel.style.visibility = "visible";
     if (fab) fab.style.visibility = "visible";
     showLoading(false);
