@@ -6,6 +6,7 @@
 <title>تقرير تحليل الأحياء</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -101,14 +102,31 @@ body {
   background: linear-gradient(135deg, #0b8f55 0%, #0a7a48 100%);
 }
 
+.controlPanel button.accent {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
 /* المحتوى */
 .reportContent {
   padding: 30px;
 }
 
-/* قسم الخريطة */
+/* قسم الخريطة - صفحة كاملة */
 .mapSection {
   margin-bottom: 30px;
+  page-break-after: always;
+  break-after: page;
+}
+
+.mapSection.fullPage {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.mapSection.fullPage #map {
+  flex: 1;
+  min-height: 600px;
 }
 
 .sectionTitle {
@@ -163,9 +181,10 @@ body {
   font-weight: 800;
 }
 
-/* الجدول */
+/* الجدول - مع تكرار العناوين */
 .tableSection {
   margin-bottom: 30px;
+  page-break-inside: auto;
 }
 
 .dataTable {
@@ -180,6 +199,7 @@ body {
 .dataTable thead {
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   color: white;
+  display: table-header-group;
 }
 
 .dataTable th {
@@ -202,6 +222,10 @@ body {
 
 .dataTable tr:nth-child(even) {
   background: #f1f5f9;
+}
+
+.dataTable tr {
+  page-break-inside: avoid;
 }
 
 .rank {
@@ -231,26 +255,85 @@ body {
 .countBadge.high { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
 .countBadge.medium { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
 
-/* الرسم البياني */
+/* الرسم البياني - صفحة كاملة واحترافية */
 .chartContainer {
   background: white;
-  padding: 25px;
+  padding: 40px;
   border-radius: 15px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   margin-bottom: 30px;
+  page-break-after: always;
+  break-after: page;
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .chartWrapper {
-  max-width: 500px;
+  max-width: 700px;
   margin: 0 auto;
+  position: relative;
+}
+
+.chartCenterText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.chartCenterText .total {
+  font-size: 48px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.chartCenterText .label {
+  font-size: 16px;
+  color: #64748b;
+  margin-top: 5px;
+}
+
+/* فلتر البحث */
+.filterContainer {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex: 1;
+  min-width: 300px;
+}
+
+.filterContainer input {
+  flex: 1;
 }
 
 /* للطباعة */
 @media print {
-  body { background: white; }
-  .reportContainer { box-shadow: none; }
+  body { background: white; padding: 0; }
+  .reportContainer { box-shadow: none; border-radius: 0; }
   .controlPanel { display: none; }
-  #map { height: 400px; }
+
+  .mapSection, .chartContainer, .tableSection {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .mapSection:last-child, .chartContainer:last-child {
+    page-break-after: auto;
+  }
+
+  #map { height: 90vh; }
+
+  .dataTable thead {
+    display: table-header-group;
+  }
+
+  .dataTable tr {
+    page-break-inside: avoid;
+  }
 }
 
 /* تحميل */
@@ -281,6 +364,35 @@ body {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* أزرار التصدير */
+.exportButtons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* قسم التصدير المخفي */
+.exportSection {
+  display: none;
+}
+
+/* تحسين الرسم البياني للطباعة */
+.chartPrintHeader {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.chartPrintHeader h2 {
+  font-size: 28px;
+  color: #1e293b;
+  margin-bottom: 10px;
+}
+
+.chartPrintHeader p {
+  color: #64748b;
+  font-size: 16px;
+}
 </style>
 </head>
 
@@ -309,8 +421,17 @@ body {
       <option value="all">جميع الأحياء</option>
     </select>
 
-    <button onclick="exportReport()" class="secondary">📤 تصدير التقرير</button>
-    <button onclick="window.print()">🖨️ طباعة</button>
+    <div class="filterContainer">
+      <input type="text" id="districtFilter" placeholder="🔍 البحث في الأحياء..." oninput="updateReport()">
+    </div>
+
+    <div class="exportButtons">
+      <button onclick="exportMap()" class="accent">🗺️ تصدير الخريطة</button>
+      <button onclick="exportChart()" class="accent">📊 تصدير الرسم</button>
+      <button onclick="exportTable()" class="accent">📋 تصدير الجدول</button>
+      <button onclick="exportFullReport()" class="secondary">📑 تصدير كامل</button>
+      <button onclick="window.print()">🖨️ طباعة</button>
+    </div>
   </div>
 
   <!-- المحتوى -->
@@ -332,21 +453,28 @@ body {
     </div>
 
     <!-- الخريطة -->
-    <div class="mapSection">
+    <div class="mapSection fullPage" id="mapSection">
       <h2 class="sectionTitle">الخريطة التفاعلية</h2>
       <div id="map"></div>
     </div>
 
     <!-- الرسم البياني -->
-    <div class="chartContainer">
-      <h2 class="sectionTitle">توزيع البلاغات</h2>
+    <div class="chartContainer" id="chartContainer">
+      <div class="chartPrintHeader">
+        <h2>توزيع البلاغات حسب الأحياء</h2>
+        <p id="chartSubtitle">إجمالي البلاغات: 0</p>
+      </div>
       <div class="chartWrapper">
         <canvas id="chartCanvas"></canvas>
+        <div class="chartCenterText" id="chartCenterText">
+          <div class="total" id="centerTotal">0</div>
+          <div class="label">بلاغ</div>
+        </div>
       </div>
     </div>
 
     <!-- الجدول -->
-    <div class="tableSection">
+    <div class="tableSection" id="tableSection">
       <h2 class="sectionTitle">تفاصيل الأحياء</h2>
       <table class="dataTable">
         <thead>
@@ -365,8 +493,13 @@ body {
 </div>
 
 <script>
-let map, districts = [], chart = null;
-const COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140"];
+let map, districts = [], chart = null, allDistricts = [];
+const COLORS = [
+  "#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", 
+  "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140",
+  "#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ffeaa7",
+  "#dfe6e9", "#fd79a8", "#a29bfe", "#6c5ce7", "#00b894"
+];
 
 // تحديد التاريخ
 const today = new Date();
@@ -420,6 +553,7 @@ function importExcel() {
 
 function processData(rows) {
   districts = [];
+  allDistricts = [];
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -433,12 +567,12 @@ function processData(rows) {
     if (isNaN(lat) || isNaN(lng) || !name) continue;
 
     // تجميع حسب الحي
-    const existing = districts.find(d => d.name === name && d.municipality === municipality);
+    const existing = allDistricts.find(d => d.name === name && d.municipality === municipality);
     if (existing) {
       existing.count++;
       existing.points.push({ lat, lng });
     } else {
-      districts.push({
+      allDistricts.push({
         name: name,
         municipality: municipality,
         count: 1,
@@ -450,24 +584,40 @@ function processData(rows) {
   }
 
   // ترتيب تنازلي
-  districts.sort((a, b) => b.count - a.count);
+  allDistricts.sort((a, b) => b.count - a.count);
 
   updateReport();
 }
 
 function updateReport() {
   const filterCount = document.getElementById("filterCount").value;
-  let filtered = districts;
+  const searchTerm = document.getElementById("districtFilter").value.toLowerCase().trim();
 
-  if (filterCount !== "all") {
-    filtered = districts.slice(0, parseInt(filterCount));
+  // تطبيق الفلتر حسب البحث
+  let filtered = allDistricts;
+  if (searchTerm) {
+    filtered = allDistricts.filter(d => 
+      d.name.toLowerCase().includes(searchTerm) || 
+      d.municipality.toLowerCase().includes(searchTerm)
+    );
   }
+
+  // تطبيق فلتر العدد
+  if (filterCount !== "all") {
+    filtered = filtered.slice(0, parseInt(filterCount));
+  }
+
+  districts = filtered;
 
   // تحديث الإحصائيات
   const total = filtered.reduce((sum, d) => sum + d.count, 0);
   document.getElementById("totalReports").textContent = total.toLocaleString();
   document.getElementById("totalDistricts").textContent = filtered.length;
   document.getElementById("topDistrict").textContent = filtered[0] ? filtered[0].name : "-";
+
+  // تحديث عنوان الرسم البياني
+  document.getElementById("chartSubtitle").textContent = `إجمالي البلاغات: ${total.toLocaleString()}`;
+  document.getElementById("centerTotal").textContent = total.toLocaleString();
 
   // تحديث الخريطة
   updateMap(filtered);
@@ -480,7 +630,6 @@ function updateReport() {
 }
 
 function updateMap(data) {
-  // مسح العلامات القديمة
   clearMarkers();
 
   const bounds = new google.maps.LatLngBounds();
@@ -557,6 +706,11 @@ function updateChart(data) {
 
   if (chart) chart.destroy();
 
+  // تسجيل plugin datalabels
+  Chart.register(ChartDataLabels);
+
+  const total = data.reduce((sum, d) => sum + d.count, 0);
+
   chart = new Chart(ctx, {
     type: 'doughnut',
     data: {
@@ -564,34 +718,177 @@ function updateChart(data) {
       datasets: [{
         data: data.map(d => d.count),
         backgroundColor: COLORS.slice(0, data.length),
-        borderWidth: 2,
-        borderColor: '#fff'
+        borderWidth: 3,
+        borderColor: '#fff',
+        hoverOffset: 15
       }]
     },
     options: {
       responsive: true,
+      maintainAspectRatio: true,
+      cutout: '60%',
       plugins: {
-        legend: { position: 'bottom', labels: { font: { size: 12 } } }
+        legend: { 
+          position: 'bottom', 
+          labels: { 
+            font: { size: 14, family: 'Segoe UI' },
+            padding: 20,
+            usePointStyle: true,
+            pointStyle: 'circle'
+          } 
+        },
+        datalabels: {
+          color: '#fff',
+          font: {
+            size: 14,
+            weight: 'bold'
+          },
+          formatter: (value, ctx) => {
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+            return percentage > 3 ? `${percentage}%` : '';
+          },
+          anchor: 'end',
+          align: 'start',
+          offset: 10,
+          backgroundColor: (context) => {
+            return context.dataset.backgroundColor[context.dataIndex];
+          },
+          borderRadius: 6,
+          padding: 8
+        },
+        tooltip: {
+          backgroundColor: 'rgba(30, 41, 59, 0.9)',
+          titleFont: { size: 16 },
+          bodyFont: { size: 14 },
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              const percentage = ((context.parsed / total) * 100).toFixed(1);
+              return ` ${context.label}: ${context.parsed} بلاغ (${percentage}%)`;
+            }
+          }
+        }
+      },
+      animation: {
+        animateRotate: true,
+        animateScale: true,
+        duration: 1000,
+        easing: 'easeOutQuart'
       }
     }
   });
 }
 
-function exportReport() {
+// تصدير الخريطة فقط
+function exportMap() {
   document.getElementById("loading").style.display = "flex";
+
+  const mapSection = document.getElementById("mapSection");
+
+  setTimeout(() => {
+    html2canvas(mapSection, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false
+    }).then(canvas => {
+      const link = document.createElement("a");
+      link.download = `الخريطة_${new Date().toLocaleDateString('ar-SA')}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      document.getElementById("loading").style.display = "none";
+    }).catch(err => {
+      console.error(err);
+      document.getElementById("loading").style.display = "none";
+      alert("حدث خطأ أثناء تصدير الخريطة");
+    });
+  }, 500);
+}
+
+// تصدير الرسم البياني فقط
+function exportChart() {
+  document.getElementById("loading").style.display = "flex";
+
+  const chartContainer = document.getElementById("chartContainer");
+
+  setTimeout(() => {
+    html2canvas(chartContainer, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false
+    }).then(canvas => {
+      const link = document.createElement("a");
+      link.download = `الرسم_البياني_${new Date().toLocaleDateString('ar-SA')}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      document.getElementById("loading").style.display = "none";
+    }).catch(err => {
+      console.error(err);
+      document.getElementById("loading").style.display = "none";
+      alert("حدث خطأ أثناء تصدير الرسم البياني");
+    });
+  }, 500);
+}
+
+// تصدير الجدول فقط
+function exportTable() {
+  document.getElementById("loading").style.display = "flex";
+
+  const tableSection = document.getElementById("tableSection");
+
+  setTimeout(() => {
+    html2canvas(tableSection, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      windowWidth: 1400
+    }).then(canvas => {
+      const link = document.createElement("a");
+      link.download = `الجدول_${new Date().toLocaleDateString('ar-SA')}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      document.getElementById("loading").style.display = "none";
+    }).catch(err => {
+      console.error(err);
+      document.getElementById("loading").style.display = "none";
+      alert("حدث خطأ أثناء تصدير الجدول");
+    });
+  }, 500);
+}
+
+// تصدير التقرير الكامل
+function exportFullReport() {
+  document.getElementById("loading").style.display = "flex";
+
+  // إخفاء أزرار التحكم مؤقتاً
+  const controlPanel = document.querySelector('.controlPanel');
+  const originalDisplay = controlPanel.style.display;
+  controlPanel.style.display = 'none';
 
   setTimeout(() => {
     html2canvas(document.querySelector(".reportContainer"), {
       scale: 2,
       useCORS: true,
-      backgroundColor: "#ffffff"
+      backgroundColor: "#ffffff",
+      logging: false,
+      windowWidth: 1400
     }).then(canvas => {
       const link = document.createElement("a");
       link.download = `تقرير_الأحياء_${new Date().toLocaleDateString('ar-SA')}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
 
+      // إعادة عرض أزرار التحكم
+      controlPanel.style.display = originalDisplay;
       document.getElementById("loading").style.display = "none";
+    }).catch(err => {
+      console.error(err);
+      controlPanel.style.display = originalDisplay;
+      document.getElementById("loading").style.display = "none";
+      alert("حدث خطأ أثناء تصدير التقرير");
     });
   }, 500);
 }
