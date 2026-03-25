@@ -534,6 +534,20 @@ body {
 let map, districts = [], chart = null, barChart = null, allDistricts = [];
 let categoryStats = {};
 let allData = [];
+
+// ✅ تحويل أسماء الشهور العربية إلى أرقام
+const monthNamesToNumbers = {
+  "يناير": 1, "فبراير": 2, "مارس": 3, "أبريل": 4, "مايو": 5, "يونيو": 6,
+  "يوليو": 7, "أغسطس": 8, "سبتمبر": 9, "أكتوبر": 10, "نوفمبر": 11, "ديسمبر": 12,
+  "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6,
+  "7": 7, "8": 8, "9": 9, "10": 10, "11": 11, "12": 12
+};
+
+const monthNumbersToNames = {
+  1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل", 5: "مايو", 6: "يونيو",
+  7: "يوليو", 8: "أغسطس", 9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر"
+};
+
 const COLORS = [
   "#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", 
   "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140",
@@ -542,11 +556,6 @@ const COLORS = [
 ];
 
 const ITEMS_PER_PAGE = 20;
-const monthNames = {
-  1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل",
-  5: "مايو", 6: "يونيو", 7: "يوليو", 8: "أغسطس",
-  9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر"
-};
 
 const today = new Date();
 document.getElementById("reportDate").textContent = today.toLocaleDateString("ar-SA", { year: 'numeric', month: 'long', day: 'numeric' });
@@ -599,36 +608,22 @@ function importExcel() {
   reader.readAsArrayBuffer(file);
 }
 
-// ✅ دالة محسّنة لاستخراج الشهر من التاريخ
-function extractMonth(dateValue) {
-  if (!dateValue) return null;
+// ✅ دالة استخراج الشهر من اسم الشهر العربي
+function extractMonth(monthValue) {
+  if (!monthValue) return null;
   
-  // إذا كان التاريخ من نوع Date في Excel
-  if (dateValue instanceof Date) {
-    return dateValue.getMonth() + 1;
+  const monthStr = String(monthValue).trim();
+  
+  // البحث في قائمة أسماء الشهور
+  for (let name in monthNamesToNumbers) {
+    if (monthStr.includes(name)) {
+      return monthNamesToNumbers[name];
+    }
   }
   
-  // إذا كان نصاً
-  const dateStr = String(dateValue).trim();
-  
-  // ✅ الصيغة السعودية/العربية: DD/MM/YYYY HH:MM AM/PM
-  // مثال: 24/03/2026 05:13 AM
-  const saudiPattern = /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/;
-  const match = dateStr.match(saudiPattern);
-  
-  if (match) {
-    // match[1] = اليوم (24)
-    // match[2] = الشهر (03) ✅ هذا المطلوب
-    // match[3] = السنة (2026)
-    const month = parseInt(match[2]);
-    if (month >= 1 && month <= 12) return month;
-  }
-  
-  // محاولة استخدام Date.parse كاحتياط
-  const parsedDate = new Date(dateStr);
-  if (!isNaN(parsedDate.getTime())) {
-    return parsedDate.getMonth() + 1;
-  }
+  // إذا كان رقم مباشرة
+  const num = parseInt(monthStr);
+  if (num >= 1 && num <= 12) return num;
   
   return null;
 }
@@ -636,30 +631,30 @@ function extractMonth(dateValue) {
 function processData(rows) {
   allData = [];
   
-  console.log("بدء معالجة البيانات..."); // ✅ للتتبع
+  console.log("بدء معالجة البيانات...");
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (!row || row.length < 6) continue;
+    if (!row || row.length < 7) continue; // ✅ تغيير من 6 إلى 7 (إضافة عمود الشهر)
 
     const lat = parseFloat(row[0]);
     const lng = parseFloat(row[1]);
     const name = String(row[2] || "").trim();
     const category = String(row[3] || "غير مصنف").trim();
     const municipality = String(row[4] || "غير محددة").trim();
-    const dateValue = row[5];
-    const month = extractMonth(dateValue);
+    // ✅ العمود السابع (G) = اسم الشهر مباشرة (مارس)
+    const monthValue = row[6]; 
+    const month = extractMonth(monthValue);
     
-    // ✅ طباعة للتتبع
     if (i <= 5) {
-      console.log(`صف ${i}:`, { dateValue, month, name });
+      console.log(`صف ${i}:`, { monthValue, month, name });
     }
 
     if (isNaN(lat) || isNaN(lng) || !name) continue;
 
     allData.push({
       lat, lng, name, category, municipality, month,
-      date: dateValue
+      monthName: monthValue // حفظ اسم الشهر الأصلي
     });
   }
   
@@ -675,14 +670,14 @@ function updateMonthFilter() {
   const select = document.getElementById("monthFilter");
   const availableMonths = [...new Set(allData.map(d => d.month).filter(m => m))].sort((a, b) => a - b);
   
-  console.log("تحديث فلتر الشهر:", availableMonths); // ✅ للتتبع
+  console.log("تحديث فلتر الشهر:", availableMonths);
   
   const currentValue = select.value;
   
   let optionsHtml = '<option value="">جميع الشهور</option>';
   
   availableMonths.forEach(m => {
-    optionsHtml += `<option value="${m}">${monthNames[m] || "شهر " + m}</option>`;
+    optionsHtml += `<option value="${m}">${monthNumbersToNames[m] || "شهر " + m}</option>`;
   });
   
   select.innerHTML = optionsHtml;
@@ -708,7 +703,7 @@ function updateReport() {
   const municipalityFilter = document.getElementById("municipalityFilter").value;
   const monthFilter = document.getElementById("monthFilter").value;
 
-  console.log("فلتر الشهر المختار:", monthFilter); // ✅ للتتبع
+  console.log("فلتر الشهر المختار:", monthFilter);
 
   let filtered = allData;
 
@@ -719,7 +714,7 @@ function updateReport() {
   if (monthFilter) {
     const monthNum = parseInt(monthFilter);
     filtered = filtered.filter(d => d.month === monthNum);
-    console.log("بعد فلترة الشهر:", filtered.length); // ✅ للتتبع
+    console.log("بعد فلترة الشهر:", filtered.length);
   }
 
   if (searchTerm) {
