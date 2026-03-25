@@ -13,7 +13,7 @@
 <style>
 @page {
   size: A4 portrait;
-  margin: 15mm;
+  margin: 10mm;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -252,6 +252,7 @@ body {
   position: relative;
 }
 
+/* ✅ تعديل الجدول - صفحات A4 منفصلة */
 .tableSection {
   width: 180mm;
   margin: 0 auto;
@@ -259,26 +260,48 @@ body {
 
 .tablePage {
   width: 180mm;
-  height: 250mm;
+  height: 277mm; /* ✅ ارتفاع كامل A4 */
   margin: 0 auto 20px;
   page-break-after: always;
   break-after: page;
   background: white;
-  padding: 15px;
+  padding: 15mm; /* ✅ هوامش داخلية */
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* ✅ منع التمرير */
 }
 
 .tablePage:last-child {
   page-break-after: auto;
 }
 
+/* ✅ ترويسة الصفحة */
+.tableHeader {
+  text-align: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #1e3c72;
+}
+
+.tableHeader h2 {
+  font-size: 18px;
+  color: #1e3c72;
+  margin-bottom: 5px;
+}
+
+.tableHeader p {
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* ✅ الجدول بدون تمرير */
 .dataTable {
   width: 100%;
   border-collapse: collapse;
   font-size: 11px;
+  table-layout: fixed; /* ✅ عرض ثابت */
 }
 
 .dataTable thead {
@@ -287,26 +310,28 @@ body {
 }
 
 .dataTable th {
-  padding: 10px 8px;
+  padding: 10px 6px;
   text-align: center;
   font-weight: 700;
   font-size: 11px;
   border: 1px solid #1e3c72;
+  white-space: nowrap;
 }
 
 .dataTable td {
-  padding: 8px;
+  padding: 8px 6px;
   text-align: center;
   border: 1px solid #e2e8f0;
   font-size: 11px;
+  height: 35px; /* ✅ ارتفاع ثابت للصف */
 }
 
 .dataTable tr:nth-child(even) {
   background: #f8fafc;
 }
 
-.dataTable tr:hover {
-  background: #e0e7ff;
+.dataTable tbody tr {
+  page-break-inside: avoid; /* ✅ منع قطع الصف */
 }
 
 .rank {
@@ -338,6 +363,16 @@ body {
 .countBadge.high { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
 .countBadge.medium { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
 
+/* ✅ تذييل الصفحة */
+.pageFooter {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+  font-size: 10px;
+  color: #64748b;
+}
+
 .filterContainer {
   display: flex;
   gap: 8px;
@@ -359,7 +394,7 @@ body {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 0;
   }
 
   body { 
@@ -378,10 +413,11 @@ body {
   .reportHeader { border-radius: 0; }
 
   .mapSection, .chartContainer, .barChartContainer, .tablePage {
-    width: 190mm;
-    height: 277mm;
+    width: 210mm;
+    height: 297mm;
     margin: 0;
     border: none;
+    border-radius: 0;
     page-break-after: always;
     break-after: page;
   }
@@ -422,15 +458,6 @@ body {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
-
-.pageNumber {
-  text-align: center;
-  font-size: 10px;
-  color: #64748b;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #e2e8f0;
-}
 </style>
 </head>
 
@@ -461,7 +488,6 @@ body {
       <select id="municipalityFilter" onchange="updateReport()">
         <option value="">جميع البلديات</option>
       </select>
-      <!-- ✅ فلتر الشهر -->
       <select id="monthFilter" onchange="updateReport()">
         <option value="">جميع الشهور</option>
       </select>
@@ -499,7 +525,6 @@ body {
       <div id="map"></div>
     </div>
 
-    <!-- رسم الأحياء (الدونات) -->
     <div class="chartContainer" id="chartContainer">
       <div class="chartPrintHeader">
         <h2>توزيع البلاغات حسب الأحياء</h2>
@@ -514,7 +539,6 @@ body {
       </div>
     </div>
 
-    <!-- رسم التصنيفات (البار) -->
     <div class="barChartContainer" id="barChartContainer">
       <div class="chartPrintHeader">
         <h2>توزيع البلاغات حسب التصنيف/التخصص</h2>
@@ -535,7 +559,6 @@ let map, districts = [], chart = null, barChart = null, allDistricts = [];
 let categoryStats = {};
 let allData = [];
 
-// ✅ تحويل أسماء الشهور العربية إلى أرقام
 const monthNamesToNumbers = {
   "يناير": 1, "فبراير": 2, "مارس": 3, "أبريل": 4, "مايو": 5, "يونيو": 6,
   "يوليو": 7, "أغسطس": 8, "سبتمبر": 9, "أكتوبر": 10, "نوفمبر": 11, "ديسمبر": 12,
@@ -555,7 +578,8 @@ const COLORS = [
   "#dfe6e9", "#fd79a8", "#a29bfe", "#6c5ce7", "#00b894"
 ];
 
-const ITEMS_PER_PAGE = 20;
+// ✅ عدد الصفوف في كل صفحة A4 (حسب الارتفاع المتاح)
+const ROWS_PER_PAGE = 18;
 
 const today = new Date();
 document.getElementById("reportDate").textContent = today.toLocaleDateString("ar-SA", { year: 'numeric', month: 'long', day: 'numeric' });
@@ -608,59 +632,32 @@ function importExcel() {
   reader.readAsArrayBuffer(file);
 }
 
-// ✅ دالة استخراج الشهر من اسم الشهر العربي
 function extractMonth(monthValue) {
   if (!monthValue) return null;
-  
   const monthStr = String(monthValue).trim();
-  
-  // البحث في قائمة أسماء الشهور
   for (let name in monthNamesToNumbers) {
-    if (monthStr.includes(name)) {
-      return monthNamesToNumbers[name];
-    }
+    if (monthStr.includes(name)) return monthNamesToNumbers[name];
   }
-  
-  // إذا كان رقم مباشرة
   const num = parseInt(monthStr);
   if (num >= 1 && num <= 12) return num;
-  
   return null;
 }
 
 function processData(rows) {
   allData = [];
-  
-  console.log("بدء معالجة البيانات...");
-  
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (!row || row.length < 7) continue; // ✅ تغيير من 6 إلى 7 (إضافة عمود الشهر)
-
+    if (!row || row.length < 7) continue;
     const lat = parseFloat(row[0]);
     const lng = parseFloat(row[1]);
     const name = String(row[2] || "").trim();
     const category = String(row[3] || "غير مصنف").trim();
     const municipality = String(row[4] || "غير محددة").trim();
-    // ✅ العمود السابع (G) = اسم الشهر مباشرة (مارس)
     const monthValue = row[6]; 
     const month = extractMonth(monthValue);
-    
-    if (i <= 5) {
-      console.log(`صف ${i}:`, { monthValue, month, name });
-    }
-
     if (isNaN(lat) || isNaN(lng) || !name) continue;
-
-    allData.push({
-      lat, lng, name, category, municipality, month,
-      monthName: monthValue // حفظ اسم الشهر الأصلي
-    });
+    allData.push({ lat, lng, name, category, municipality, month, monthName: monthValue });
   }
-  
-  console.log("إجمالي الصفوف:", allData.length);
-  console.log("الشهور المتوفرة:", [...new Set(allData.map(d => d.month).filter(m => m))]);
-
   updateMonthFilter();
   updateMunicipalityFilter();
   updateReport();
@@ -669,28 +666,18 @@ function processData(rows) {
 function updateMonthFilter() {
   const select = document.getElementById("monthFilter");
   const availableMonths = [...new Set(allData.map(d => d.month).filter(m => m))].sort((a, b) => a - b);
-  
-  console.log("تحديث فلتر الشهر:", availableMonths);
-  
   const currentValue = select.value;
-  
   let optionsHtml = '<option value="">جميع الشهور</option>';
-  
   availableMonths.forEach(m => {
     optionsHtml += `<option value="${m}">${monthNumbersToNames[m] || "شهر " + m}</option>`;
   });
-  
   select.innerHTML = optionsHtml;
-  
-  if (currentValue && availableMonths.includes(parseInt(currentValue))) {
-    select.value = currentValue;
-  }
+  if (currentValue && availableMonths.includes(parseInt(currentValue))) select.value = currentValue;
 }
 
 function updateMunicipalityFilter() {
   const select = document.getElementById("municipalityFilter");
   const municipalities = [...new Set(allData.map(d => d.municipality))].sort();
-
   select.innerHTML = '<option value="">جميع البلديات</option>';
   municipalities.forEach(m => {
     select.innerHTML += `<option value="${m}">${m}</option>`;
@@ -703,20 +690,12 @@ function updateReport() {
   const municipalityFilter = document.getElementById("municipalityFilter").value;
   const monthFilter = document.getElementById("monthFilter").value;
 
-  console.log("فلتر الشهر المختار:", monthFilter);
-
   let filtered = allData;
-
-  if (municipalityFilter) {
-    filtered = filtered.filter(d => d.municipality === municipalityFilter);
-  }
-
+  if (municipalityFilter) filtered = filtered.filter(d => d.municipality === municipalityFilter);
   if (monthFilter) {
     const monthNum = parseInt(monthFilter);
     filtered = filtered.filter(d => d.month === monthNum);
-    console.log("بعد فلترة الشهر:", filtered.length);
   }
-
   if (searchTerm) {
     filtered = filtered.filter(d => 
       d.name.toLowerCase().includes(searchTerm) || 
@@ -726,7 +705,6 @@ function updateReport() {
 
   const districtsMap = {};
   categoryStats = {};
-
   filtered.forEach(d => {
     const key = `${d.name}_${d.municipality}`;
     if (districtsMap[key]) {
@@ -742,21 +720,13 @@ function updateReport() {
         lng: d.lng
       };
     }
-
-    if (categoryStats[d.category]) {
-      categoryStats[d.category]++;
-    } else {
-      categoryStats[d.category] = 1;
-    }
+    if (categoryStats[d.category]) categoryStats[d.category]++;
+    else categoryStats[d.category] = 1;
   });
 
   allDistricts = Object.values(districtsMap).sort((a, b) => b.count - a.count);
-
-  if (filterCount !== "all") {
-    districts = allDistricts.slice(0, parseInt(filterCount));
-  } else {
-    districts = allDistricts;
-  }
+  if (filterCount !== "all") districts = allDistricts.slice(0, parseInt(filterCount));
+  else districts = allDistricts;
 
   const total = filtered.length;
   document.getElementById("totalReports").textContent = total.toLocaleString();
@@ -773,12 +743,9 @@ function updateReport() {
 
 function updateMap(data) {
   clearMarkers();
-
   const bounds = new google.maps.LatLngBounds();
-
   data.forEach((d, index) => {
     const color = COLORS[index % COLORS.length];
-
     const circle = new google.maps.Circle({
       center: { lat: d.lat, lng: d.lng },
       radius: 500 + (d.count * 50),
@@ -788,87 +755,88 @@ function updateMap(data) {
       strokeWeight: 2,
       map: map
     });
-
     const label = new google.maps.Marker({
       position: { lat: d.lat, lng: d.lng },
       map: map,
-      label: {
-        text: d.count.toString(),
-        color: 'white',
-        fontSize: '12px',
-        fontWeight: 'bold'
-      },
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 0
-      }
+      label: { text: d.count.toString(), color: 'white', fontSize: '12px', fontWeight: 'bold' },
+      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 0 }
     });
-
     const info = new google.maps.InfoWindow({
       content: `<div style="text-align:center;padding:8px;direction:rtl;font-size:12px;"><h3 style="margin:0 0 5px;">${d.name}</h3><p style="margin:0 0 5px;">البلدية: ${d.municipality}</p><p style="font-size:18px;font-weight:bold;color:${color};margin:0;">${d.count} بلاغ</p></div>`
     });
-
     circle.addListener('click', () => info.open(map, circle));
     label.addListener('click', () => info.open(map, label));
-
     markers.push({ circle, label });
     bounds.extend({ lat: d.lat, lng: d.lng });
   });
-
   if (data.length > 0) map.fitBounds(bounds);
+}
+
+// ✅ دالة إنشاء صفوف الجدول
+function createTableRows(pageData, startIndex, total) {
+  return pageData.map((d, index) => {
+    const globalIndex = startIndex + index;
+    const percentage = total > 0 ? ((d.count / total) * 100).toFixed(1) : 0;
+    const rankClass = globalIndex === 0 ? 'gold' : globalIndex === 1 ? 'silver' : globalIndex === 2 ? 'bronze' : 'normal';
+    const countClass = d.count > 100 ? 'high' : d.count > 50 ? 'medium' : '';
+    return `
+      <tr>
+        <td><span class="rank ${rankClass}">${globalIndex + 1}</span></td>
+        <td>${d.name}</td>
+        <td>${d.municipality}</td>
+        <td><span class="countBadge ${countClass}">${d.count}</span></td>
+        <td>${percentage}%</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ✅ دالة إنشاء هيدر الجدول
+function createTableHeader() {
+  return `
+    <thead>
+      <tr>
+        <th style="width: 12%;">الترتيب</th>
+        <th style="width: 30%;">الحي</th>
+        <th style="width: 28%;">البلدية</th>
+        <th style="width: 18%;">عدد البلاغات</th>
+        <th style="width: 12%;">النسبة</th>
+      </tr>
+    </thead>
+  `;
 }
 
 function updateTable(data, total) {
   const container = document.getElementById("tableSection");
   container.innerHTML = "";
 
-  const totalPages = Math.ceil(data.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(data.length / ROWS_PER_PAGE);
 
   for (let page = 0; page < totalPages; page++) {
-    const start = page * ITEMS_PER_PAGE;
-    const end = Math.min(start + ITEMS_PER_PAGE, data.length);
+    const start = page * ROWS_PER_PAGE;
+    const end = Math.min(start + ROWS_PER_PAGE, data.length);
     const pageData = data.slice(start, end);
 
     const tablePage = document.createElement('div');
     tablePage.className = 'tablePage';
+    tablePage.id = `tablePage_${page + 1}`;
 
-    let rowsHtml = '';
-    pageData.forEach((d, index) => {
-      const globalIndex = start + index;
-      const percentage = total > 0 ? ((d.count / total) * 100).toFixed(1) : 0;
-      const rankClass = globalIndex === 0 ? 'gold' : globalIndex === 1 ? 'silver' : globalIndex === 2 ? 'bronze' : 'normal';
-      const countClass = d.count > 100 ? 'high' : d.count > 50 ? 'medium' : '';
-
-      rowsHtml += `
-        <tr>
-          <td><span class="rank ${rankClass}">${globalIndex + 1}</span></td>
-          <td>${d.name}</td>
-          <td>${d.municipality}</td>
-          <td><span class="countBadge ${countClass}">${d.count}</span></td>
-          <td>${percentage}%</td>
-        </tr>
-      `;
-    });
+    const rowsHtml = createTableRows(pageData, start, total);
 
     tablePage.innerHTML = `
-      <h2 class="sectionTitle">تفاصيل الأحياء - صفحة ${page + 1} من ${totalPages}</h2>
-      <div style="flex: 1; overflow: auto;">
-        <table class="dataTable">
-          <thead>
-            <tr>
-              <th>الترتيب</th>
-              <th>الحي</th>
-              <th>البلدية</th>
-              <th>عدد البلاغات</th>
-              <th>النسبة</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-        </table>
+      <div class="tableHeader">
+        <h2>تفاصيل الأحياء</h2>
+        <p>صفحة ${page + 1} من ${totalPages} | إجمالي البلاغات: ${total.toLocaleString()}</p>
       </div>
-      <div class="pageNumber">صفحة ${page + 1} من ${totalPages} - إجمالي البلاغات: ${total.toLocaleString()}</div>
+      <table class="dataTable">
+        ${createTableHeader()}
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+      <div class="pageFooter">
+        تقرير تحليل الأحياء | ${new Date().toLocaleDateString('ar-SA')}
+      </div>
     `;
 
     container.appendChild(tablePage);
@@ -877,13 +845,9 @@ function updateTable(data, total) {
 
 function updateChart(data) {
   const ctx = document.getElementById("chartCanvas").getContext("2d");
-
   if (chart) chart.destroy();
-
   Chart.register(ChartDataLabels);
-
   const total = data.reduce((sum, d) => sum + d.count, 0);
-
   chart = new Chart(ctx, {
     type: 'doughnut',
     data: {
@@ -900,20 +864,12 @@ function updateChart(data) {
       responsive: true,
       maintainAspectRatio: true,
       cutout: '45%',
-      layout: {
-        padding: 80
-      },
+      layout: { padding: 80 },
       plugins: {
-        legend: { 
-          display: false
-        },
+        legend: { display: false },
         datalabels: {
           color: '#1e293b',
-          font: {
-            size: 11,
-            weight: 'bold',
-            family: 'Segoe UI'
-          },
+          font: { size: 11, weight: 'bold', family: 'Segoe UI' },
           formatter: (value, ctx) => {
             const label = ctx.chart.data.labels[ctx.dataIndex];
             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
@@ -951,18 +907,13 @@ function updateChart(data) {
 
 function updateBarChart() {
   const ctx = document.getElementById("barChartCanvas").getContext("2d");
-
   if (barChart) barChart.destroy();
-
   const categories = Object.entries(categoryStats)
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
-
   const totalCategories = categories.reduce((sum, c) => sum + c.count, 0);
   document.getElementById("barChartSubtitle").textContent = `إجمالي التصنيفات: ${categories.length} - إجمالي البلاغات: ${totalCategories.toLocaleString()}`;
-
   const reversedData = [...categories].reverse();
-
   barChart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -980,28 +931,13 @@ function updateBarChart() {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
-      layout: {
-        padding: {
-          left: 10,
-          right: 60,
-          top: 10,
-          bottom: 10
-        }
-      },
+      layout: { padding: { left: 10, right: 60, top: 10, bottom: 10 } },
       plugins: {
-        legend: {
-          display: false
-        },
+        legend: { display: false },
         datalabels: {
           color: '#1e293b',
-          font: {
-            size: 12,
-            weight: 'bold',
-            family: 'Segoe UI'
-          },
-          formatter: (value) => {
-            return value.toLocaleString();
-          },
+          font: { size: 12, weight: 'bold', family: 'Segoe UI' },
+          formatter: (value) => value.toLocaleString(),
           anchor: 'end',
           align: 'end',
           offset: 5
@@ -1023,30 +959,15 @@ function updateBarChart() {
       scales: {
         x: {
           beginAtZero: true,
-          grid: {
-            color: '#e2e8f0',
-            drawBorder: false
-          },
-          ticks: {
-            font: { size: 10 },
-            color: '#64748b'
-          }
+          grid: { color: '#e2e8f0', drawBorder: false },
+          ticks: { font: { size: 10 }, color: '#64748b' }
         },
         y: {
-          grid: {
-            display: false,
-            drawBorder: false
-          },
-          ticks: {
-            font: { size: 11, weight: 'bold' },
-            color: '#1e293b'
-          }
+          grid: { display: false, drawBorder: false },
+          ticks: { font: { size: 11, weight: 'bold' }, color: '#1e293b' }
         }
       },
-      animation: {
-        duration: 800,
-        easing: 'easeOutQuart'
-      }
+      animation: { duration: 800, easing: 'easeOutQuart' }
     }
   });
 }
@@ -1054,7 +975,6 @@ function updateBarChart() {
 function exportMap() {
   document.getElementById("loading").style.display = "flex";
   const mapSection = document.getElementById("mapSection");
-
   setTimeout(() => {
     html2canvas(mapSection, {
       scale: 2,
@@ -1079,7 +999,6 @@ function exportMap() {
 function exportChart() {
   document.getElementById("loading").style.display = "flex";
   const chartContainer = document.getElementById("chartContainer");
-
   setTimeout(() => {
     html2canvas(chartContainer, {
       scale: 2,
@@ -1104,7 +1023,6 @@ function exportChart() {
 function exportBarChart() {
   document.getElementById("loading").style.display = "flex";
   const barChartContainer = document.getElementById("barChartContainer");
-
   setTimeout(() => {
     html2canvas(barChartContainer, {
       scale: 2,
@@ -1126,6 +1044,7 @@ function exportBarChart() {
   }, 500);
 }
 
+// ✅ تصدير الجدول - كل صفحة على حدة
 function exportTable() {
   document.getElementById("loading").style.display = "flex";
   const tablePages = document.querySelectorAll('.tablePage');
@@ -1137,25 +1056,32 @@ function exportTable() {
       return;
     }
 
-    html2canvas(tablePages[currentPage], {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      width: 794,
-      height: 1123
-    }).then(canvas => {
-      const link = document.createElement("a");
-      link.download = `الجدول_صفحة_${currentPage + 1}_A4_${new Date().toLocaleDateString('ar-SA')}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+    // ✅ التمرير إلى الصفحة الحالية لضمان ظهورها كاملة
+    tablePages[currentPage].scrollIntoView({ behavior: 'instant', block: 'start' });
 
-      currentPage++;
-      setTimeout(exportNextPage, 300);
-    }).catch(err => {
-      console.error(err);
-      document.getElementById("loading").style.display = "none";
-      alert("حدث خطأ أثناء تصدير الجدول");
-    });
+    setTimeout(() => {
+      html2canvas(tablePages[currentPage], {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        width: 794,
+        height: 1123,
+        windowWidth: 794,
+        windowHeight: 1123
+      }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `الجدول_صفحة_${currentPage + 1}_A4_${new Date().toLocaleDateString('ar-SA')}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+
+        currentPage++;
+        setTimeout(exportNextPage, 500);
+      }).catch(err => {
+        console.error(err);
+        document.getElementById("loading").style.display = "none";
+        alert("حدث خطأ أثناء تصدير الجدول");
+      });
+    }, 300);
   }
 
   exportNextPage();
@@ -1190,32 +1116,39 @@ function exportFullReport() {
       return;
     }
 
-    html2canvas(section, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      width: 794,
-      height: 1123
-    }).then(canvas => {
-      const link = document.createElement("a");
-      let sectionName;
-      if (currentIndex === 0) sectionName = "خريطة";
-      else if (currentIndex === 1) sectionName = "أحياء_دونات";
-      else if (currentIndex === 2) sectionName = "تصنيفات_بار";
-      else sectionName = `جدول_صفحة_${currentIndex - 2}`;
-      
-      link.download = `${sectionName}_A4_${new Date().toLocaleDateString('ar-SA')}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+    // ✅ التمرير إلى القسم الحالي
+    section.scrollIntoView({ behavior: 'instant', block: 'start' });
 
-      currentIndex++;
-      setTimeout(exportNextSection, 500);
-    }).catch(err => {
-      console.error(err);
-      controlPanel.style.display = originalDisplay;
-      document.getElementById("loading").style.display = "none";
-      alert("حدث خطأ أثناء تصدير التقرير");
-    });
+    setTimeout(() => {
+      html2canvas(section, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        width: 794,
+        height: 1123,
+        windowWidth: 794,
+        windowHeight: 1123
+      }).then(canvas => {
+        const link = document.createElement("a");
+        let sectionName;
+        if (currentIndex === 0) sectionName = "خريطة";
+        else if (currentIndex === 1) sectionName = "أحياء_دونات";
+        else if (currentIndex === 2) sectionName = "تصنيفات_بار";
+        else sectionName = `جدول_صفحة_${currentIndex - 2}`;
+        
+        link.download = `${sectionName}_A4_${new Date().toLocaleDateString('ar-SA')}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+
+        currentIndex++;
+        setTimeout(exportNextSection, 600);
+      }).catch(err => {
+        console.error(err);
+        controlPanel.style.display = originalDisplay;
+        document.getElementById("loading").style.display = "none";
+        alert("حدث خطأ أثناء تصدير التقرير");
+      });
+    }, 400);
   }
 
   exportNextSection();
