@@ -461,6 +461,22 @@ body {
       <select id="municipalityFilter" onchange="updateReport()">
         <option value="">جميع البلديات</option>
       </select>
+      <!-- ✅ فلتر الشهر الجديد -->
+      <select id="monthFilter" onchange="updateReport()">
+        <option value="">جميع الشهور</option>
+        <option value="1">يناير</option>
+        <option value="2">فبراير</option>
+        <option value="3">مارس</option>
+        <option value="4">أبريل</option>
+        <option value="5">مايو</option>
+        <option value="6">يونيو</option>
+        <option value="7">يوليو</option>
+        <option value="8">أغسطس</option>
+        <option value="9">سبتمبر</option>
+        <option value="10">أكتوبر</option>
+        <option value="11">نوفمبر</option>
+        <option value="12">ديسمبر</option>
+      </select>
       <input type="text" id="districtFilter" placeholder="🔍 البحث في الأحياء..." oninput="updateReport()">
     </div>
 
@@ -529,6 +545,7 @@ body {
 <script>
 let map, districts = [], chart = null, barChart = null, allDistricts = [];
 let categoryStats = {}; // لتخزين إحصائيات التصنيفات
+let allData = []; // ✅ تخزين جميع البيانات الأصلية للفلترة
 const COLORS = [
   "#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", 
   "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140",
@@ -588,56 +605,112 @@ function importExcel() {
   reader.readAsArrayBuffer(file);
 }
 
-function processData(rows) {
-  districts = [];
-  allDistricts = [];
-  categoryStats = {}; // إعادة تعيين إحصائيات التصنيفات
+// ✅ دالة لاستخراج الشهر من التاريخ
+function extractMonth(dateValue) {
+  if (!dateValue) return null;
+  
+  // إذا كان التاريخ من نوع Date في Excel
+  if (dateValue instanceof Date) {
+    return dateValue.getMonth() + 1;
+  }
+  
+  // إذا كان نصاً
+  const dateStr = String(dateValue).trim();
+  
+  // محاولة تحليل التاريخ (صيغ متعددة)
+  const datePatterns = [
+    /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/, // DD/MM/YYYY أو MM/DD/YYYY
+    /(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/, // YYYY/MM/DD
+  ];
+  
+  for (let pattern of datePatterns) {
+    const match = dateStr.match(pattern);
+    if (match) {
+      // افتراض أن الشهر هو العنصر الثاني في معظم الصيغ العربية
+      let month = parseInt(match[2]);
+      if (month >= 1 && month <= 12) return month;
+      
+      // إذا كان الشهر هو العنصر الأول
+      month = parseInt(match[1]);
+      if (month >= 1 && month <= 12) return month;
+    }
+  }
+  
+  // محاولة استخدام Date.parse
+  const parsedDate = new Date(dateStr);
+  if (!isNaN(parsedDate.getTime())) {
+    return parsedDate.getMonth() + 1;
+  }
+  
+  return null;
+}
 
+function processData(rows) {
+  // ✅ تخزين جميع البيانات الأصلية
+  allData = [];
+  
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (!row || row.length < 4) continue;
+    if (!row || row.length < 5) continue; // ✅ تغيير من 4 إلى 5 (إضافة عمود التاريخ)
 
     const lat = parseFloat(row[0]);
     const lng = parseFloat(row[1]);
     const name = String(row[2] || "").trim();
-    const category = String(row[3] || "غير مصنف").trim(); // العمود الرابع = التصنيف
+    const category = String(row[3] || "غير مصنف").trim();
     const municipality = String(row[4] || "غير محددة").trim();
+    const dateValue = row[5]; // ✅ العمود السادس = التاريخ
+    const month = extractMonth(dateValue); // ✅ استخراج الشهر
 
     if (isNaN(lat) || isNaN(lng) || !name) continue;
 
-    // إحصائيات الأحياء
-    const existing = allDistricts.find(d => d.name === name && d.municipality === municipality);
-    if (existing) {
-      existing.count++;
-      existing.points.push({ lat, lng });
-    } else {
-      allDistricts.push({
-        name: name,
-        municipality: municipality,
-        count: 1,
-        points: [{ lat, lng }],
-        lat: lat,
-        lng: lng
-      });
-    }
-
-    // إحصائيات التصنيفات (العمود الرابع)
-    if (categoryStats[category]) {
-      categoryStats[category]++;
-    } else {
-      categoryStats[category] = 1;
-    }
+    allData.push({
+      lat, lng, name, category, municipality, month,
+      date: dateValue
+    });
   }
 
-  allDistricts.sort((a, b) => b.count - a.count);
-
+  // ✅ تحديث فلتر الشهر بناءً على البيانات المتوفرة
+  updateMonthFilter();
+  
+  // ✅ تحديث فلتر البلديات
   updateMunicipalityFilter();
+  
+  // ✅ تطبيق الفلاتر وعرض البيانات
   updateReport();
+}
+
+// ✅ تحديث فلتر الشهر بناءً على البيانات المتوفرة
+function updateMonthFilter() {
+  const select = document.getElementById("monthFilter");
+  const availableMonths = [...new Set(allData.filter(d => d.month).map(d => d.month))].sort((a, b) => a - b);
+  
+  // حفظ القيمة المختارة حالياً
+  const currentValue = select.value;
+  
+  // إعادة بناء القائمة مع الحفاظ على "جميع الشهور"
+  let optionsHtml = '<option value="">جميع الشهور</option>';
+  
+  const monthNames = {
+    1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل",
+    5: "مايو", 6: "يونيو", 7: "يوليو", 8: "أغسطس",
+    9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر"
+  };
+  
+  availableMonths.forEach(m => {
+    optionsHtml += `<option value="${m}">${monthNames[m] || "شهر " + m}</option>`;
+  });
+  
+  select.innerHTML = optionsHtml;
+  
+  // استعادة القيمة المختارة إذا كانت موجودة
+  if (currentValue && availableMonths.includes(parseInt(currentValue))) {
+    select.value = currentValue;
+  }
 }
 
 function updateMunicipalityFilter() {
   const select = document.getElementById("municipalityFilter");
-  const municipalities = [...new Set(allDistricts.map(d => d.municipality))].sort();
+  const municipalities = [...new Set(allData.map(d => d.municipality))].sort();
 
   select.innerHTML = '<option value="">جميع البلديات</option>';
   municipalities.forEach(m => {
@@ -649,13 +722,22 @@ function updateReport() {
   const filterCount = document.getElementById("filterCount").value;
   const searchTerm = document.getElementById("districtFilter").value.toLowerCase().trim();
   const municipalityFilter = document.getElementById("municipalityFilter").value;
+  const monthFilter = document.getElementById("monthFilter").value; // ✅ فلتر الشهر
 
-  let filtered = allDistricts;
+  // ✅ تطبيق الفلاتر على allData
+  let filtered = allData;
 
+  // فلتر البلدية
   if (municipalityFilter) {
     filtered = filtered.filter(d => d.municipality === municipalityFilter);
   }
 
+  // ✅ فلتر الشهر
+  if (monthFilter) {
+    filtered = filtered.filter(d => d.month === parseInt(monthFilter));
+  }
+
+  // فلتر البحث
   if (searchTerm) {
     filtered = filtered.filter(d => 
       d.name.toLowerCase().includes(searchTerm) || 
@@ -663,23 +745,55 @@ function updateReport() {
     );
   }
 
+  // ✅ إعادة حساب إحصائيات الأحياء من البيانات المفلترة
+  const districtsMap = {};
+  categoryStats = {}; // إعادة تعيين إحصائيات التصنيفات
+
+  filtered.forEach(d => {
+    // إحصائيات الأحياء
+    const key = `${d.name}_${d.municipality}`;
+    if (districtsMap[key]) {
+      districtsMap[key].count++;
+      districtsMap[key].points.push({ lat: d.lat, lng: d.lng });
+    } else {
+      districtsMap[key] = {
+        name: d.name,
+        municipality: d.municipality,
+        count: 1,
+        points: [{ lat: d.lat, lng: d.lng }],
+        lat: d.lat,
+        lng: d.lng
+      };
+    }
+
+    // إحصائيات التصنيفات
+    if (categoryStats[d.category]) {
+      categoryStats[d.category]++;
+    } else {
+      categoryStats[d.category] = 1;
+    }
+  });
+
+  allDistricts = Object.values(districtsMap).sort((a, b) => b.count - a.count);
+
+  // فلتر العدد
   if (filterCount !== "all") {
-    filtered = filtered.slice(0, parseInt(filterCount));
+    districts = allDistricts.slice(0, parseInt(filterCount));
+  } else {
+    districts = allDistricts;
   }
 
-  districts = filtered;
-
-  const total = filtered.reduce((sum, d) => sum + d.count, 0);
+  const total = filtered.length; // ✅ إجمالي البلاغات = عدد الصفوف المفلترة
   document.getElementById("totalReports").textContent = total.toLocaleString();
-  document.getElementById("totalDistricts").textContent = filtered.length;
-  document.getElementById("topDistrict").textContent = filtered[0] ? filtered[0].name : "-";
+  document.getElementById("totalDistricts").textContent = districts.length;
+  document.getElementById("topDistrict").textContent = districts[0] ? districts[0].name : "-";
   document.getElementById("chartSubtitle").textContent = `إجمالي البلاغات: ${total.toLocaleString()}`;
   document.getElementById("centerTotal").textContent = total.toLocaleString();
 
-  updateMap(filtered);
-  updateTable(filtered, total);
-  updateChart(filtered);
-  updateBarChart(); // تحديث رسم التصنيفات
+  updateMap(districts);
+  updateTable(districts, total);
+  updateChart(districts);
+  updateBarChart();
 }
 
 function updateMap(data) {
@@ -786,7 +900,6 @@ function updateTable(data, total) {
   }
 }
 
-// ✅ رسم الأحياء (الدونات)
 function updateChart(data) {
   const ctx = document.getElementById("chartCanvas").getContext("2d");
 
@@ -861,13 +974,11 @@ function updateChart(data) {
   });
 }
 
-// ✅ رسم التصنيفات (البار) - يعرض بيانات العمود الرابع
 function updateBarChart() {
   const ctx = document.getElementById("barChartCanvas").getContext("2d");
 
   if (barChart) barChart.destroy();
 
-  // تحويل إحصائيات التصنيفات إلى مصفوفة مرتبة
   const categories = Object.entries(categoryStats)
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
@@ -875,7 +986,6 @@ function updateBarChart() {
   const totalCategories = categories.reduce((sum, c) => sum + c.count, 0);
   document.getElementById("barChartSubtitle").textContent = `إجمالي التصنيفات: ${categories.length} - إجمالي البلاغات: ${totalCategories.toLocaleString()}`;
 
-  // عكس الترتيب لعرض الأعلى في الأعلى
   const reversedData = [...categories].reverse();
 
   barChart = new Chart(ctx, {
