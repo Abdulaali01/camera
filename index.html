@@ -24,7 +24,6 @@ body {
   padding: 20px;
 }
 
-/* الحاوية الرئيسية - A4 */
 .reportContainer {
   max-width: 210mm;
   margin: 0 auto;
@@ -34,7 +33,6 @@ body {
   overflow: hidden;
 }
 
-/* رأس التقرير */
 .reportHeader {
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   color: white;
@@ -61,7 +59,6 @@ body {
   border-radius: 15px;
 }
 
-/* لوحة التحكم */
 .controlPanel {
   background: #f8fafc;
   padding: 15px;
@@ -105,12 +102,10 @@ body {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
 
-/* المحتوى */
 .reportContent {
   padding: 20px;
 }
 
-/* قسم الخريطة - A4 */
 .mapSection {
   width: 180mm;
   height: 250mm;
@@ -150,7 +145,6 @@ body {
   border: 1px solid #e2e8f0;
 }
 
-/* قسم الإحصائيات */
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -177,7 +171,6 @@ body {
   font-weight: 800;
 }
 
-/* الرسم البياني - A4 */
 .chartContainer {
   width: 180mm;
   height: 250mm;
@@ -222,21 +215,43 @@ body {
 
 .chartPrintHeader {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .chartPrintHeader h2 {
-  font-size: 20px;
+  font-size: 18px;
   color: #1e293b;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .chartPrintHeader p {
   color: #64748b;
-  font-size: 14px;
+  font-size: 12px;
 }
 
-/* الجدول - A4 صفحات منفصلة */
+.barChartContainer {
+  width: 180mm;
+  height: 250mm;
+  margin: 0 auto 20px;
+  page-break-after: always;
+  break-after: page;
+  background: white;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.barChartWrapper {
+  width: 100%;
+  height: 100%;
+  max-height: 200mm;
+  position: relative;
+}
+
 .tableSection {
   width: 180mm;
   margin: 0 auto;
@@ -323,7 +338,6 @@ body {
 .countBadge.high { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
 .countBadge.medium { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
 
-/* فلاتر */
 .filterContainer {
   display: flex;
   gap: 8px;
@@ -336,14 +350,12 @@ body {
   min-width: 120px;
 }
 
-/* أزرار التصدير */
 .exportButtons {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-/* للطباعة */
 @media print {
   @page {
     size: A4 portrait;
@@ -365,7 +377,7 @@ body {
   .controlPanel { display: none; }
   .reportHeader { border-radius: 0; }
 
-  .mapSection, .chartContainer, .tablePage {
+  .mapSection, .chartContainer, .barChartContainer, .tablePage {
     width: 190mm;
     height: 277mm;
     margin: 0;
@@ -374,7 +386,7 @@ body {
     break-after: page;
   }
 
-  .mapSection:last-child, .chartContainer:last-child, .tablePage:last-child {
+  .mapSection:last-child, .chartContainer:last-child, .barChartContainer:last-child, .tablePage:last-child {
     page-break-after: auto;
   }
 
@@ -383,7 +395,6 @@ body {
   .statsGrid { display: none; }
 }
 
-/* تحميل */
 .loading {
   position: fixed;
   top: 0;
@@ -412,7 +423,6 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ترقيم الصفحات للجدول */
 .pageNumber {
   text-align: center;
   font-size: 10px;
@@ -429,14 +439,12 @@ body {
 <div id="loading" class="loading" style="display: none;">جاري التحميل...<div class="spinner"></div></div>
 
 <div class="reportContainer">
-  <!-- رأس التقرير -->
   <div class="reportHeader">
     <h1>📊 تقرير تحليل الأحياء</h1>
-    <div class="subtitle">تقرير شامل يوضح توزيع البلاغات حسب الأحياء</div>
+    <div class="subtitle">تقرير شامل يوضح توزيع البلاغات حسب الأحياء والتصنيفات</div>
     <div class="reportDate" id="reportDate"></div>
   </div>
 
-  <!-- لوحة التحكم -->
   <div class="controlPanel">
     <input type="file" id="excelFile" accept=".xlsx,.xls" style="flex: 1; min-width: 150px;">
     <button onclick="importExcel()">📥 استيراد</button>
@@ -458,16 +466,15 @@ body {
 
     <div class="exportButtons">
       <button onclick="exportMap()" class="accent">🗺️ خريطة</button>
-      <button onclick="exportChart()" class="accent">📊 رسم</button>
+      <button onclick="exportChart()" class="accent">📊 الأحياء</button>
+      <button onclick="exportBarChart()" class="accent">📊 التصنيفات</button>
       <button onclick="exportTable()" class="accent">📋 جدول</button>
       <button onclick="exportFullReport()" class="secondary">📑 الكل</button>
       <button onclick="window.print()">🖨️ طباعة</button>
     </div>
   </div>
 
-  <!-- المحتوى -->
   <div class="reportContent">
-    <!-- الإحصائيات -->
     <div class="statsGrid">
       <div class="statCard">
         <h3>إجمالي البلاغات</h3>
@@ -483,13 +490,12 @@ body {
       </div>
     </div>
 
-    <!-- الخريطة - صفحة A4 كاملة -->
     <div class="mapSection" id="mapSection">
       <h2 class="sectionTitle">الخريطة التفاعلية</h2>
       <div id="map"></div>
     </div>
 
-    <!-- الرسم البياني - صفحة A4 كاملة -->
+    <!-- رسم الأحياء (الدونات) -->
     <div class="chartContainer" id="chartContainer">
       <div class="chartPrintHeader">
         <h2>توزيع البلاغات حسب الأحياء</h2>
@@ -504,15 +510,25 @@ body {
       </div>
     </div>
 
-    <!-- الجدول - صفحات A4 منفصلة -->
+    <!-- رسم التصنيفات (البار) -->
+    <div class="barChartContainer" id="barChartContainer">
+      <div class="chartPrintHeader">
+        <h2>توزيع البلاغات حسب التصنيف/التخصص</h2>
+        <p id="barChartSubtitle">إجمالي التصنيفات: 0</p>
+      </div>
+      <div class="barChartWrapper">
+        <canvas id="barChartCanvas"></canvas>
+      </div>
+    </div>
+
     <div class="tableSection" id="tableSection">
-      <!-- سيتم إنشاء صفحات الجدول ديناميكياً -->
     </div>
   </div>
 </div>
 
 <script>
-let map, districts = [], chart = null, allDistricts = [];
+let map, districts = [], chart = null, barChart = null, allDistricts = [];
+let categoryStats = {}; // لتخزين إحصائيات التصنيفات
 const COLORS = [
   "#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", 
   "#00f2fe", "#43e97b", "#38f9d7", "#fa709a", "#fee140",
@@ -522,7 +538,6 @@ const COLORS = [
 
 const ITEMS_PER_PAGE = 20;
 
-// تحديد التاريخ
 const today = new Date();
 document.getElementById("reportDate").textContent = today.toLocaleDateString("ar-SA", { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -576,18 +591,21 @@ function importExcel() {
 function processData(rows) {
   districts = [];
   allDistricts = [];
+  categoryStats = {}; // إعادة تعيين إحصائيات التصنيفات
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (!row || row.length < 3) continue;
+    if (!row || row.length < 4) continue;
 
     const lat = parseFloat(row[0]);
     const lng = parseFloat(row[1]);
     const name = String(row[2] || "").trim();
+    const category = String(row[3] || "غير مصنف").trim(); // العمود الرابع = التصنيف
     const municipality = String(row[4] || "غير محددة").trim();
 
     if (isNaN(lat) || isNaN(lng) || !name) continue;
 
+    // إحصائيات الأحياء
     const existing = allDistricts.find(d => d.name === name && d.municipality === municipality);
     if (existing) {
       existing.count++;
@@ -602,13 +620,18 @@ function processData(rows) {
         lng: lng
       });
     }
+
+    // إحصائيات التصنيفات (العمود الرابع)
+    if (categoryStats[category]) {
+      categoryStats[category]++;
+    } else {
+      categoryStats[category] = 1;
+    }
   }
 
   allDistricts.sort((a, b) => b.count - a.count);
 
-  // تحديث فلتر البلديات
   updateMunicipalityFilter();
-
   updateReport();
 }
 
@@ -627,15 +650,12 @@ function updateReport() {
   const searchTerm = document.getElementById("districtFilter").value.toLowerCase().trim();
   const municipalityFilter = document.getElementById("municipalityFilter").value;
 
-  // تطبيق الفلاتر
   let filtered = allDistricts;
 
-  // فلتر البلدية
   if (municipalityFilter) {
     filtered = filtered.filter(d => d.municipality === municipalityFilter);
   }
 
-  // فلتر البحث
   if (searchTerm) {
     filtered = filtered.filter(d => 
       d.name.toLowerCase().includes(searchTerm) || 
@@ -643,14 +663,12 @@ function updateReport() {
     );
   }
 
-  // فلتر العدد
   if (filterCount !== "all") {
     filtered = filtered.slice(0, parseInt(filterCount));
   }
 
   districts = filtered;
 
-  // تحديث الإحصائيات
   const total = filtered.reduce((sum, d) => sum + d.count, 0);
   document.getElementById("totalReports").textContent = total.toLocaleString();
   document.getElementById("totalDistricts").textContent = filtered.length;
@@ -661,6 +679,7 @@ function updateReport() {
   updateMap(filtered);
   updateTable(filtered, total);
   updateChart(filtered);
+  updateBarChart(); // تحديث رسم التصنيفات
 }
 
 function updateMap(data) {
@@ -767,7 +786,7 @@ function updateTable(data, total) {
   }
 }
 
-// ✅ الرسم البياني المعدل - يعرض اسم الحي بجانب كل قطاع
+// ✅ رسم الأحياء (الدونات)
 function updateChart(data) {
   const ctx = document.getElementById("chartCanvas").getContext("2d");
 
@@ -842,10 +861,113 @@ function updateChart(data) {
   });
 }
 
-// تصدير الخريطة
+// ✅ رسم التصنيفات (البار) - يعرض بيانات العمود الرابع
+function updateBarChart() {
+  const ctx = document.getElementById("barChartCanvas").getContext("2d");
+
+  if (barChart) barChart.destroy();
+
+  // تحويل إحصائيات التصنيفات إلى مصفوفة مرتبة
+  const categories = Object.entries(categoryStats)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const totalCategories = categories.reduce((sum, c) => sum + c.count, 0);
+  document.getElementById("barChartSubtitle").textContent = `إجمالي التصنيفات: ${categories.length} - إجمالي البلاغات: ${totalCategories.toLocaleString()}`;
+
+  // عكس الترتيب لعرض الأعلى في الأعلى
+  const reversedData = [...categories].reverse();
+
+  barChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: reversedData.map(c => c.name),
+      datasets: [{
+        label: 'عدد البلاغات',
+        data: reversedData.map(c => c.count),
+        backgroundColor: reversedData.map((c, i) => COLORS[(categories.length - 1 - i) % COLORS.length]),
+        borderWidth: 0,
+        borderRadius: 6,
+        barPercentage: 0.6
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: {
+        padding: {
+          left: 10,
+          right: 60,
+          top: 10,
+          bottom: 10
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        datalabels: {
+          color: '#1e293b',
+          font: {
+            size: 12,
+            weight: 'bold',
+            family: 'Segoe UI'
+          },
+          formatter: (value) => {
+            return value.toLocaleString();
+          },
+          anchor: 'end',
+          align: 'end',
+          offset: 5
+        },
+        tooltip: {
+          backgroundColor: 'rgba(30, 41, 59, 0.9)',
+          titleFont: { size: 13 },
+          bodyFont: { size: 12 },
+          padding: 10,
+          cornerRadius: 6,
+          callbacks: {
+            label: function(context) {
+              const percentage = ((context.parsed.x / totalCategories) * 100).toFixed(1);
+              return ` ${context.parsed.x} بلاغ (${percentage}%)`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: {
+            color: '#e2e8f0',
+            drawBorder: false
+          },
+          ticks: {
+            font: { size: 10 },
+            color: '#64748b'
+          }
+        },
+        y: {
+          grid: {
+            display: false,
+            drawBorder: false
+          },
+          ticks: {
+            font: { size: 11, weight: 'bold' },
+            color: '#1e293b'
+          }
+        }
+      },
+      animation: {
+        duration: 800,
+        easing: 'easeOutQuart'
+      }
+    }
+  });
+}
+
 function exportMap() {
   document.getElementById("loading").style.display = "flex";
-
   const mapSection = document.getElementById("mapSection");
 
   setTimeout(() => {
@@ -869,10 +991,8 @@ function exportMap() {
   }, 500);
 }
 
-// تصدير الرسم البياني
 function exportChart() {
   document.getElementById("loading").style.display = "flex";
-
   const chartContainer = document.getElementById("chartContainer");
 
   setTimeout(() => {
@@ -884,7 +1004,7 @@ function exportChart() {
       height: 1123
     }).then(canvas => {
       const link = document.createElement("a");
-      link.download = `الرسم_البياني_A4_${new Date().toLocaleDateString('ar-SA')}.png`;
+      link.download = `الأحياء_دونات_A4_${new Date().toLocaleDateString('ar-SA')}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
       document.getElementById("loading").style.display = "none";
@@ -896,10 +1016,33 @@ function exportChart() {
   }, 500);
 }
 
-// تصدير الجدول
+function exportBarChart() {
+  document.getElementById("loading").style.display = "flex";
+  const barChartContainer = document.getElementById("barChartContainer");
+
+  setTimeout(() => {
+    html2canvas(barChartContainer, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      width: 794,
+      height: 1123
+    }).then(canvas => {
+      const link = document.createElement("a");
+      link.download = `التصنيفات_بار_A4_${new Date().toLocaleDateString('ar-SA')}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      document.getElementById("loading").style.display = "none";
+    }).catch(err => {
+      console.error(err);
+      document.getElementById("loading").style.display = "none";
+      alert("حدث خطأ أثناء تصدير الرسم البياني");
+    });
+  }, 500);
+}
+
 function exportTable() {
   document.getElementById("loading").style.display = "flex";
-
   const tablePages = document.querySelectorAll('.tablePage');
   let currentPage = 0;
 
@@ -933,10 +1076,8 @@ function exportTable() {
   exportNextPage();
 }
 
-// تصدير التقرير الكامل
 function exportFullReport() {
   document.getElementById("loading").style.display = "flex";
-
   const controlPanel = document.querySelector('.controlPanel');
   const originalDisplay = controlPanel.style.display;
   controlPanel.style.display = 'none';
@@ -944,6 +1085,7 @@ function exportFullReport() {
   const sections = [
     document.getElementById("mapSection"),
     document.getElementById("chartContainer"),
+    document.getElementById("barChartContainer"),
     ...document.querySelectorAll('.tablePage')
   ];
 
@@ -971,7 +1113,12 @@ function exportFullReport() {
       height: 1123
     }).then(canvas => {
       const link = document.createElement("a");
-      const sectionName = currentIndex === 0 ? "خريطة" : currentIndex === 1 ? "رسم" : `جدول_صفحة_${currentIndex - 1}`;
+      let sectionName;
+      if (currentIndex === 0) sectionName = "خريطة";
+      else if (currentIndex === 1) sectionName = "أحياء_دونات";
+      else if (currentIndex === 2) sectionName = "تصنيفات_بار";
+      else sectionName = `جدول_صفحة_${currentIndex - 2}`;
+      
       link.download = `${sectionName}_A4_${new Date().toLocaleDateString('ar-SA')}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
@@ -990,7 +1137,6 @@ function exportFullReport() {
 }
 </script>
 
-<!-- 🔑 مفتاح Google Maps API -->
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=geometry&callback=initMap&language=ar&region=SA" async defer></script>
 
 </body>
