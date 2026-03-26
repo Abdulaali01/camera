@@ -4,187 +4,175 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>تقرير تحليل الأحياء</title>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
 <style>
-@page { size: A4 portrait; margin: 15mm; }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; min-height: 100vh; padding: 20px; }
-.reportContainer { max-width: 210mm; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden; }
-.reportHeader { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 20px; text-align: center; }
-.reportHeader h1 { font-size: 24px; margin-bottom: 8px; }
-.reportHeader .subtitle { font-size: 14px; opacity: 0.9; }
-.reportDate { margin-top: 10px; font-size: 12px; background: rgba(255,255,255,0.2); display: inline-block; padding: 5px 15px; border-radius: 15px; }
-.controlPanel { background: #f8fafc; padding: 15px; border-bottom: 1px solid #e2e8f0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.controlPanel input, .controlPanel select { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; outline: none; }
-.controlPanel button { padding: 8px 16px; border: none; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-.controlPanel button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
-.controlPanel button.secondary { background: linear-gradient(135deg, #0b8f55 0%, #0a7a48 100%); }
-.controlPanel button.accent { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-.reportContent { padding: 20px; }
-.mapSection { width: 180mm; height: 250mm; margin: 0 auto 20px; page-break-after: always; break-after: page; display: flex; flex-direction: column; background: white; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; }
-.sectionTitle { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-.sectionTitle::before { content: ""; width: 3px; height: 18px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 2px; }
-#map { flex: 1; width: 100%; border-radius: 8px; border: 1px solid #e2e8f0; }
-.statsGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
-.statCard { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 10px; text-align: center; }
-.statCard h3 { font-size: 11px; opacity: 0.9; margin-bottom: 5px; }
-.statCard .number { font-size: 24px; font-weight: 800; }
-.districtChartContainer { width: 180mm; height: 250mm; margin: 0 auto 20px; page-break-after: always; break-after: page; background: white; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; flex-direction: column; }
-.districtChartWrapper { width: 100%; height: 100%; position: relative; }
-.chartPrintHeader { text-align: center; margin-bottom: 15px; }
-.chartPrintHeader h2 { font-size: 18px; color: #1e293b; margin-bottom: 5px; }
-.chartPrintHeader p { color: #64748b; font-size: 12px; }
-.barChartContainer { width: 180mm; height: 250mm; margin: 0 auto 20px; page-break-after: always; break-after: page; background: white; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; flex-direction: column; }
-.barChartWrapper { width: 100%; height: 100%; max-height: 200mm; position: relative; }
-.tableSection, .streetsTableSection { width: 180mm; margin: 0 auto; }
-.tablePage { width: 180mm; height: 277mm; margin: 0 auto 20px; page-break-after: always; break-after: page; background: white; padding: 15mm; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; }
-.tablePage:last-child { page-break-after: auto; }
-.tableHeader { text-align: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #1e3c72; }
-.tableHeader h2 { font-size: 18px; color: #1e3c72; margin-bottom: 5px; }
-.tableHeader p { color: #64748b; font-size: 12px; }
-.dataTable { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
-.dataTable thead { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; }
-.dataTable th { padding: 10px 6px; text-align: center; font-weight: 700; font-size: 11px; border: 1px solid #1e3c72; white-space: nowrap; }
-.dataTable td { padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; font-size: 11px; height: 35px; }
-.dataTable tr:nth-child(even) { background: #f8fafc; }
-.dataTable tbody tr { page-break-inside: avoid; }
-.rank { display: inline-block; width: 24px; height: 24px; line-height: 24px; border-radius: 50%; font-weight: 700; color: white; font-size: 11px; }
-.rank.gold { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-.rank.silver { background: linear-gradient(135deg, #64748b 0%, #475569 100%); }
-.rank.bronze { background: linear-gradient(135deg, #b45309 0%, #92400e 100%); }
-.rank.normal { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-.countBadge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-weight: 700; color: white; background: linear-gradient(135deg, #10b981 0%, #059669 100%); font-size: 10px; }
-.countBadge.high { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
-.countBadge.medium { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-.coordCell { font-family: monospace; font-size: 9px; direction: ltr; color: #059669; }
-.colorIndicator { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-.pageFooter { margin-top: auto; padding-top: 10px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 10px; color: #64748b; }
-.filterContainer { display: flex; gap: 8px; align-items: center; flex: 1; }
-.filterContainer input, .filterContainer select { flex: 1; min-width: 120px; }
-.exportButtons { display: flex; gap: 8px; flex-wrap: wrap; }
-@media print {
-  @page { size: A4 portrait; margin: 0; }
-  body { background: white; padding: 0; margin: 0; }
-  .reportContainer { box-shadow: none; border-radius: 0; max-width: 100%; }
-  .controlPanel { display: none; }
-  .reportHeader { border-radius: 0; }
-  .mapSection, .districtChartContainer, .barChartContainer, .tablePage { width: 210mm; height: 297mm; margin: 0; border: none; border-radius: 0; page-break-after: always; break-after: page; }
-  .mapSection:last-child, .districtChartContainer:last-child, .barChartContainer:last-child, .tablePage:last-child { page-break-after: auto; }
-  #map { height: 250mm; }
-  .statsGrid { display: none; }
-}
-.loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center; z-index: 9999; font-size: 16px; color: #667eea; font-weight: 700; }
-.spinner { width: 30px; height: 30px; border: 3px solid #e0e7ff; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 10px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.debugInfo { background: #fef3c7; border: 1px solid #f59e0b; padding: 10px; margin: 10px 0; border-radius: 6px; font-size: 12px; color: #92400e; }
-.dataQualitySection { width: 180mm; margin: 0 auto 20px; background: white; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; }
-.dataQualityHeader { text-align: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #dc2626; }
-.dataQualityHeader h2 { font-size: 16px; color: #dc2626; margin-bottom: 5px; }
-.dataQualityHeader p { color: #64748b; font-size: 11px; }
-.qualityGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-.qualityBox { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; }
-.qualityBox h4 { font-size: 12px; color: #991b1b; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
-.qualityBox h4 .count { background: #dc2626; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
-.qualityTable { width: 100%; border-collapse: collapse; font-size: 10px; }
-.qualityTable th { background: #fee2e2; padding: 6px 4px; text-align: center; font-weight: 600; color: #7f1d1d; border: 1px solid #fecaca; }
-.qualityTable td { padding: 5px 4px; text-align: center; border: 1px solid #fecaca; color: #450a0a; }
-.qualityTable tr:nth-child(even) { background: #fff5f5; }
-.emptyCell { color: #dc2626; font-style: italic; }
+@page{size:A4 portrait;margin:15mm}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;min-height:100vh;padding:20px}
+.reportContainer{max-width:210mm;margin:0 auto;background:white;border-radius:10px;box-shadow:0 4px 6px rgba(0,0,0,0.1);overflow:hidden}
+.reportHeader{background:linear-gradient(135deg,#1e3c72 0%,#2a5298 100%);color:white;padding:20px;text-align:center}
+.reportHeader h1{font-size:24px;margin-bottom:8px}
+.reportHeader .subtitle{font-size:14px;opacity:0.9}
+.reportDate{margin-top:10px;font-size:12px;background:rgba(255,255,255,0.2);display:inline-block;padding:5px 15px;border-radius:15px}
+.controlPanel{background:#f8fafc;padding:15px;border-bottom:1px solid #e2e8f0;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.controlPanel input,.controlPanel select{padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;outline:none}
+.controlPanel button{padding:8px 16px;border:none;border-radius:6px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.3s}
+.controlPanel button:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(102,126,234,0.3)}
+.controlPanel button.secondary{background:linear-gradient(135deg,#0b8f55 0%,#0a7a48 100%)}
+.controlPanel button.accent{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}
+.reportContent{padding:20px}
+.mapSection{width:180mm;height:250mm;margin:0 auto 20px;page-break-after:always;break-after:page;display:flex;flex-direction:column;background:white;padding:10px;border:1px solid #e2e8f0;border-radius:8px}
+.sectionTitle{font-size:16px;font-weight:700;color:#1e293b;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sectionTitle::before{content:"";width:3px;height:18px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:2px}
+#map{flex:1;width:100%;border-radius:8px;border:1px solid #e2e8f0}
+.statsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:20px}
+.statCard{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:15px;border-radius:10px;text-align:center}
+.statCard h3{font-size:11px;opacity:0.9;margin-bottom:5px}
+.statCard .number{font-size:24px;font-weight:800}
+.districtChartContainer,.barChartContainer{width:180mm;height:250mm;margin:0 auto 20px;page-break-after:always;break-after:page;background:white;padding:20px;border:1px solid #e2e8f0;border-radius:8px;display:flex;flex-direction:column}
+.districtChartWrapper,.barChartWrapper{width:100%;height:100%;position:relative}
+.chartPrintHeader{text-align:center;margin-bottom:15px}
+.chartPrintHeader h2{font-size:18px;color:#1e293b;margin-bottom:5px}
+.chartPrintHeader p{color:#64748b;font-size:12px}
+.tableSection,.streetsTableSection{width:180mm;margin:0 auto}
+.tablePage{width:180mm;height:277mm;margin:0 auto 20px;page-break-after:always;break-after:page;background:white;padding:15mm;border:1px solid #e2e8f0;border-radius:8px;display:flex;flex-direction:column;overflow:hidden}
+.tablePage:last-child{page-break-after:auto}
+.tableHeader{text-align:center;margin-bottom:15px;padding-bottom:10px;border-bottom:2px solid #1e3c72}
+.tableHeader h2{font-size:18px;color:#1e3c72;margin-bottom:5px}
+.tableHeader p{color:#64748b;font-size:12px}
+.dataTable{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+.dataTable thead{background:linear-gradient(135deg,#1e3c72 0%,#2a5298 100%);color:white}
+.dataTable th{padding:10px 6px;text-align:center;font-weight:700;font-size:11px;border:1px solid #1e3c72;white-space:nowrap}
+.dataTable td{padding:8px 6px;text-align:center;border:1px solid #e2e8f0;font-size:11px;height:35px}
+.dataTable tr:nth-child(even){background:#f8fafc}
+.dataTable tbody tr{page-break-inside:avoid}
+.rank{display:inline-block;width:24px;height:24px;line-height:24px;border-radius:50%;font-weight:700;color:white;font-size:11px}
+.rank.gold{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}
+.rank.silver{background:linear-gradient(135deg,#64748b 0%,#475569 100%)}
+.rank.bronze{background:linear-gradient(135deg,#b45309 0%,#92400e 100%)}
+.rank.normal{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
+.countBadge{display:inline-block;padding:4px 10px;border-radius:12px;font-weight:700;color:white;background:linear-gradient(135deg,#10b981 0%,#059669 100%);font-size:10px}
+.countBadge.high{background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)}
+.countBadge.medium{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}
+.coordCell{font-family:monospace;font-size:9px;direction:ltr;color:#059669}
+.colorIndicator{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.2)}
+.pageFooter{margin-top:auto;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#64748b}
+.filterContainer{display:flex;gap:8px;align-items:center;flex:1}
+.filterContainer input,.filterContainer select{flex:1;min-width:120px}
+.exportButtons{display:flex;gap:8px;flex-wrap:wrap}
+@media print{@page{size:A4 portrait;margin:0}body{background:white;padding:0;margin:0}.reportContainer{box-shadow:none;border-radius:0;max-width:100%}.controlPanel{display:none}.reportHeader{border-radius:0}.mapSection,.districtChartContainer,.barChartContainer,.tablePage{width:210mm;height:297mm;margin:0;border:none;border-radius:0;page-break-after:always;break-after:page}.mapSection:last-child,.districtChartContainer:last-child,.barChartContainer:last-child,.tablePage:last-child{page-break-after:auto}#map{height:250mm}.statsGrid{display:none}}
+.loading{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;z-index:9999;font-size:16px;color:#667eea;font-weight:700}
+.spinner{width:30px;height:30px;border:3px solid #e0e7ff;border-top-color:#667eea;border-radius:50%;animation:spin 1s linear infinite;margin-left:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.debugInfo{background:#fef3c7;border:1px solid #f59e0b;padding:10px;margin:10px 0;border-radius:6px;font-size:12px;color:#92400e}
+.dataQualitySection{width:180mm;margin:0 auto 20px;background:white;padding:20px;border:1px solid #e2e8f0;border-radius:8px}
+.dataQualityHeader{text-align:center;margin-bottom:15px;padding-bottom:10px;border-bottom:2px solid #dc2626}
+.dataQualityHeader h2{font-size:16px;color:#dc2626;margin-bottom:5px}
+.dataQualityHeader p{color:#64748b;font-size:11px}
+.qualityGrid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.qualityBox{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px}
+.qualityBox h4{font-size:12px;color:#991b1b;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.qualityBox h4 .count{background:#dc2626;color:white;padding:2px 8px;border-radius:10px;font-size:10px}
+.qualityTable{width:100%;border-collapse:collapse;font-size:10px}
+.qualityTable th{background:#fee2e2;padding:6px 4px;text-align:center;font-weight:600;color:#7f1d1d;border:1px solid #fecaca}
+.qualityTable td{padding:5px 4px;text-align:center;border:1px solid #fecaca;color:#450a0a}
+.qualityTable tr:nth-child(even){background:#fff5f5}
+.emptyCell{color:#dc2626;font-style:italic}
 </style>
 </head>
 <body>
-<div id="loading" class="loading" style="display: none;">جاري التحميل...<div class="spinner"></div></div>
+<div id="loading" class="loading" style="display:none">جاري التحميل...<div class="spinner"></div></div>
 <div class="reportContainer">
-  <div class="reportHeader">
-    <h1>📊 تقرير تحليل الأحياء</h1>
-    <div class="subtitle">تقرير شامل يوضح توزيع البلاغات حسب الأحياء والشوارع والتصنيفات</div>
-    <div class="reportDate" id="reportDate"></div>
-  </div>
-  <div class="controlPanel">
-    <input type="file" id="excelFile" accept=".xlsx,.xls" style="flex: 1; min-width: 150px;">
-    <button onclick="importExcel()">📥 استيراد</button>
-    <select id="filterCount" onchange="updateReport()">
-      <option value="5">أعلى 5</option>
-      <option value="10">أعلى 10</option>
-      <option value="15">أعلى 15</option>
-      <option value="20">أعلى 20</option>
-      <option value="50">أعلى 50</option>
-      <option value="100">أعلى 100</option>
-      <option value="all" selected>الكل</option>
-    </select>
-    <div class="filterContainer">
-      <select id="municipalityFilter" onchange="updateReport()"><option value="">جميع البلديات</option></select>
-      <select id="monthFilter" onchange="updateReport()"><option value="">جميع الشهور</option></select>
-      <input type="text" id="districtFilter" placeholder="🔍 البحث في الأحياء..." oninput="updateReport()">
-    </div>
-    <div class="exportButtons">
-      <button onclick="exportMap()" class="accent">🗺️ خريطة</button>
-      <button onclick="exportDistrictChart()" class="accent">📊 الأحياء</button>
-      <button onclick="exportBarChart()" class="accent">📊 التصنيفات</button>
-      <button onclick="exportStreetsTable()" class="accent">🛣️ الشوارع</button>
-      <button onclick="exportTable()" class="accent">📋 جدول</button>
-      <button onclick="exportFullReport()" class="secondary">📑 الكل</button>
-      <button onclick="window.print()">🖨️ طباعة</button>
-    </div>
-  </div>
-  <div class="reportContent">
-    <div id="debugInfo" class="debugInfo" style="display: none;"></div>
-    <div class="statsGrid">
-      <div class="statCard"><h3>إجمالي البلاغات المستوردة</h3><div class="number" id="totalReports">0</div></div>
-      <div class="statCard"><h3>عدد الأحياء الفريدة</h3><div class="number" id="totalDistricts">0</div></div>
-      <div class="statCard"><h3>أعلى حي</h3><div class="number" id="topDistrict">-</div></div>
-    </div>
-    <div class="mapSection" id="mapSection">
-      <h2 class="sectionTitle">الخريطة التفاعلية</h2>
-      <div id="map"></div>
-    </div>
-    <div class="districtChartContainer" id="districtChartContainer">
-      <div class="chartPrintHeader">
-        <h2>توزيع البلاغات حسب الأحياء - Top 15</h2>
-        <p id="districtChartSubtitle">إجمالي البلاغات: 0</p>
-      </div>
-      <div class="districtChartWrapper"><canvas id="districtChartCanvas"></canvas></div>
-    </div>
-    <div class="barChartContainer" id="barChartContainer">
-      <div class="chartPrintHeader">
-        <h2>توزيع البلاغات حسب التصنيف/التخصص</h2>
-        <p id="barChartSubtitle">إجمالي التصنيفات: 0</p>
-      </div>
-      <div class="barChartWrapper"><canvas id="barChartCanvas"></canvas></div>
-    </div>
-    <div class="dataQualitySection" id="dataQualitySection" style="display: none;">
-      <div class="dataQualityHeader">
-        <h2>⚠️ تحليل جودة البيانات</h2>
-        <p>الشوارع بدون أحياء والأحياء غير المذكورة</p>
-      </div>
-      <div class="qualityGrid">
-        <div class="qualityBox">
-          <h4>📍 شوارع بدون حي <span class="count" id="streetsWithoutDistrictCount">0</span></h4>
-          <div style="max-height: 200px; overflow-y: auto;">
-            <table class="qualityTable"><thead><tr><th>الشارع</th><th>الإحداثيات</th></tr></thead><tbody id="streetsWithoutDistrictBody"></tbody></table>
-          </div>
-        </div>
-        <div class="qualityBox">
-          <h4>🏘️ أحياء غير مذكورة <span class="count" id="unknownDistrictsCount">0</span></h4>
-          <div style="max-height: 200px; overflow-y: auto;">
-            <table class="qualityTable"><thead><tr><th>الحي</th><th>العدد</th></tr></thead><tbody id="unknownDistrictsBody"></tbody></table>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="streetsTableSection" id="streetsTableSection"></div>
-    <div class="tableSection" id="tableSection"></div>
-  </div>
+<div class="reportHeader">
+<h1>📊 تقرير تحليل الأحياء</h1>
+<div class="subtitle">تقرير شامل يوضح توزيع البلاغات حسب الأحياء والشوارع والتصنيفات</div>
+<div class="reportDate" id="reportDate"></div>
+</div>
+<div class="controlPanel">
+<input type="file" id="excelFile" accept=".xlsx,.xls" style="flex:1;min-width:150px">
+<button onclick="importExcel()">📥 استيراد</button>
+<select id="filterCount" onchange="updateReport()">
+<option value="5">أعلى 5</option>
+<option value="10">أعلى 10</option>
+<option value="15">أعلى 15</option>
+<option value="20">أعلى 20</option>
+<option value="50">أعلى 50</option>
+<option value="100">أعلى 100</option>
+<option value="all" selected>الكل</option>
+</select>
+<div class="filterContainer">
+<select id="municipalityFilter" onchange="updateReport()"><option value="">جميع البلديات</option></select>
+<select id="monthFilter" onchange="updateReport()"><option value="">جميع الشهور</option></select>
+<input type="text" id="districtFilter" placeholder="🔍 البحث في الأحياء..." oninput="debouncedUpdate()">
+</div>
+<div class="exportButtons">
+<button onclick="exportMap()" class="accent">🗺️ خريطة</button>
+<button onclick="exportDistrictChart()" class="accent">📊 الأحياء</button>
+<button onclick="exportBarChart()" class="accent">📊 التصنيفات</button>
+<button onclick="exportStreetsTable()" class="accent">🛣️ الشوارع</button>
+<button onclick="exportTable()" class="accent">📋 جدول</button>
+<button onclick="exportFullReport()" class="secondary">📑 الكل</button>
+<button onclick="window.print()">🖨️ طباعة</button>
+</div>
+</div>
+<div class="reportContent">
+<div id="debugInfo" class="debugInfo" style="display:none"></div>
+<div class="statsGrid">
+<div class="statCard"><h3>إجمالي البلاغات المستوردة</h3><div class="number" id="totalReports">0</div></div>
+<div class="statCard"><h3>عدد الأحياء الفريدة</h3><div class="number" id="totalDistricts">0</div></div>
+<div class="statCard"><h3>أعلى حي</h3><div class="number" id="topDistrict">-</div></div>
+</div>
+<div class="mapSection" id="mapSection">
+<h2 class="sectionTitle">الخريطة التفاعلية</h2>
+<div id="map"></div>
+</div>
+<div class="districtChartContainer" id="districtChartContainer">
+<div class="chartPrintHeader">
+<h2>توزيع البلاغات حسب الأحياء - Top 15</h2>
+<p id="districtChartSubtitle">إجمالي البلاغات: 0</p>
+</div>
+<div class="districtChartWrapper"><canvas id="districtChartCanvas"></canvas></div>
+</div>
+<div class="barChartContainer" id="barChartContainer">
+<div class="chartPrintHeader">
+<h2>توزيع البلاغات حسب التصنيف/التخصص</h2>
+<p id="barChartSubtitle">إجمالي التصنيفات: 0</p>
+</div>
+<div class="barChartWrapper"><canvas id="barChartCanvas"></canvas></div>
+</div>
+<div class="dataQualitySection" id="dataQualitySection" style="display:none">
+<div class="dataQualityHeader">
+<h2>⚠️ تحليل جودة البيانات</h2>
+<p>الشوارع بدون أحياء والأحياء غير المذكورة</p>
+</div>
+<div class="qualityGrid">
+<div class="qualityBox">
+<h4>📍 شوارع بدون حي <span class="count" id="streetsWithoutDistrictCount">0</span></h4>
+<div style="max-height:200px;overflow-y:auto">
+<table class="qualityTable"><thead><tr><th>الشارع</th><th>الإحداثيات</th></tr></thead><tbody id="streetsWithoutDistrictBody"></tbody></table>
+</div>
+</div>
+<div class="qualityBox">
+<h4>🏘️ أحياء غير مذكورة <span class="count" id="unknownDistrictsCount">0</span></h4>
+<div style="max-height:200px;overflow-y:auto">
+<table class="qualityTable"><thead><tr><th>الحي</th><th>العدد</th></tr></thead><tbody id="unknownDistrictsBody"></tbody></table>
+</div>
+</div>
+</div>
+</div>
+<div class="streetsTableSection" id="streetsTableSection"></div>
+<div class="tableSection" id="tableSection"></div>
+</div>
 </div>
 
 <script>
-let map, districts=[], districtChart=null, barChart=null, allDistricts=[];
-let categoryStats={}, allData=[], rawDataCount=0, streetsStats=[];
+let map,districts=[],districtChart=null,barChart=null,allDistricts=[];
+let categoryStats={},allData=[],rawDataCount=0,streetsStats=[];
+let debounceTimer;
+
 const monthNamesToNumbers={"يناير":1,"فبراير":2,"مارس":3,"أبريل":4,"مايو":5,"يونيو":6,"يوليو":7,"أغسطس":8,"سبتمبر":9,"أكتوبر":10,"نوفمبر":11,"ديسمبر":12,"1":1,"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"11":11,"12":12};
 const monthNumbersToNames={1:"يناير",2:"فبراير",3:"مارس",4:"أبريل",5:"مايو",6:"يونيو",7:"يوليو",8:"أغسطس",9:"سبتمبر",10:"أكتوبر",11:"نوفمبر",12:"ديسمبر"};
 const COLORS=["#667eea","#764ba2","#f093fb","#f5576c","#4facfe","#00f2fe","#43e97b","#38f9d7","#fa709a","#fee140","#ff6b6b","#4ecdc4","#45b7d1","#96ceb4","#ffeaa7","#dfe6e9","#fd79a8","#a29bfe","#6c5ce7","#00b894"];
@@ -193,294 +181,292 @@ document.getElementById("reportDate").textContent=new Date().toLocaleDateString(
 let markers=[];
 
 function initMap(){
-  map=new google.maps.Map(document.getElementById("map"),{center:{lat:24.7136,lng:46.6753},zoom:11,mapTypeId:"hybrid",mapTypeControl:true,fullscreenControl:false,streetViewControl:false,zoomControl:true});
+map=new google.maps.Map(document.getElementById("map"),{center:{lat:24.7136,lng:46.6753},zoom:11,mapTypeId:"hybrid",mapTypeControl:true,fullscreenControl:false,streetViewControl:false,zoomControl:true});
 }
 
 function clearMarkers(){
-  markers.forEach(m=>{if(m.circle)m.circle.setMap(null);if(m.label)m.label.setMap(null);if(m.pointMarker)m.pointMarker.setMap(null);if(m.polygon)m.polygon.setMap(null);if(m.line)m.line.setMap(null);});
-  markers=[];
+markers.forEach(m=>{if(m.setMap)m.setMap(null)});
+markers=[];
 }
 
-// ✅ دالة تفريق النقاط المتكررة على شكل دائرة
-function spreadPoints(points,baseRadius){
-  if(points.length<=1)return points.map(p=>({...p,isSpread:false}));
-  const result=[];
-  const centerLat=points[0].lat;
-  const centerLng=points[0].lng;
-  result.push({...points[0],isSpread:false});
-  const count=points.length-1;
-  const radius=baseRadius*Math.sqrt(count)/100000;
-  for(let i=0;i<count;i++){
-    const angle=(2*Math.PI*i)/count;
-    const offsetLat=radius*Math.cos(angle);
-    const offsetLng=radius*Math.sin(angle)/Math.cos(centerLat*Math.PI/180);
-    result.push({...points[i+1],lat:centerLat+offsetLat,lng:centerLng+offsetLng,originalLat:centerLat,originalLng:centerLng,isSpread:true});
-  }
-  return result;
+// ✅ Debounce للفلترة
+function debouncedUpdate(){
+clearTimeout(debounceTimer);
+debounceTimer=setTimeout(updateReport,300);
+}
+
+// ✅ تجميع النقاط المتقاربة (Clustering)
+function clusterPoints(points,maxClusters=8){
+if(points.length<=maxClusters)return points.map((p,i)=>({...p,clusterId:i,count:1}));
+const clusters=[];
+const step=Math.ceil(points.length/maxClusters);
+for(let i=0;i<points.length;i+=step){
+const clusterPoints=points.slice(i,i+step);
+const avgLat=clusterPoints.reduce((sum,p)=>sum+p.lat,0)/clusterPoints.length;
+const avgLng=clusterPoints.reduce((sum,p)=>sum+p.lng,0)/clusterPoints.length;
+clusters.push({lat:avgLat,lng:avgLng,count:clusterPoints.length,points:clusterPoints});
+}
+return clusters;
 }
 
 function importExcel(){
-  const file=document.getElementById("excelFile").files[0];
-  if(!file){alert("اختر ملف Excel أولاً");return;}
-  document.getElementById("loading").style.display="flex";
-  const reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      const data=new Uint8Array(e.target.result);
-      const workbook=XLSX.read(data,{type:"array"});
-      const sheet=workbook.Sheets[workbook.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(sheet,{header:1});
-      rawDataCount=rows.length;
-      processData(rows);
-      document.getElementById("loading").style.display="none";
-      alert("تم استيراد البيانات بنجاح!\nإجمالي الصفوف: "+rawDataCount+"\nالبلاغات الصالحة: "+allData.length);
-    }catch(err){
-      document.getElementById("loading").style.display="none";
-      alert("خطأ في قراءة الملف: "+err.message);
-    }
-  };
-  reader.readAsArrayBuffer(file);
+const file=document.getElementById("excelFile").files[0];
+if(!file){alert("اختر ملف Excel أولاً");return;}
+document.getElementById("loading").style.display="flex";
+const reader=new FileReader();
+reader.onload=function(e){
+try{
+const data=new Uint8Array(e.target.result);
+const workbook=XLSX.read(data,{type:"array"});
+const sheet=workbook.Sheets[workbook.SheetNames[0]];
+const rows=XLSX.utils.sheet_to_json(sheet,{header:1});
+rawDataCount=rows.length;
+processData(rows);
+document.getElementById("loading").style.display="none";
+alert("تم استيراد البيانات بنجاح!\nالبلاغات الصالحة: "+allData.length);
+}catch(err){
+document.getElementById("loading").style.display="none";
+alert("خطأ: "+err.message);
+}
+};
+reader.readAsArrayBuffer(file);
 }
 
 function extractMonth(monthValue){
-  if(!monthValue)return null;
-  const monthStr=String(monthValue).trim();
-  for(let name in monthNamesToNumbers){if(monthStr.includes(name))return monthNamesToNumbers[name];}
-  const num=parseInt(monthStr);
-  if(num>=1&&num<=12)return num;
-  return null;
+if(!monthValue)return null;
+const monthStr=String(monthValue).trim();
+for(let name in monthNamesToNumbers){if(monthStr.includes(name))return monthNamesToNumbers[name];}
+const num=parseInt(monthStr);
+if(num>=1&&num<=12)return num;
+return null;
 }
 
 function processData(rows){
-  allData=[];
-  const headers=rows[0]||[];
-  let streetColumnIndex=6;
-  for(let i=0;i<headers.length;i++){
-    const header=String(headers[i]||"").trim();
-    if(header.includes("شارع")||header==="الشارع"){streetColumnIndex=i;break;}
-  }
-  for(let i=1;i<rows.length;i++){
-    const row=rows[i];
-    if(!row)continue;
-    const lat=parseFloat(row[0]);
-    const lng=parseFloat(row[1]);
-    const name=row[2]?String(row[2]).trim():"";
-    const category=row[3]?String(row[3]).trim():"غير مصنف";
-    const municipality=row[4]?String(row[4]).trim():"غير محددة";
-    const streetValue=row[streetColumnIndex];
-    const street=streetValue?String(streetValue).trim():"";
-    const monthValue=row[5]||row[7];
-    const month=extractMonth(monthValue);
-    if(!isNaN(lat)&&!isNaN(lng)){
-      allData.push({lat,lng,name:name||"غير محدد",category,municipality,street:street||"غير محدد",month,monthName:monthValue});
-    }
-  }
-  const debugDiv=document.getElementById("debugInfo");
-  debugDiv.style.display="block";
-  debugDiv.innerHTML="📊 إحصائيات الاستيراد:<br>• إجمالي الصفوف في الملف: "+rawDataCount+"<br>• الصفوف المستبعدة (بدون إحداثيات): "+(rawDataCount-1-allData.length)+"<br>• البلاغات الصالحة: <strong>"+allData.length+"</strong>";
-  analyzeDataQuality();
-  updateMonthFilter();
-  updateMunicipalityFilter();
-  updateReport();
+allData=[];
+const headers=rows[0]||[];
+let streetColumnIndex=6;
+for(let i=0;i<headers.length;i++){
+const header=String(headers[i]||"").trim();
+if(header.includes("شارع")||header==="الشارع"){streetColumnIndex=i;break;}
+}
+for(let i=1;i<rows.length;i++){
+const row=rows[i];
+if(!row)continue;
+const lat=parseFloat(row[0]);
+const lng=parseFloat(row[1]);
+const name=row[2]?String(row[2]).trim():"";
+const category=row[3]?String(row[3]).trim():"غير مصنف";
+const municipality=row[4]?String(row[4]).trim():"غير محددة";
+const streetValue=row[streetColumnIndex];
+const street=streetValue?String(streetValue).trim():"";
+const monthValue=row[5]||row[7];
+const month=extractMonth(monthValue);
+if(!isNaN(lat)&&!isNaN(lng)){
+allData.push({lat,lng,name:name||"غير محدد",category,municipality,street:street||"غير محدد",month,monthName:monthValue});
+}
+}
+document.getElementById("debugInfo").style.display="block";
+document.getElementById("debugInfo").innerHTML="📊 إحصائيات:<br>• إجمالي الصفوف: "+rawDataCount+"<br>• البلاغات الصالحة: <strong>"+allData.length+"</strong>";
+analyzeDataQuality();
+updateMonthFilter();
+updateMunicipalityFilter();
+updateReport();
 }
 
 function analyzeDataQuality(){
-  const qualitySection=document.getElementById("dataQualitySection");
-  const streetsWithoutDistrict=allData.filter(d=>!d.name||d.name===""||d.name==="غير محدد");
-  const unknownDistricts=allData.filter(d=>d.name==="غير محدد");
-  if(streetsWithoutDistrict.length>0||unknownDistricts.length>0){
-    qualitySection.style.display="block";
-    const streetsBody=document.getElementById("streetsWithoutDistrictBody");
-    document.getElementById("streetsWithoutDistrictCount").textContent=streetsWithoutDistrict.length;
-    const uniqueStreets={};
-    streetsWithoutDistrict.forEach(d=>{
-      const key=d.street;
-      if(!uniqueStreets[key]){uniqueStreets[key]={street:d.street,lat:d.lat,lng:d.lng,count:1};}
-      else{uniqueStreets[key].count++;}
-    });
-    streetsBody.innerHTML=Object.values(uniqueStreets).map(s=>"<tr><td>"+s.street+"</td><td class='coordCell'>"+s.lat.toFixed(6)+", "+s.lng.toFixed(6)+"</td></tr>").join('');
-    const districtsBody=document.getElementById("unknownDistrictsBody");
-    document.getElementById("unknownDistrictsCount").textContent=unknownDistricts.length;
-    const districtCounts={};
-    unknownDistricts.forEach(d=>{const key=d.street;if(!districtCounts[key])districtCounts[key]=1;else districtCounts[key]++;});
-    districtsBody.innerHTML=Object.entries(districtCounts).map(([street,count])=>"<tr><td class='emptyCell'>غير محدد ("+street+")</td><td>"+count+"</td></tr>").join('');
-  }else{qualitySection.style.display="none";}
+const qualitySection=document.getElementById("dataQualitySection");
+const streetsWithoutDistrict=allData.filter(d=>!d.name||d.name===""||d.name==="غير محدد");
+const unknownDistricts=allData.filter(d=>d.name==="غير محدد");
+if(streetsWithoutDistrict.length>0||unknownDistricts.length>0){
+qualitySection.style.display="block";
+document.getElementById("streetsWithoutDistrictCount").textContent=streetsWithoutDistrict.length;
+document.getElementById("unknownDistrictsCount").textContent=unknownDistricts.length;
+}else{qualitySection.style.display="none";}
 }
 
 function updateMonthFilter(){
-  const select=document.getElementById("monthFilter");
-  const availableMonths=[...new Set(allData.map(d=>d.month).filter(m=>m))].sort((a,b)=>a-b);
-  const currentValue=select.value;
-  let optionsHtml='<option value="">جميع الشهور</option>';
-  availableMonths.forEach(m=>{optionsHtml+='<option value="'+m+'">'+(monthNumbersToNames[m]||"شهر "+m)+'</option>';});
-  select.innerHTML=optionsHtml;
-  if(currentValue&&availableMonths.includes(parseInt(currentValue)))select.value=currentValue;
+const select=document.getElementById("monthFilter");
+const availableMonths=[...new Set(allData.map(d=>d.month).filter(m=>m))].sort((a,b)=>a-b);
+let optionsHtml='<option value="">جميع الشهور</option>';
+availableMonths.forEach(m=>{optionsHtml+='<option value="'+m+'">'+(monthNumbersToNames[m]||"شهر "+m)+'</option>';});
+select.innerHTML=optionsHtml;
 }
 
 function updateMunicipalityFilter(){
-  const select=document.getElementById("municipalityFilter");
-  const municipalities=[...new Set(allData.map(d=>d.municipality))].sort();
-  select.innerHTML='<option value="">جميع البلديات</option>';
-  municipalities.forEach(m=>{select.innerHTML+='<option value="'+m+'">'+m+'</option>';});
+const select=document.getElementById("municipalityFilter");
+const municipalities=[...new Set(allData.map(d=>d.municipality))].sort();
+select.innerHTML='<option value="">جميع البلديات</option>';
+municipalities.forEach(m=>{select.innerHTML+='<option value="'+m+'">'+m+'</option>';});
 }
 
 function updateReport(){
-  const filterCount=document.getElementById("filterCount").value;
-  const searchTerm=document.getElementById("districtFilter").value.toLowerCase().trim();
-  const municipalityFilter=document.getElementById("municipalityFilter").value;
-  const monthFilter=document.getElementById("monthFilter").value;
-  let filtered=allData;
-  if(municipalityFilter){filtered=filtered.filter(d=>d.municipality===municipalityFilter);}
-  if(monthFilter){const monthNum=parseInt(monthFilter);filtered=filtered.filter(d=>d.month===monthNum);}
-  if(searchTerm){filtered=filtered.filter(d=>d.name.toLowerCase().includes(searchTerm)||d.municipality.toLowerCase().includes(searchTerm)||d.street.toLowerCase().includes(searchTerm));}
-  const districtsMap={};
-  categoryStats={};
-  filtered.forEach(d=>{
-    const key=d.name+"_"+d.municipality;
-    if(districtsMap[key]){districtsMap[key].count++;districtsMap[key].rawPoints.push({lat:d.lat,lng:d.lng});}
-    else{districtsMap[key]={name:d.name,municipality:d.municipality,count:1,rawPoints:[{lat:d.lat,lng:d.lng}],lat:d.lat,lng:d.lng};}
-    if(categoryStats[d.category])categoryStats[d.category]++;else categoryStats[d.category]=1;
-  });
-  // ✅ تفريق النقاط المتكررة لكل حي
-  Object.values(districtsMap).forEach(district=>{district.points=spreadPoints(district.rawPoints,50);});
-  allDistricts=Object.values(districtsMap).sort((a,b)=>b.count-a.count);
-  if(filterCount!=="all"){districts=allDistricts.slice(0,parseInt(filterCount));}else{districts=allDistricts;}
-  const total=filtered.length;
-  document.getElementById("totalReports").textContent=total.toLocaleString();
-  document.getElementById("totalDistricts").textContent=districts.length;
-  document.getElementById("topDistrict").textContent=districts[0]?districts[0].name:"-";
-  updateStreetsTable(filtered,total);
-  updateMap(districts);
-  updateTable(districts,total);
-  updateDistrictChart(districts,total);
-  updateBarChart();
+const filterCount=document.getElementById("filterCount").value;
+const searchTerm=document.getElementById("districtFilter").value.toLowerCase().trim();
+const municipalityFilter=document.getElementById("municipalityFilter").value;
+const monthFilter=document.getElementById("monthFilter").value;
+let filtered=allData;
+if(municipalityFilter){filtered=filtered.filter(d=>d.municipality===municipalityFilter);}
+if(monthFilter){const monthNum=parseInt(monthFilter);filtered=filtered.filter(d=>d.month===monthNum);}
+if(searchTerm){filtered=filtered.filter(d=>d.name.toLowerCase().includes(searchTerm)||d.municipality.toLowerCase().includes(searchTerm)||d.street.toLowerCase().includes(searchTerm));}
+const districtsMap={};
+categoryStats={};
+filtered.forEach(d=>{
+const key=d.name+"_"+d.municipality;
+if(districtsMap[key]){districtsMap[key].count++;districtsMap[key].rawPoints.push({lat:d.lat,lng:d.lng});}
+else{districtsMap[key]={name:d.name,municipality:d.municipality,count:1,rawPoints:[{lat:d.lat,lng:d.lng}],lat:d.lat,lng:d.lng};}
+if(categoryStats[d.category])categoryStats[d.category]++;else categoryStats[d.category]=1;
+});
+// ✅ تجميع النقاط (Clustering) بدلاً من رسم الكل
+Object.values(districtsMap).forEach(district=>{
+district.points=clusterPoints(district.rawPoints,Math.min(8,district.count));
+});
+allDistricts=Object.values(districtsMap).sort((a,b)=>b.count-a.count);
+if(filterCount!=="all"){districts=allDistricts.slice(0,parseInt(filterCount));}else{districts=allDistricts;}
+const total=filtered.length;
+document.getElementById("totalReports").textContent=total.toLocaleString();
+document.getElementById("totalDistricts").textContent=districts.length;
+document.getElementById("topDistrict").textContent=districts[0]?districts[0].name:"-";
+updateStreetsTable(filtered,total);
+updateMap(districts);
+updateTable(districts,total);
+updateDistrictChart(districts,total);
+updateBarChart();
 }
 
 function updateStreetsTable(filteredData,total){
-  const streetsMap={};
-  filteredData.forEach(d=>{
-    const streetKey=d.street+"_"+d.name;
-    if(streetsMap[streetKey]){streetsMap[streetKey].count++;}
-    else{streetsMap[streetKey]={street:d.street,district:d.name,lat:d.lat,lng:d.lng,count:1};}
-  });
-  streetsStats=Object.values(streetsMap).sort((a,b)=>b.count-a.count);
-  const container=document.getElementById("streetsTableSection");
-  container.innerHTML="";
-  const totalPages=Math.ceil(streetsStats.length/ROWS_PER_PAGE);
-  for(let page=0;page<totalPages;page++){
-    const start=page*ROWS_PER_PAGE;
-    const end=Math.min(start+ROWS_PER_PAGE,streetsStats.length);
-    const pageData=streetsStats.slice(start,end);
-    const tablePage=document.createElement('div');
-    tablePage.className='tablePage';
-    tablePage.id='streetsTablePage_'+(page+1);
-    const rowsHtml=pageData.map((s,index)=>{
-      const globalIndex=start+index;
-      const percentage=total>0?((s.count/total)*100).toFixed(1):0;
-      const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
-      const countClass=s.count>100?'high':s.count>50?'medium':'';
-      const districtColor=window.districtColors&&window.districtColors[s.district]?window.districtColors[s.district]:'#667eea';
-      return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+s.street+'</td><td>'+s.district+'</td><td class="coordCell">'+s.lng.toFixed(6)+'</td><td class="coordCell">'+s.lat.toFixed(6)+'</td><td><span class="countBadge '+countClass+'">'+s.count+'</span></td><td>'+percentage+'%</td></tr>';
-    }).join('');
-    tablePage.innerHTML='<div class="tableHeader"><h2>📍 تفاصيل الشوارع</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي الشوارع: '+streetsStats.length+' | إجمالي البلاغات: '+total.toLocaleString()+'</p></div><table class="dataTable"><thead><tr><th style="width:7%;">الترتيب</th><th style="width:5%;"></th><th style="width:23%;">الشارع</th><th style="width:18%;">الحي</th><th style="width:13%;">X</th><th style="width:13%;">Y</th><th style="width:11%;">البلاغات</th><th style="width:6%;">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
-    container.appendChild(tablePage);
-  }
+const streetsMap={};
+filteredData.forEach(d=>{
+const streetKey=d.street+"_"+d.name;
+if(streetsMap[streetKey]){streetsMap[streetKey].count++;}
+else{streetsMap[streetKey]={street:d.street,district:d.name,lat:d.lat,lng:d.lng,count:1};}
+});
+streetsStats=Object.values(streetsMap).sort((a,b)=>b.count-a.count);
+const container=document.getElementById("streetsTableSection");
+container.innerHTML="";
+const totalPages=Math.ceil(streetsStats.length/ROWS_PER_PAGE);
+for(let page=0;page<totalPages;page++){
+const start=page*ROWS_PER_PAGE;
+const end=Math.min(start+ROWS_PER_PAGE,streetsStats.length);
+const pageData=streetsStats.slice(start,end);
+const tablePage=document.createElement('div');
+tablePage.className='tablePage';
+const rowsHtml=pageData.map((s,index)=>{
+const globalIndex=start+index;
+const percentage=total>0?((s.count/total)*100).toFixed(1):0;
+const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
+const countClass=s.count>100?'high':s.count>50?'medium':'';
+const districtColor=window.districtColors&&window.districtColors[s.district]?window.districtColors[s.district]:'#667eea';
+return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+s.street+'</td><td>'+s.district+'</td><td class="coordCell">'+s.lng.toFixed(6)+'</td><td class="coordCell">'+s.lat.toFixed(6)+'</td><td><span class="countBadge '+countClass+'">'+s.count+'</span></td><td>'+percentage+'%</td></tr>';
+}).join('');
+tablePage.innerHTML='<div class="tableHeader"><h2>📍 تفاصيل الشوارع</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي: '+streetsStats.length+'</p></div><table class="dataTable"><thead><tr><th style="width:7%">الترتيب</th><th style="width:5%"></th><th style="width:23%">الشارع</th><th style="width:18%">الحي</th><th style="width:13%">X</th><th style="width:13%">Y</th><th style="width:11%">البلاغات</th><th style="width:6%">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
+container.appendChild(tablePage);
+}
 }
 
 function updateMap(data){
-  clearMarkers();
-  if(data.length===0)return;
-  const bounds=new google.maps.LatLngBounds();
-  window.districtColors={};
-  data.forEach((d,index)=>{
-    const color=COLORS[index%COLORS.length];
-    window.districtColors[d.name]=color;
-    // ✅ رسم دائرة مركزية للحي
-    const circle=new google.maps.Circle({center:{lat:d.lat,lng:d.lng},radius:100+(d.count*10),fillColor:color,fillOpacity:0.3,strokeColor:color,strokeWeight:2,map:map});
-    // ✅ رسم النقاط المفرقة
-    if(d.points&&d.points.length>0){
-      d.points.forEach((point,pIndex)=>{
-        const pointMarker=new google.maps.Marker({position:{lat:point.lat,lng:point.lng},map:map,icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.9,strokeColor:'#fff',strokeWeight:2,scale:6},title:d.name+' - بلاغ '+(pIndex+1)});
-        const info=new google.maps.InfoWindow({content:'<div style="text-align:center;padding:8px;direction:rtl;font-size:11px;"><h4 style="margin:0 0 3px;color:'+color+';">'+d.name+'</h4><p style="margin:0;font-size:10px;">البلاغ '+(pIndex+1)+' من '+d.count+'</p>'+(point.originalLat?'<p style="margin:2px 0 0;font-size:9px;color:#666;">📍 '+point.originalLat.toFixed(6)+', '+point.originalLng.toFixed(6)+'</p>':'')+'</div>'});
-        pointMarker.addListener('click',()=>info.open(map,pointMarker));
-        markers.push({pointMarker});
-        bounds.extend({lat:point.lat,lng:point.lng});
-      });
-      // رسم خط يربط النقاط بالمركز
-      if(d.points.length>1){
-        d.points.forEach(point=>{
-          if(point.originalLat&&point.originalLng){
-            const line=new google.maps.Polyline({path:[{lat:d.lat,lng:d.lng},{lat:point.lat,lng:point.lng}],strokeColor:color,strokeOpacity:0.4,strokeWeight:1,map:map});
-            markers.push({line});
-          }
-        });
-      }
-    }
-    // علامة العدد في المركز
-    const label=new google.maps.Marker({position:{lat:d.lat,lng:d.lng},map:map,label:{text:d.count.toString(),color:'white',fontSize:'12px',fontWeight:'bold'},icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.95,strokeColor:'#fff',strokeWeight:3,scale:22},zIndex:1000});
-    const centerInfo=new google.maps.InfoWindow({content:'<div style="text-align:center;padding:10px;direction:rtl;font-size:12px;"><h3 style="margin:0 0 5px;color:'+color+';">'+d.name+'</h3><p style="margin:0 0 5px;">البلدية: '+d.municipality+'</p><p style="font-size:16px;font-weight:bold;margin:0;">إجمالي: '+d.count+' بلاغ</p><p style="font-size:10px;color:#666;margin:5px 0 0;">📍 '+d.lat.toFixed(6)+', '+d.lng.toFixed(6)+'</p></div>'});
-    label.addListener('click',()=>centerInfo.open(map,label));
-    circle.addListener('click',()=>centerInfo.open(map,label));
-    markers.push({circle,label});
-    bounds.extend({lat:d.lat,lng:d.lng});
-  });
-  map.fitBounds(bounds);
+clearMarkers();
+if(data.length===0)return;
+const bounds=new google.maps.LatLngBounds();
+window.districtColors={};
+data.forEach((d,index)=>{
+const color=COLORS[index%COLORS.length];
+window.districtColors[d.name]=color;
+// دائرة رئيسية
+const circle=new google.maps.Circle({center:{lat:d.lat,lng:d.lng},radius:100+(Math.min(d.count,50)*15),fillColor:color,fillOpacity:0.3,strokeColor:color,strokeWeight:2,map:map});
+markers.push(circle);
+// ✅ عرض النقاط المجمعة فقط (max 8)
+if(d.points&&d.points.length>0){
+d.points.forEach((point,pIndex)=>{
+const scale=Math.min(8,4+point.count/3);
+const marker=new google.maps.Marker({position:{lat:point.lat,lng:point.lng},map:map,icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.85,strokeColor:'#fff',strokeWeight:2,scale:scale},title:d.name+' - '+point.count+' بلاغ',zIndex:100+pIndex});
+const info=new google.maps.InfoWindow({content:'<div style="text-align:center;padding:8px;direction:rtl;font-size:11px;"><h4 style="margin:0 0 3px;color:'+color+';">'+d.name+'</h4><p style="margin:0;font-size:10px;">'+point.count+' بلاغ في هذه المنطقة</p></div>'});
+marker.addListener('click',()=>info.open(map,marker));
+markers.push(marker);
+bounds.extend({lat:point.lat,lng:point.lng});
+});
+}
+// علامة العدد
+const label=new google.maps.Marker({position:{lat:d.lat,lng:d.lng},map:map,label:{text:d.count.toString(),color:'white',fontSize:'11px',fontWeight:'bold'},icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.95,strokeColor:'#fff',strokeWeight:3,scale:20},zIndex:1000});
+const centerInfo=new google.maps.InfoWindow({content:'<div style="text-align:center;padding:10px;direction:rtl;font-size:12px;"><h3 style="margin:0 0 5px;color:'+color+';">'+d.name+'</h3><p style="margin:0 0 5px;">البلدية: '+d.municipality+'</p><p style="font-size:16px;font-weight:bold;margin:0;">إجمالي: '+d.count+' بلاغ</p></div>'});
+label.addListener('click',()=>centerInfo.open(map,label));
+markers.push(label);
+bounds.extend({lat:d.lat,lng:d.lng});
+});
+map.fitBounds(bounds);
 }
 
 function updateTable(data,total){
-  const container=document.getElementById("tableSection");
-  container.innerHTML="";
-  const totalPages=Math.ceil(data.length/ROWS_PER_PAGE);
-  for(let page=0;page<totalPages;page++){
-    const start=page*ROWS_PER_PAGE;
-    const end=Math.min(start+ROWS_PER_PAGE,data.length);
-    const pageData=data.slice(start,end);
-    const tablePage=document.createElement('div');
-    tablePage.className='tablePage';
-    tablePage.id='tablePage_'+(page+1);
-    const rowsHtml=pageData.map((d,index)=>{
-      const globalIndex=start+index;
-      const percentage=total>0?((d.count/total)*100).toFixed(1):0;
-      const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
-      const countClass=d.count>100?'high':d.count>50?'medium':'';
-      const districtColor=window.districtColors&&window.districtColors[d.name]?window.districtColors[d.name]:COLORS[globalIndex%COLORS.length];
-      return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+d.name+'</td><td>'+d.municipality+'</td><td><span class="countBadge '+countClass+'">'+d.count+'</span></td><td>'+percentage+'%</td></tr>';
-    }).join('');
-    tablePage.innerHTML='<div class="tableHeader"><h2>تفاصيل الأحياء</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي البلاغات: '+total.toLocaleString()+'</p></div><table class="dataTable"><thead><tr><th style="width:10%;">الترتيب</th><th style="width:5%;"></th><th style="width:28%;">الحي</th><th style="width:25%;">البلدية</th><th style="width:16%;">عدد البلاغات</th><th style="width:10%;">النسبة</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
-    container.appendChild(tablePage);
-  }
+const container=document.getElementById("tableSection");
+container.innerHTML="";
+const totalPages=Math.ceil(data.length/ROWS_PER_PAGE);
+for(let page=0;page<totalPages;page++){
+const start=page*ROWS_PER_PAGE;
+const end=Math.min(start+ROWS_PER_PAGE,data.length);
+const pageData=data.slice(start,end);
+const tablePage=document.createElement('div');
+tablePage.className='tablePage';
+const rowsHtml=pageData.map((d,index)=>{
+const globalIndex=start+index;
+const percentage=total>0?((d.count/total)*100).toFixed(1):0;
+const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
+const countClass=d.count>100?'high':d.count>50?'medium':'';
+const districtColor=window.districtColors&&window.districtColors[d.name]?window.districtColors[d.name]:COLORS[globalIndex%COLORS.length];
+return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+d.name+'</td><td>'+d.municipality+'</td><td><span class="countBadge '+countClass+'">'+d.count+'</span></td><td>'+percentage+'%</td></tr>';
+}).join('');
+tablePage.innerHTML='<div class="tableHeader"><h2>تفاصيل الأحياء</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي: '+total.toLocaleString()+'</p></div><table class="dataTable"><thead><tr><th style="width:10%">الترتيب</th><th style="width:5%"></th><th style="width:28%">الحي</th><th style="width:25%">البلدية</th><th style="width:16%">البلاغات</th><th style="width:10%">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
+container.appendChild(tablePage);
+}
 }
 
 function updateDistrictChart(data,total){
-  const ctx=document.getElementById("districtChartCanvas").getContext("2d");
-  if(districtChart)districtChart.destroy();
-  const topData=data.slice(0,15);
-  document.getElementById("districtChartSubtitle").textContent='إجمالي البلاغات: '+total.toLocaleString()+' | Top 15 حي';
-  const reversedData=[...topData].reverse();
-  districtChart=new Chart(ctx,{type:'bar',data:{labels:reversedData.map(d=>d.name),datasets:[{label:'عدد البلاغات',data:reversedData.map(d=>d.count),backgroundColor:reversedData.map((d,i)=>{const colors=['#dc2626','#ea580c','#d97706','#ca8a04','#65a30d','#16a34a','#059669','#0d9488','#0891b2','#0284c7','#2563eb','#4f46e5','#7c3aed','#9333ea','#c026d3'];return colors[i]||'#667eea';}),borderWidth:0,borderRadius:4,barPercentage:0.7}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{left:10,right:80,top:10,bottom:10}},plugins:{legend:{display:false},datalabels:{color:'#1e293b',font:{size:12,weight:'bold',family:'Segoe UI'},formatter:(value)=>{return value.toLocaleString();},anchor:'end',align:'end',offset:5},tooltip:{backgroundColor:'rgba(30, 41, 59, 0.9)',titleFont:{size:13},bodyFont:{size:12},padding:10,cornerRadius:6,callbacks:{label:function(context){const percentage=((context.parsed.x/total)*100).toFixed(1);return ' '+context.parsed.x+' بلاغ ('+percentage+'%)';}}}},scales:{x:{beginAtZero:true,grid:{color:'#e2e8f0',drawBorder:false},ticks:{font:{size:10},color:'#64748b'}},y:{grid:{display:false,drawBorder:false},ticks:{font:{size:12,weight:'bold'},color:'#1e293b',autoSkip:false,maxRotation:0,minRotation:0}}},animation:{duration:800,easing:'easeOutQuart'}}});
+const ctx=document.getElementById("districtChartCanvas").getContext("2d");
+if(districtChart)districtChart.destroy();
+const topData=data.slice(0,15);
+document.getElementById("districtChartSubtitle").textContent='إجمالي: '+total.toLocaleString()+' | Top 15';
+const reversedData=[...topData].reverse();
+const colors=['#dc2626','#ea580c','#d97706','#ca8a04','#65a30d','#16a34a','#059669','#0d9488','#0891b2','#0284c7','#2563eb','#4f46e5','#7c3aed','#9333ea','#c026d3'];
+districtChart=new Chart(ctx,{type:'bar',data:{labels:reversedData.map(d=>d.name),datasets:[{label:'البلاغات',data:reversedData.map(d=>d.count),backgroundColor:reversedData.map((d,i)=>colors[i]||'#667eea'),borderWidth:0,borderRadius:4,barPercentage:0.7}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{left:10,right:80,top:10,bottom:10}},plugins:{legend:{display:false},datalabels:{color:'#1e293b',font:{size:12,weight:'bold'},formatter:(v)=>v.toLocaleString(),anchor:'end',align:'end',offset:5}},scales:{x:{beginAtZero:true,grid:{color:'#e2e8f0'}},y:{grid:{display:false},ticks:{font:{size:12,weight:'bold'}}}}}});
 }
 
 function updateBarChart(){
-  const ctx=document.getElementById("barChartCanvas").getContext("2d");
-  if(barChart)barChart.destroy();
-  const categories=Object.entries(categoryStats).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count);
-  const totalCategories=categories.reduce((sum,c)=>sum+c.count,0);
-  document.getElementById("barChartSubtitle").textContent='إجمالي التصنيفات: '+categories.length+' - إجمالي البلاغات: '+totalCategories.toLocaleString();
-  const reversedData=[...categories].reverse();
-  barChart=new Chart(ctx,{type:'bar',data:{labels:reversedData.map(c=>c.name),datasets:[{label:'عدد البلاغات',data:reversedData.map(c=>c.count),backgroundColor:reversedData.map((c,i)=>COLORS[(categories.length-1-i)%COLORS.length]),borderWidth:0,borderRadius:6,barPercentage:0.6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{left:10,right:60,top:10,bottom:10}},plugins:{legend:{display:false},datalabels:{color:'#1e293b',font:{size:12,weight:'bold',family:'Segoe UI'},formatter:(value)=>{return value.toLocaleString();},anchor:'end',align:'end',offset:5},tooltip:{backgroundColor:'rgba(30, 41, 59, 0.9)',titleFont:{size:13},bodyFont:{size:12},padding:10,cornerRadius:6,callbacks:{label:function(context){const percentage=((context.parsed.x/totalCategories)*100).toFixed(1);return ' '+context.parsed.x+' بلاغ ('+percentage+'%)';}}}},scales:{x:{beginAtZero:true,grid:{color:'#e2e8f0',drawBorder:false},ticks:{font:{size:10},color:'#64748b'}},y:{grid:{display:false,drawBorder:false},ticks:{font:{size:11,weight:'bold'},color:'#1e293b'}}},animation:{duration:800,easing:'easeOutQuart'}}});
+const ctx=document.getElementById("barChartCanvas").getContext("2d");
+if(barChart)barChart.destroy();
+const categories=Object.entries(categoryStats).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count);
+const totalCategories=categories.reduce((sum,c)=>sum+c.count,0);
+document.getElementById("barChartSubtitle").textContent='التصنيفات: '+categories.length+' - البلاغات: '+totalCategories.toLocaleString();
+const reversedData=[...categories].reverse();
+barChart=new Chart(ctx,{type:'bar',data:{labels:reversedData.map(c=>c.name),datasets:[{label:'البلاغات',data:reversedData.map(c=>c.count),backgroundColor:reversedData.map((c,i)=>COLORS[(categories.length-1-i)%COLORS.length]),borderWidth:0,borderRadius:6,barPercentage:0.6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{left:10,right:60,top:10,bottom:10}},plugins:{legend:{display:false},datalabels:{color:'#1e293b',font:{size:12,weight:'bold'},formatter:(v)=>v.toLocaleString(),anchor:'end',align:'end',offset:5}},scales:{x:{beginAtZero:true,grid:{color:'#e2e8f0'}},y:{grid:{display:false},ticks:{font:{size:11,weight:'bold'}}}}}});
 }
 
-function exportMap(){document.getElementById("loading").style.display="flex";const mapSection=document.getElementById("mapSection");setTimeout(()=>{html2canvas(mapSection,{scale:2,useCORS:true,backgroundColor:"#ffffff",width:794,height:1123}).then(canvas=>{const link=document.createElement("a");link.download='الخريطة_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();document.getElementById("loading").style.display="none";}).catch(err=>{console.error(err);document.getElementById("loading").style.display="none";alert("حدث خطأ أثناء تصدير الخريطة");});},500);}
+function exportMap(){doExport(document.getElementById("mapSection"),'الخريطة_A4');}
+function exportDistrictChart(){doExport(document.getElementById("districtChartContainer"),'الأحياء_Top15_A4');}
+function exportBarChart(){doExport(document.getElementById("barChartContainer"),'التصنيفات_بار_A4');}
 
-function exportDistrictChart(){document.getElementById("loading").style.display="flex";const districtChartContainer=document.getElementById("districtChartContainer");setTimeout(()=>{html2canvas(districtChartContainer,{scale:2,useCORS:true,backgroundColor:"#ffffff",width:794,height:1123}).then(canvas=>{const link=document.createElement("a");link.download='الأحياء_Top15_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();document.getElementById("loading").style.display="none";}).catch(err=>{console.error(err);document.getElementById("loading").style.display="none";alert("حدث خطأ أثناء تصدير الرسم البياني");});},500);}
+function doExport(element,prefix){
+document.getElementById("loading").style.display="flex";
+setTimeout(()=>{html2canvas(element,{scale:2,useCORS:true,backgroundColor:"#fff",width:794,height:1123}).then(canvas=>{const link=document.createElement("a");link.download=prefix+'_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();document.getElementById("loading").style.display="none";}).catch(err=>{console.error(err);document.getElementById("loading").style.display="none";});},500);
+}
 
-function exportBarChart(){document.getElementById("loading").style.display="flex";const barChartContainer=document.getElementById("barChartContainer");setTimeout(()=>{html2canvas(barChartContainer,{scale:2,useCORS:true,backgroundColor:"#ffffff",width:794,height:1123}).then(canvas=>{const link=document.createElement("a");link.download='التصنيفات_بار_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();document.getElementById("loading").style.display="none";}).catch(err=>{console.error(err);document.getElementById("loading").style.display="none";alert("حدث خطأ أثناء تصدير الرسم البياني");});},500);}
+function exportStreetsTable(){exportTablePages('#streetsTableSection .tablePage','الشوارع_صفحة');}
+function exportTable(){exportTablePages('#tableSection .tablePage','الأحياء_صفحة');}
 
-function exportStreetsTable(){document.getElementById("loading").style.display="flex";const tablePages=document.querySelectorAll('#streetsTableSection .tablePage');let currentPage=0;function exportNextPage(){if(currentPage>=tablePages.length){document.getElementById("loading").style.display="none";return;}tablePages[currentPage].scrollIntoView({behavior:'instant',block:'start'});setTimeout(()=>{html2canvas(tablePages[currentPage],{scale:2,useCORS:true,backgroundColor:"#ffffff",width:794,height:1123,windowWidth:794,windowHeight:1123}).then(canvas=>{const link=document.createElement("a");link.download='الشوارع_صفحة_'+(currentPage+1)+'_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();currentPage++;setTimeout(exportNextPage,500);}).catch(err=>{console.error(err);document.getElementById("loading").style.display="none";alert("حدث خطأ أثناء تصدير جدول الشوارع");});},300);}exportNextPage();}
+function exportTablePages(selector,prefix){
+document.getElementById("loading").style.display="flex";
+const pages=document.querySelectorAll(selector);
+let current=0;
+function next(){if(current>=pages.length){document.getElementById("loading").style.display="none";return;}pages[current].scrollIntoView({behavior:'instant'});setTimeout(()=>{html2canvas(pages[current],{scale:2,useCORS:true,backgroundColor:"#fff",width:794,height:1123}).then(canvas=>{const link=document.createElement("a");link.download=prefix+'_'+(current+1)+'_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();current++;setTimeout(next,400);}).catch(()=>{document.getElementById("loading").style.display="none";});},300);}
+next();
+}
 
-function exportTable(){document.getElementById("loading").style.display="flex";const tablePages=document.querySelectorAll('#tableSection .tablePage');let currentPage=0;function exportNextPage(){if(currentPage>=tablePages.length){document.getElementById("loading").style.display="none";return;}tablePages[currentPage].scrollIntoView({behavior:'instant',block:'start'});setTimeout(()=>{html2canvas(tablePages[currentPage],{scale:2,useCORS:true,backgroundColor:"#ffffff",width:794,height:1123,windowWidth:794,windowHeight:1123}).then(canvas=>{const link=document.createElement("a");link.download='الأحياء_صفحة_'+(currentPage+1)+'_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();currentPage++;setTimeout(exportNextPage,500);}).catch(err=>{console.error(err);document.getElementById("loading").style.display="none";alert("حدث خطأ أثناء تصدير الجدول");});},300);}exportNextPage();}
-
-function exportFullReport(){document.getElementById("loading").style.display="flex";const controlPanel=document.querySelector('.controlPanel');const originalDisplay=controlPanel.style.display;controlPanel.style.display='none';const sections=[document.getElementById("mapSection"),document.getElementById("districtChartContainer"),document.getElementById("barChartContainer"),...document.querySelectorAll('#streetsTableSection .tablePage'),...document.querySelectorAll('#tableSection .tablePage')];let currentIndex=0;function exportNextSection(){if(currentIndex>=sections.length){controlPanel.style.display=originalDisplay;document.getElementById("loading").style.display="none";return;}const section=sections[currentIndex];if(!section){currentIndex++;exportNextSection();return;}section.scrollIntoView({behavior:'instant',block:'start'});setTimeout(()=>{html2canvas(section,{scale:2,useCORS:true,backgroundColor:"#ffffff",width:794,height:1123,windowWidth:794,windowHeight:1123}).then(canvas=>{const link=document.createElement("a");let sectionName;if(currentIndex===0)sectionName="خريطة";else if(currentIndex===1)sectionName="أحياء_Top15";else if(currentIndex===2)sectionName="تصنيفات_بار";else{const streetsPages=document.querySelectorAll('#streetsTableSection .tablePage').length;if(currentIndex-3<streetsPages){sectionName='الشوارع_صفحة_'+(currentIndex-2);}else{sectionName='الأحياء_صفحة_'+(currentIndex-2-streetsPages);}}link.download=sectionName+'_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();currentIndex++;setTimeout(exportNextSection,600);}).catch(err=>{console.error(err);controlPanel.style.display=originalDisplay;document.getElementById("loading").style.display="none";alert("حدث خطأ أثناء تصدير التقرير");});},400);}exportNextSection();}
+function exportFullReport(){
+document.getElementById("loading").style.display="flex";
+const controlPanel=document.querySelector('.controlPanel');
+controlPanel.style.display='none';
+const sections=[document.getElementById("mapSection"),document.getElementById("districtChartContainer"),document.getElementById("barChartContainer"),...document.querySelectorAll('#streetsTableSection .tablePage'),...document.querySelectorAll('#tableSection .tablePage')];
+let i=0;
+function next(){if(i>=sections.length){controlPanel.style.display='';document.getElementById("loading").style.display="none";return;}if(!sections[i]){i++;next();return;}sections[i].scrollIntoView({behavior:'instant'});setTimeout(()=>{html2canvas(sections[i],{scale:2,useCORS:true,backgroundColor:"#fff",width:794,height:1123}).then(canvas=>{const link=document.createElement("a");const names=["خريطة","أحياء_Top15","تصنيفات_بار"];let name=i<3?names[i]:"صفحة_"+(i-2);link.download=name+'_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();i++;setTimeout(next,500);}).catch(()=>{controlPanel.style.display='';document.getElementById("loading").style.display="none";});},400);}
+next();
+}
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=geometry&callback=initMap&language=ar&region=SA" async defer></script>
 </body>
