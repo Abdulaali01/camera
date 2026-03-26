@@ -106,7 +106,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 <div class="filterContainer">
 <select id="municipalityFilter" onchange="updateReport()"><option value="">جميع البلديات</option></select>
 <select id="monthFilter" onchange="updateReport()"><option value="">جميع الشهور</option></select>
-<input type="text" id="districtFilter" placeholder="🔍 البحث في الأحياء..." oninput="debouncedUpdate()">
+<input type="text" id="districtFilter" placeholder="🔍 البحث في الأحياء..." oninput="updateReport()">
 </div>
 <div class="exportButtons">
 <button onclick="exportMap()" class="accent">🗺️ خريطة</button>
@@ -171,7 +171,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 <script>
 let map,districts=[],districtChart=null,barChart=null,allDistricts=[];
 let categoryStats={},allData=[],rawDataCount=0,streetsStats=[];
-let debounceTimer;
 
 const monthNamesToNumbers={"يناير":1,"فبراير":2,"مارس":3,"أبريل":4,"مايو":5,"يونيو":6,"يوليو":7,"أغسطس":8,"سبتمبر":9,"أكتوبر":10,"نوفمبر":11,"ديسمبر":12,"1":1,"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"11":11,"12":12};
 const monthNumbersToNames={1:"يناير",2:"فبراير",3:"مارس",4:"أبريل",5:"مايو",6:"يونيو",7:"يوليو",8:"أغسطس",9:"سبتمبر",10:"أكتوبر",11:"نوفمبر",12:"ديسمبر"};
@@ -185,28 +184,26 @@ map=new google.maps.Map(document.getElementById("map"),{center:{lat:24.7136,lng:
 }
 
 function clearMarkers(){
-markers.forEach(m=>{if(m.setMap)m.setMap(null)});
+markers.forEach(m=>{if(m.circle)m.circle.setMap(null);if(m.label)m.label.setMap(null);if(m.pointMarker)m.pointMarker.setMap(null);});
 markers=[];
 }
 
-// ✅ Debounce للفلترة
-function debouncedUpdate(){
-clearTimeout(debounceTimer);
-debounceTimer=setTimeout(updateReport,300);
+// ✅ دالة تفريق النقاط المتكررة
+function spreadPoints(points,baseRadius){
+if(points.length<=1)return points.map(p=>({...p}));
+const result=[];
+const centerLat=points[0].lat;
+const centerLng=points[0].lng;
+result.push({...points[0]});
+const count=points.length-1;
+const radius=baseRadius*Math.sqrt(count)/100000;
+for(let i=0;i<count;i++){
+const angle=(2*Math.PI*i)/count;
+const offsetLat=radius*Math.cos(angle);
+const offsetLng=radius*Math.sin(angle)/Math.cos(centerLat*Math.PI/180);
+result.push({...points[i+1],lat:centerLat+offsetLat,lng:centerLng+offsetLng});
 }
-
-// ✅ تجميع النقاط المتقاربة (Clustering)
-function clusterPoints(points,maxClusters=8){
-if(points.length<=maxClusters)return points.map((p,i)=>({...p,clusterId:i,count:1}));
-const clusters=[];
-const step=Math.ceil(points.length/maxClusters);
-for(let i=0;i<points.length;i+=step){
-const clusterPoints=points.slice(i,i+step);
-const avgLat=clusterPoints.reduce((sum,p)=>sum+p.lat,0)/clusterPoints.length;
-const avgLng=clusterPoints.reduce((sum,p)=>sum+p.lng,0)/clusterPoints.length;
-clusters.push({lat:avgLat,lng:avgLng,count:clusterPoints.length,points:clusterPoints});
-}
-return clusters;
+return result;
 }
 
 function importExcel(){
@@ -316,10 +313,8 @@ if(districtsMap[key]){districtsMap[key].count++;districtsMap[key].rawPoints.push
 else{districtsMap[key]={name:d.name,municipality:d.municipality,count:1,rawPoints:[{lat:d.lat,lng:d.lng}],lat:d.lat,lng:d.lng};}
 if(categoryStats[d.category])categoryStats[d.category]++;else categoryStats[d.category]=1;
 });
-// ✅ تجميع النقاط (Clustering) بدلاً من رسم الكل
-Object.values(districtsMap).forEach(district=>{
-district.points=clusterPoints(district.rawPoints,Math.min(8,district.count));
-});
+// ✅ تفريق النقاط
+Object.values(districtsMap).forEach(district=>{district.points=spreadPoints(district.rawPoints,50);});
 allDistricts=Object.values(districtsMap).sort((a,b)=>b.count-a.count);
 if(filterCount!=="all"){districts=allDistricts.slice(0,parseInt(filterCount));}else{districts=allDistricts;}
 const total=filtered.length;
@@ -371,25 +366,18 @@ window.districtColors={};
 data.forEach((d,index)=>{
 const color=COLORS[index%COLORS.length];
 window.districtColors[d.name]=color;
-// دائرة رئيسية
-const circle=new google.maps.Circle({center:{lat:d.lat,lng:d.lng},radius:100+(Math.min(d.count,50)*15),fillColor:color,fillOpacity:0.3,strokeColor:color,strokeWeight:2,map:map});
-markers.push(circle);
-// ✅ عرض النقاط المجمعة فقط (max 8)
+const circle=new google.maps.Circle({center:{lat:d.lat,lng:d.lng},radius:100+(d.count*10),fillColor:color,fillOpacity:0.3,strokeColor:color,strokeWeight:2,map:map});
+markers.push({circle});
+// ✅ رسم النقاط المفروقة
 if(d.points&&d.points.length>0){
 d.points.forEach((point,pIndex)=>{
-const scale=Math.min(8,4+point.count/3);
-const marker=new google.maps.Marker({position:{lat:point.lat,lng:point.lng},map:map,icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.85,strokeColor:'#fff',strokeWeight:2,scale:scale},title:d.name+' - '+point.count+' بلاغ',zIndex:100+pIndex});
-const info=new google.maps.InfoWindow({content:'<div style="text-align:center;padding:8px;direction:rtl;font-size:11px;"><h4 style="margin:0 0 3px;color:'+color+';">'+d.name+'</h4><p style="margin:0;font-size:10px;">'+point.count+' بلاغ في هذه المنطقة</p></div>'});
-marker.addListener('click',()=>info.open(map,marker));
-markers.push(marker);
+const pointMarker=new google.maps.Marker({position:{lat:point.lat,lng:point.lng},map:map,icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.9,strokeColor:'#fff',strokeWeight:2,scale:5},title:d.name+' - بلاغ '+(pIndex+1)});
+markers.push({pointMarker});
 bounds.extend({lat:point.lat,lng:point.lng});
 });
 }
-// علامة العدد
-const label=new google.maps.Marker({position:{lat:d.lat,lng:d.lng},map:map,label:{text:d.count.toString(),color:'white',fontSize:'11px',fontWeight:'bold'},icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.95,strokeColor:'#fff',strokeWeight:3,scale:20},zIndex:1000});
-const centerInfo=new google.maps.InfoWindow({content:'<div style="text-align:center;padding:10px;direction:rtl;font-size:12px;"><h3 style="margin:0 0 5px;color:'+color+';">'+d.name+'</h3><p style="margin:0 0 5px;">البلدية: '+d.municipality+'</p><p style="font-size:16px;font-weight:bold;margin:0;">إجمالي: '+d.count+' بلاغ</p></div>'});
-label.addListener('click',()=>centerInfo.open(map,label));
-markers.push(label);
+const label=new google.maps.Marker({position:{lat:d.lat,lng:d.lng},map:map,label:{text:d.count.toString(),color:'white',fontSize:'12px',fontWeight:'bold'},icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.95,strokeColor:'#fff',strokeWeight:3,scale:22},zIndex:1000});
+markers.push({label});
 bounds.extend({lat:d.lat,lng:d.lng});
 });
 map.fitBounds(bounds);
