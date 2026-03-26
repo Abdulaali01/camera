@@ -171,7 +171,6 @@ body {
   font-weight: 800;
 }
 
-/* ✅ رسم الأحياء - Bar Chart أفقي احترافي */
 .districtChartContainer {
   width: 180mm;
   height: 250mm;
@@ -208,7 +207,6 @@ body {
   font-size: 12px;
 }
 
-/* ✅ رسم التصنيفات */
 .barChartContainer {
   width: 180mm;
   height: 250mm;
@@ -432,6 +430,16 @@ body {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.debugInfo {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #92400e;
+}
 </style>
 </head>
 
@@ -455,6 +463,8 @@ body {
       <option value="10">أعلى 10</option>
       <option value="15">أعلى 15</option>
       <option value="20">أعلى 20</option>
+      <option value="50">أعلى 50</option>
+      <option value="100">أعلى 100</option>
       <option value="all" selected>الكل</option>
     </select>
 
@@ -479,13 +489,15 @@ body {
   </div>
 
   <div class="reportContent">
+    <div id="debugInfo" class="debugInfo" style="display: none;"></div>
+    
     <div class="statsGrid">
       <div class="statCard">
-        <h3>إجمالي البلاغات</h3>
+        <h3>إجمالي البلاغات المستوردة</h3>
         <div class="number" id="totalReports">0</div>
       </div>
       <div class="statCard">
-        <h3>عدد الأحياء</h3>
+        <h3>عدد الأحياء الفريدة</h3>
         <div class="number" id="totalDistricts">0</div>
       </div>
       <div class="statCard">
@@ -499,7 +511,6 @@ body {
       <div id="map"></div>
     </div>
 
-    <!-- ✅ رسم الأحياء - Bar Chart أفقي احترافي -->
     <div class="districtChartContainer" id="districtChartContainer">
       <div class="chartPrintHeader">
         <h2>توزيع البلاغات حسب الأحياء - Top 15</h2>
@@ -510,7 +521,6 @@ body {
       </div>
     </div>
 
-    <!-- رسم التصنيفات -->
     <div class="barChartContainer" id="barChartContainer">
       <div class="chartPrintHeader">
         <h2>توزيع البلاغات حسب التصنيف/التخصص</h2>
@@ -530,6 +540,7 @@ body {
 let map, districts = [], districtChart = null, barChart = null, allDistricts = [];
 let categoryStats = {};
 let allData = [];
+let rawDataCount = 0;
 
 const monthNamesToNumbers = {
   "يناير": 1, "فبراير": 2, "مارس": 3, "أبريل": 4, "مايو": 5, "يونيو": 6,
@@ -589,14 +600,23 @@ function importExcel() {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      
+      // ✅ الحصول على جميع الصفوف بما في ذلك العناوين
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
+      
+      // ✅ تسجيل إحصائيات التصحيح
+      rawDataCount = rows.length;
+      console.log("إجمالي الصفوف في الملف:", rows.length);
+      console.log("الصف الأول (عنوان):", rows[0]);
+      console.log("الصف الثاني (بيانات):", rows[1]);
+      
       processData(rows);
+      
       document.getElementById("loading").style.display = "none";
-      alert("تم استيراد البيانات بنجاح!");
+      alert(`تم استيراد البيانات بنجاح! \nإجمالي الصفوف: ${rawDataCount}\nالبلاغات الصالحة: ${allData.length}`);
     } catch (err) {
       document.getElementById("loading").style.display = "none";
-      alert("خطأ في قراءة الملف");
+      alert("خطأ في قراءة الملف: " + err.message);
       console.error(err);
     }
   };
@@ -616,19 +636,47 @@ function extractMonth(monthValue) {
 
 function processData(rows) {
   allData = [];
+  
+  // ✅ بدء من الصف 1 (تخطي صف العنوان 0)
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (!row || row.length < 7) continue;
+    if (!row) continue;
+    
+    // ✅ محاولة قراءة الأعمدة بشكل مرن (الأعمدة: y, x, الحي, التصنيف, البلدية, تاريخ, الشارع)
     const lat = parseFloat(row[0]);
     const lng = parseFloat(row[1]);
-    const name = String(row[2] || "").trim();
-    const category = String(row[3] || "غير مصنف").trim();
-    const municipality = String(row[4] || "غير محددة").trim();
-    const monthValue = row[6]; 
+    const name = row[2] ? String(row[2]).trim() : "";
+    const category = row[3] ? String(row[3]).trim() : "غير مصنف";
+    const municipality = row[4] ? String(row[4]).trim() : "غير محددة";
+    const monthValue = row[5] || row[6]; // محاولة قراءة الشهر من العمود 5 أو 6
     const month = extractMonth(monthValue);
-    if (isNaN(lat) || isNaN(lng) || !name) continue;
-    allData.push({ lat, lng, name, category, municipality, month, monthName: monthValue });
+    
+    // ✅ قبول الصف إذا كان يحتوي على إحداثيات صالحة (حتى لو كان اسم الحي فارغاً)
+    if (!isNaN(lat) && !isNaN(lng)) {
+      allData.push({ 
+        lat, 
+        lng, 
+        name: name || "غير محدد", // استخدام "غير محدد" إذا كان الاسم فارغاً
+        category, 
+        municipality, 
+        month, 
+        monthName: monthValue 
+      });
+    }
   }
+  
+  // ✅ تحديث معلومات التصحيح
+  const debugDiv = document.getElementById("debugInfo");
+  debugDiv.style.display = "block";
+  debugDiv.innerHTML = `
+    📊 إحصائيات الاستيراد:<br>
+    • إجمالي الصفوف في الملف: ${rawDataCount}<br>
+    • الصفوف المستبعدة (بدون إحداثيات): ${rawDataCount - 1 - allData.length}<br>
+    • البلاغات الصالحة: <strong>${allData.length}</strong>
+  `;
+  
+  console.log("عدد البلاغات المعالجة:", allData.length);
+  
   updateMonthFilter();
   updateMunicipalityFilter();
   updateReport();
@@ -662,11 +710,17 @@ function updateReport() {
   const monthFilter = document.getElementById("monthFilter").value;
 
   let filtered = allData;
-  if (municipalityFilter) filtered = filtered.filter(d => d.municipality === municipalityFilter);
+  
+  // ✅ تطبيق فلاتر البحث
+  if (municipalityFilter) {
+    filtered = filtered.filter(d => d.municipality === municipalityFilter);
+  }
+  
   if (monthFilter) {
     const monthNum = parseInt(monthFilter);
     filtered = filtered.filter(d => d.month === monthNum);
   }
+  
   if (searchTerm) {
     filtered = filtered.filter(d => 
       d.name.toLowerCase().includes(searchTerm) || 
@@ -674,8 +728,10 @@ function updateReport() {
     );
   }
 
+  // ✅ تجميع البيانات حسب الحي والبلدية
   const districtsMap = {};
   categoryStats = {};
+  
   filtered.forEach(d => {
     const key = `${d.name}_${d.municipality}`;
     if (districtsMap[key]) {
@@ -691,6 +747,7 @@ function updateReport() {
         lng: d.lng
       };
     }
+    
     if (categoryStats[d.category]) categoryStats[d.category]++;
     else categoryStats[d.category] = 1;
   });
@@ -703,6 +760,7 @@ function updateReport() {
     districts = allDistricts;
   }
 
+  // ✅ تحديث الإحصائيات - استخدام filtered.length للإجمالي الفعلي
   const total = filtered.length;
   document.getElementById("totalReports").textContent = total.toLocaleString();
   document.getElementById("totalDistricts").textContent = districts.length;
@@ -710,12 +768,14 @@ function updateReport() {
 
   updateMap(districts);
   updateTable(districts, total);
-  updateDistrictChart(districts, total); // ✅ رسم الأحياء الجديد
+  updateDistrictChart(districts, total);
   updateBarChart();
 }
 
 function updateMap(data) {
   clearMarkers();
+  if (data.length === 0) return;
+  
   const bounds = new google.maps.LatLngBounds();
   data.forEach((d, index) => {
     const color = COLORS[index % COLORS.length];
@@ -742,7 +802,7 @@ function updateMap(data) {
     markers.push({ circle, label });
     bounds.extend({ lat: d.lat, lng: d.lng });
   });
-  if (data.length > 0) map.fitBounds(bounds);
+  map.fitBounds(bounds);
 }
 
 function createTableRows(pageData, startIndex, total) {
@@ -814,19 +874,16 @@ function updateTable(data, total) {
   }
 }
 
-// ✅ رسم الأحياء - Bar Chart أفقي احترافي بدون تداخل
 function updateDistrictChart(data, total) {
   const ctx = document.getElementById("districtChartCanvas").getContext("2d");
   
   if (districtChart) districtChart.destroy();
 
-  // ✅ أخذ Top 15 فقط لتجنب التداخل
   const topData = data.slice(0, 15);
   
   document.getElementById("districtChartSubtitle").textContent = 
     `إجمالي البلاغات: ${total.toLocaleString()} | Top 15 حي`;
 
-  // عكس الترتيب لعرض الأعلى في الأعلى
   const reversedData = [...topData].reverse();
 
   districtChart = new Chart(ctx, {
@@ -837,7 +894,6 @@ function updateDistrictChart(data, total) {
         label: 'عدد البلاغات',
         data: reversedData.map(d => d.count),
         backgroundColor: reversedData.map((d, i) => {
-          // ✅ ألوان متدرجة حسب الترتيب
           const colors = [
             '#dc2626', '#ea580c', '#d97706', '#ca8a04', '#65a30d',
             '#16a34a', '#059669', '#0d9488', '#0891b2', '#0284c7',
@@ -851,13 +907,13 @@ function updateDistrictChart(data, total) {
       }]
     },
     options: {
-      indexAxis: 'y', // ✅ أفقي
+      indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
       layout: {
         padding: {
           left: 10,
-          right: 80, // ✅ مساحة للأرقام
+          right: 80,
           top: 10,
           bottom: 10
         }
@@ -910,9 +966,9 @@ function updateDistrictChart(data, total) {
             drawBorder: false
           },
           ticks: {
-            font: { size: 12, weight: 'bold' }, // ✅ خط أكبر للوضوح
+            font: { size: 12, weight: 'bold' },
             color: '#1e293b',
-            autoSkip: false, // ✅ عدم تخطي أي اسم
+            autoSkip: false,
             maxRotation: 0,
             minRotation: 0
           }
