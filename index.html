@@ -335,11 +335,7 @@ const streetKey=d.street+"_"+d.name;
 if(streetsMap[streetKey]){streetsMap[streetKey].count++;}
 else{streetsMap[streetKey]={street:d.street,district:d.name,lat:d.lat,lng:d.lng,count:1};}
 });
-// ✅ ترتيب حسب الحي أولاً ثم عدد البلاغات تنازليًا
-streetsStats=Object.values(streetsMap).sort((a,b)=>{
-if(a.district!==b.district)return a.district.localeCompare(b.district); // أبجدي حسب الحي
-return b.count-a.count; // تنازلي حسب العدد
-});
+streetsStats=Object.values(streetsMap).sort((a,b)=>b.count-a.count);
 const container=document.getElementById("streetsTableSection");
 container.innerHTML="";
 const totalPages=Math.ceil(streetsStats.length/ROWS_PER_PAGE);
@@ -349,21 +345,13 @@ const end=Math.min(start+ROWS_PER_PAGE,streetsStats.length);
 const pageData=streetsStats.slice(start,end);
 const tablePage=document.createElement('div');
 tablePage.className='tablePage';
-// ✅ تلوين الصفوف حسب الحي
-const districtColorsMap={};
-let colorIndex=0;
-[...new Set(pageData.map(s=>s.district))].forEach(district=>{
-districtColorsMap[district]=COLORS[colorIndex%COLORS.length];
-colorIndex++;
-});
 const rowsHtml=pageData.map((s,index)=>{
 const globalIndex=start+index;
 const percentage=total>0?((s.count/total)*100).toFixed(1):0;
 const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
 const countClass=s.count>100?'high':s.count>50?'medium':'';
-const rowColor=districtColorsMap[s.district];
-const bgStyle='background-color:'+rowColor+'20;'; // 20 = 12% opacity
-return '<tr style="'+bgStyle+'"><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+rowColor+';"></span></td><td>'+s.street+'</td><td>'+s.district+'</td><td class="coordCell">'+s.lng.toFixed(6)+'</td><td class="coordCell">'+s.lat.toFixed(6)+'</td><td><span class="countBadge '+countClass+'">'+s.count+'</span></td><td>'+percentage+'%</td></tr>';
+const districtColor=window.districtColors&&window.districtColors[s.district]?window.districtColors[s.district]:'#667eea';
+return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+s.street+'</td><td>'+s.district+'</td><td class="coordCell">'+s.lng.toFixed(6)+'</td><td class="coordCell">'+s.lat.toFixed(6)+'</td><td><span class="countBadge '+countClass+'">'+s.count+'</span></td><td>'+percentage+'%</td></tr>';
 }).join('');
 tablePage.innerHTML='<div class="tableHeader"><h2>📍 تفاصيل الشوارع</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي: '+streetsStats.length+'</p></div><table class="dataTable"><thead><tr><th style="width:7%">الترتيب</th><th style="width:5%"></th><th style="width:23%">الشارع</th><th style="width:18%">الحي</th><th style="width:13%">X</th><th style="width:13%">Y</th><th style="width:11%">البلاغات</th><th style="width:6%">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
 container.appendChild(tablePage);
@@ -375,22 +363,52 @@ clearMarkers();
 if(data.length===0)return;
 const bounds=new google.maps.LatLngBounds();
 window.districtColors={};
+const fixedRadius=80; // ✅ حجم موحد لكل الدوائر
+const usedPositions=[];
 data.forEach((d,index)=>{
 const color=COLORS[index%COLORS.length];
 window.districtColors[d.name]=color;
-const circle=new google.maps.Circle({center:{lat:d.lat,lng:d.lng},radius:100+(d.count*10),fillColor:color,fillOpacity:0.3,strokeColor:color,strokeWeight:2,map:map});
+// ✅ تجنب التداخل - إيجاد موقع فارغ
+let pos={lat:d.lat,lng:d.lng};
+let attempts=0;
+const minDistance=fixedRadius*2.5/100000; // مسافة آمنة بين المراكز
+while(attempts<30){
+let tooClose=false;
+for(let used of usedPositions){
+const dist=Math.sqrt(Math.pow(pos.lat-used.lat,2)+Math.pow(pos.lng-used.lng,2));
+if(dist<minDistance){tooClose=true;break;}
+}
+if(!tooClose)break;
+// إزاحة دائرية
+const angle=(attempts*Math.PI*2)/15;
+pos={lat:d.lat+(Math.sin(angle)*minDistance),lng:d.lng+(Math.cos(angle)*minDistance)};
+attempts++;
+}
+usedPositions.push({lat:pos.lat,lng:pos.lng});
+// ✅ دائرة بحجم موحد
+const circle=new google.maps.Circle({center:pos,radius:fixedRadius,fillColor:color,fillOpacity:0.4,strokeColor:color,strokeWeight:2,map:map});
 markers.push({circle});
-// ✅ رسم النقاط المفروقة
+// ✅ رسم النقاط المفروقة حول المركز الجديد
 if(d.points&&d.points.length>0){
+const offsetLat=pos.lat-d.lat;
+const offsetLng=pos.lng-d.lng;
 d.points.forEach((point,pIndex)=>{
-const pointMarker=new google.maps.Marker({position:{lat:point.lat,lng:point.lng},map:map,icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.9,strokeColor:'#fff',strokeWeight:2,scale:5},title:d.name+' - بلاغ '+(pIndex+1)});
+const newPos={lat:point.lat+offsetLat,lng:point.lng+offsetLng};
+const pointMarker=new google.maps.Marker({position:newPos,map:map,icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.8,strokeColor:'#fff',strokeWeight:1,scale:4},title:d.name+' - بلاغ '+(pIndex+1),zIndex:10});
 markers.push({pointMarker});
-bounds.extend({lat:point.lat,lng:point.lng});
+bounds.extend(newPos);
 });
 }
-const label=new google.maps.Marker({position:{lat:d.lat,lng:d.lng},map:map,label:{text:d.count.toString(),color:'white',fontSize:'12px',fontWeight:'bold'},icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.95,strokeColor:'#fff',strokeWeight:3,scale:22},zIndex:1000});
+// ✅ اسم الحي داخل الدائرة (متعدد أسطر)
+const displayName=d.name.length>12?d.name.substring(0,11)+'..':d.name;
+const labelText=displayName+'\n'+d.count;
+const label=new google.maps.Marker({position:pos,map:map,label:{text:labelText,color:'white',fontSize:'11px',fontWeight:'bold'},icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.95,strokeColor:'#fff',strokeWeight:2,scale:35},zIndex:1000});
+// نافذة معلومات
+const info=new google.maps.InfoWindow({content:'<div style="text-align:center;padding:10px;direction:rtl;font-size:12px;"><h3 style="margin:0 0 5px;color:'+color+';">'+d.name+'</h3><p style="margin:0;font-size:16px;font-weight:bold;">'+d.count+' بلاغ</p><p style="margin:5px 0 0;font-size:10px;color:#666;">'+d.municipality+'</p></div>'});
+label.addListener('click',()=>info.open(map,label));
+circle.addListener('click',()=>info.open(map,label));
 markers.push({label});
-bounds.extend({lat:d.lat,lng:d.lng});
+bounds.extend(pos);
 });
 map.fitBounds(bounds);
 }
