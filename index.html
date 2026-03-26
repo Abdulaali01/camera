@@ -335,7 +335,11 @@ const streetKey=d.street+"_"+d.name;
 if(streetsMap[streetKey]){streetsMap[streetKey].count++;}
 else{streetsMap[streetKey]={street:d.street,district:d.name,lat:d.lat,lng:d.lng,count:1};}
 });
-streetsStats=Object.values(streetsMap).sort((a,b)=>b.count-a.count);
+// ✅ ترتيب حسب الحي أولاً ثم عدد البلاغات تنازليًا
+streetsStats=Object.values(streetsMap).sort((a,b)=>{
+if(a.district!==b.district)return a.district.localeCompare(b.district); // أبجدي حسب الحي
+return b.count-a.count; // تنازلي حسب العدد
+});
 const container=document.getElementById("streetsTableSection");
 container.innerHTML="";
 const totalPages=Math.ceil(streetsStats.length/ROWS_PER_PAGE);
@@ -345,13 +349,21 @@ const end=Math.min(start+ROWS_PER_PAGE,streetsStats.length);
 const pageData=streetsStats.slice(start,end);
 const tablePage=document.createElement('div');
 tablePage.className='tablePage';
+// ✅ تلوين الصفوف حسب الحي
+const districtColorsMap={};
+let colorIndex=0;
+[...new Set(pageData.map(s=>s.district))].forEach(district=>{
+districtColorsMap[district]=COLORS[colorIndex%COLORS.length];
+colorIndex++;
+});
 const rowsHtml=pageData.map((s,index)=>{
 const globalIndex=start+index;
 const percentage=total>0?((s.count/total)*100).toFixed(1):0;
 const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
 const countClass=s.count>100?'high':s.count>50?'medium':'';
-const districtColor=window.districtColors&&window.districtColors[s.district]?window.districtColors[s.district]:'#667eea';
-return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+s.street+'</td><td>'+s.district+'</td><td class="coordCell">'+s.lng.toFixed(6)+'</td><td class="coordCell">'+s.lat.toFixed(6)+'</td><td><span class="countBadge '+countClass+'">'+s.count+'</span></td><td>'+percentage+'%</td></tr>';
+const rowColor=districtColorsMap[s.district];
+const bgStyle='background-color:'+rowColor+'20;'; // 20 = 12% opacity
+return '<tr style="'+bgStyle+'"><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+rowColor+';"></span></td><td>'+s.street+'</td><td>'+s.district+'</td><td class="coordCell">'+s.lng.toFixed(6)+'</td><td class="coordCell">'+s.lat.toFixed(6)+'</td><td><span class="countBadge '+countClass+'">'+s.count+'</span></td><td>'+percentage+'%</td></tr>';
 }).join('');
 tablePage.innerHTML='<div class="tableHeader"><h2>📍 تفاصيل الشوارع</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي: '+streetsStats.length+'</p></div><table class="dataTable"><thead><tr><th style="width:7%">الترتيب</th><th style="width:5%"></th><th style="width:23%">الشارع</th><th style="width:18%">الحي</th><th style="width:13%">X</th><th style="width:13%">Y</th><th style="width:11%">البلاغات</th><th style="width:6%">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
 container.appendChild(tablePage);
