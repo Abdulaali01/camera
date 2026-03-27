@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>تقرير تحليل الأحياء</title>
+<title>تقرير تحليل الأحياء - 3D</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -126,7 +126,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 <div class="statCard"><h3>أعلى حي</h3><div class="number" id="topDistrict">-</div></div>
 </div>
 <div class="mapSection" id="mapSection">
-<h2 class="sectionTitle">الخريطة التفاعلية</h2>
+<h2 class="sectionTitle">الخريطة التفاعلية - 3D</h2>
 <div id="map"></div>
 </div>
 <div class="districtChartContainer" id="districtChartContainer">
@@ -180,15 +180,30 @@ document.getElementById("reportDate").textContent=new Date().toLocaleDateString(
 let markers=[];
 
 function initMap(){
-map=new google.maps.Map(document.getElementById("map"),{center:{lat:24.7136,lng:46.6753},zoom:11,mapTypeId:"hybrid",mapTypeControl:true,fullscreenControl:false,streetViewControl:false,zoomControl:true});
+map=new google.maps.Map(document.getElementById("map"),{
+center:{lat:24.7136,lng:46.6753},
+zoom:11,
+mapTypeId:"hybrid",
+mapTypeControl:true,
+fullscreenControl:false,
+streetViewControl:false,
+zoomControl:true,
+tilt:45,
+heading:0
+});
 }
 
 function clearMarkers(){
-markers.forEach(m=>{if(m.circle)m.circle.setMap(null);if(m.label)m.label.setMap(null);if(m.pointMarker)m.pointMarker.setMap(null);});
+markers.forEach(m=>{
+if(m.column)m.column.setMap(null);
+if(m.line)m.line.setMap(null);
+if(m.base)m.base.setMap(null);
+if(m.label)m.label.setMap(null);
+if(m.shadow)m.shadow.setMap(null);
+});
 markers=[];
 }
 
-// ✅ دالة تفريق النقاط المتكررة
 function spreadPoints(points,baseRadius){
 if(points.length<=1)return points.map(p=>({...p}));
 const result=[];
@@ -313,7 +328,6 @@ if(districtsMap[key]){districtsMap[key].count++;districtsMap[key].rawPoints.push
 else{districtsMap[key]={name:d.name,municipality:d.municipality,count:1,rawPoints:[{lat:d.lat,lng:d.lng}],lat:d.lat,lng:d.lng};}
 if(categoryStats[d.category])categoryStats[d.category]++;else categoryStats[d.category]=1;
 });
-// ✅ تفريق النقاط
 Object.values(districtsMap).forEach(district=>{district.points=spreadPoints(district.rawPoints,50);});
 allDistricts=Object.values(districtsMap).sort((a,b)=>b.count-a.count);
 if(filterCount!=="all"){districts=allDistricts.slice(0,parseInt(filterCount));}else{districts=allDistricts;}
@@ -358,59 +372,151 @@ container.appendChild(tablePage);
 }
 }
 
+// ✅ دالة رسم الأعمدة ثلاثية الأبعاد
 function updateMap(data){
 clearMarkers();
 if(data.length===0)return;
 const bounds=new google.maps.LatLngBounds();
 window.districtColors={};
-const fixedRadius=80; // ✅ حجم موحد لكل الدوائر
-const usedPositions=[];
-data.forEach((d,index)=>{
+
+// ✅ ترتيب البيانات حسب العدد تصاعدياً (الأصغر أولاً ليكون في الخلف)
+const sortedData=[...data].sort((a,b)=>a.count-b.count);
+
+// ✅ حساب أقصى عدد للتناسب
+const maxCount=Math.max(...data.map(d=>d.count));
+const minCount=Math.min(...data.map(d=>d.count));
+
+// ✅ المسافة بين الأعمدة
+const spacing=0.004; // درجات تقريباً 400 متر
+
+sortedData.forEach((d,index)=>{
 const color=COLORS[index%COLORS.length];
 window.districtColors[d.name]=color;
-// ✅ تجنب التداخل - إيجاد موقع فارغ
+
+// ✅ حساب الارتفاع بناءً على العدد (كلما زاد العدد زاد الارتفاع)
+const heightRatio=(d.count-minCount)/(maxCount-minCount||1);
+const baseHeight=150; // ارتفاع أساسي بالمتر
+const extraHeight=heightRatio*400; // ارتفاع إضافي يصل إلى 400 متر
+const totalHeight=baseHeight+extraHeight;
+
+// ✅ إيجاد موقع متباعد عن باقي الأعمدة
 let pos={lat:d.lat,lng:d.lng};
 let attempts=0;
-const minDistance=fixedRadius*2.5/100000; // مسافة آمنة بين المراكز
-while(attempts<30){
+const minSpacing=spacing;
+
+while(attempts<50){
 let tooClose=false;
-for(let used of usedPositions){
-const dist=Math.sqrt(Math.pow(pos.lat-used.lat,2)+Math.pow(pos.lng-used.lng,2));
-if(dist<minDistance){tooClose=true;break;}
+for(let m of markers){
+if(m.originalPos){
+const dist=Math.sqrt(Math.pow(pos.lat-m.originalPos.lat,2)+Math.pow(pos.lng-m.originalPos.lng,2));
+if(dist<minSpacing){
+tooClose=true;
+break;
+}
+}
 }
 if(!tooClose)break;
 // إزاحة دائرية
-const angle=(attempts*Math.PI*2)/15;
-pos={lat:d.lat+(Math.sin(angle)*minDistance),lng:d.lng+(Math.cos(angle)*minDistance)};
+const angle=(attempts*Math.PI*2)/12;
+const radius=spacing*(1+Math.floor(attempts/12));
+pos={lat:d.lat+(Math.sin(angle)*radius),lng:d.lng+(Math.cos(angle)*radius/Math.cos(d.lat*Math.PI/180))};
 attempts++;
 }
-usedPositions.push({lat:pos.lat,lng:pos.lng});
-// ✅ دائرة بحجم موحد
-const circle=new google.maps.Circle({center:pos,radius:fixedRadius,fillColor:color,fillOpacity:0.4,strokeColor:color,strokeWeight:2,map:map});
-markers.push({circle});
-// ✅ رسم النقاط المفروقة حول المركز الجديد
-if(d.points&&d.points.length>0){
-const offsetLat=pos.lat-d.lat;
-const offsetLng=pos.lng-d.lng;
-d.points.forEach((point,pIndex)=>{
-const newPos={lat:point.lat+offsetLat,lng:point.lng+offsetLng};
-const pointMarker=new google.maps.Marker({position:newPos,map:map,icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.8,strokeColor:'#fff',strokeWeight:1,scale:4},title:d.name+' - بلاغ '+(pIndex+1),zIndex:10});
-markers.push({pointMarker});
-bounds.extend(newPos);
+
+// ✅ رسم الظل أسفل العمود
+const shadow=new google.maps.Circle({
+center:{lat:pos.lat,lng:pos.lng},
+radius:totalHeight*0.8,
+fillColor:'rgba(0,0,0,0.15)',
+fillOpacity:0.3,
+strokeColor:'rgba(0,0,0,0.1)',
+strokeWeight:1,
+map:map,
+zIndex:1
 });
-}
-// ✅ اسم الحي داخل الدائرة (متعدد أسطر)
-const displayName=d.name.length>12?d.name.substring(0,11)+'..':d.name;
-const labelText=displayName+'\n'+d.count;
-const label=new google.maps.Marker({position:pos,map:map,label:{text:labelText,color:'white',fontSize:'11px',fontWeight:'bold'},icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:color,fillOpacity:0.95,strokeColor:'#fff',strokeWeight:2,scale:35},zIndex:1000});
-// نافذة معلومات
-const info=new google.maps.InfoWindow({content:'<div style="text-align:center;padding:10px;direction:rtl;font-size:12px;"><h3 style="margin:0 0 5px;color:'+color+';">'+d.name+'</h3><p style="margin:0;font-size:16px;font-weight:bold;">'+d.count+' بلاغ</p><p style="margin:5px 0 0;font-size:10px;color:#666;">'+d.municipality+'</p></div>'});
+
+// ✅ رسم خط الاتصال من الأرض إلى القمة (العمود)
+const line=new google.maps.Polyline({
+path:[
+{lat:d.lat,lng:d.lng}, // النقطة الأصلية على الأرض
+{lat:pos.lat,lng:pos.lng}  // مركز الدائرة المرتفعة
+],
+geodesic:true,
+strokeColor:color,
+strokeOpacity:0.6,
+strokeWeight:4,
+map:map,
+zIndex:50+index
+});
+
+// ✅ إنشاء دائرة في القمة (العمود المرتفع)
+const column=new google.maps.Circle({
+center:{lat:pos.lat,lng:pos.lng},
+radius:totalHeight,
+fillColor:color,
+fillOpacity:0.85,
+strokeColor:'#fff',
+strokeWeight:3,
+map:map,
+zIndex:100+index
+});
+
+// ✅ دائرة صغيرة في القاعدة (النقطة الأصلية)
+const base=new google.maps.Circle({
+center:{lat:d.lat,lng:d.lng},
+radius:30,
+fillColor:color,
+fillOpacity:0.9,
+strokeColor:'#fff',
+strokeWeight:2,
+map:map,
+zIndex:200+index
+});
+
+// ✅ تسمية العدد داخل الدائرة
+const label=new google.maps.Marker({
+position:{lat:pos.lat,lng:pos.lng},
+map:map,
+label:{
+text:String(d.count),
+color:'white',
+fontSize:'14px',
+fontWeight:'bold'
+},
+icon:{
+path:google.maps.SymbolPath.CIRCLE,
+fillColor:'transparent',
+fillOpacity:0,
+strokeColor:'transparent',
+strokeWeight:0,
+scale:1
+},
+zIndex:1000+index
+});
+
+// ✅ نافذة معلومات
+const info=new google.maps.InfoWindow({
+content:'<div style="text-align:center;padding:10px;direction:rtl;font-size:12px;"><h3 style="margin:0 0 5px;color:'+color+';">'+d.name+'</h3><p style="margin:0;font-size:18px;font-weight:bold;">'+d.count+' بلاغ</p><p style="margin:5px 0 0;font-size:10px;color:#666;">'+d.municipality+'</p><p style="margin:3px 0 0;font-size:9px;color:#999;">الارتفاع: '+Math.round(totalHeight)+'م</p></div>'
+});
+
+column.addListener('click',()=>info.open(map,label));
 label.addListener('click',()=>info.open(map,label));
-circle.addListener('click',()=>info.open(map,label));
-markers.push({label});
-bounds.extend(pos);
+
+markers.push({
+column:column,
+line:line,
+base:base,
+label:label,
+shadow:shadow,
+originalPos:{lat:d.lat,lng:d.lng},
+height:totalHeight
 });
-map.fitBounds(bounds);
+
+bounds.extend({lat:d.lat,lng:d.lng});
+bounds.extend({lat:pos.lat,lng:pos.lng});
+});
+
+map.fitBounds(bounds,{padding:100});
 }
 
 function updateTable(data,total){
@@ -456,7 +562,7 @@ const reversedData=[...categories].reverse();
 barChart=new Chart(ctx,{type:'bar',data:{labels:reversedData.map(c=>c.name),datasets:[{label:'البلاغات',data:reversedData.map(c=>c.count),backgroundColor:reversedData.map((c,i)=>COLORS[(categories.length-1-i)%COLORS.length]),borderWidth:0,borderRadius:6,barPercentage:0.6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{left:10,right:60,top:10,bottom:10}},plugins:{legend:{display:false},datalabels:{color:'#1e293b',font:{size:12,weight:'bold'},formatter:(v)=>v.toLocaleString(),anchor:'end',align:'end',offset:5}},scales:{x:{beginAtZero:true,grid:{color:'#e2e8f0'}},y:{grid:{display:false},ticks:{font:{size:11,weight:'bold'}}}}}});
 }
 
-function exportMap(){doExport(document.getElementById("mapSection"),'الخريطة_A4');}
+function exportMap(){doExport(document.getElementById("mapSection"),'الخريطة_3D_A4');}
 function exportDistrictChart(){doExport(document.getElementById("districtChartContainer"),'الأحياء_Top15_A4');}
 function exportBarChart(){doExport(document.getElementById("barChartContainer"),'التصنيفات_بار_A4');}
 
@@ -482,7 +588,7 @@ const controlPanel=document.querySelector('.controlPanel');
 controlPanel.style.display='none';
 const sections=[document.getElementById("mapSection"),document.getElementById("districtChartContainer"),document.getElementById("barChartContainer"),...document.querySelectorAll('#streetsTableSection .tablePage'),...document.querySelectorAll('#tableSection .tablePage')];
 let i=0;
-function next(){if(i>=sections.length){controlPanel.style.display='';document.getElementById("loading").style.display="none";return;}if(!sections[i]){i++;next();return;}sections[i].scrollIntoView({behavior:'instant'});setTimeout(()=>{html2canvas(sections[i],{scale:2,useCORS:true,backgroundColor:"#fff",width:794,height:1123}).then(canvas=>{const link=document.createElement("a");const names=["خريطة","أحياء_Top15","تصنيفات_بار"];let name=i<3?names[i]:"صفحة_"+(i-2);link.download=name+'_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();i++;setTimeout(next,500);}).catch(()=>{controlPanel.style.display='';document.getElementById("loading").style.display="none";});},400);}
+function next(){if(i>=sections.length){controlPanel.style.display='';document.getElementById("loading").style.display="none";return;}if(!sections[i]){i++;next();return;}sections[i].scrollIntoView({behavior:'instant'});setTimeout(()=>{html2canvas(sections[i],{scale:2,useCORS:true,backgroundColor:"#fff",width:794,height:1123}).then(canvas=>{const link=document.createElement("a");const names=["خريطة_3D","أحياء_Top15","تصنيفات_بار"];let name=i<3?names[i]:"صفحة_"+(i-2);link.download=name+'_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();i++;setTimeout(next,500);}).catch(()=>{controlPanel.style.display='';document.getElementById("loading").style.display="none";});},400);}
 next();
 }
 </script>
