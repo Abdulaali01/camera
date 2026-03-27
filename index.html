@@ -171,6 +171,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 <script>
 let map,districts=[],districtChart=null,barChart=null,allDistricts=[];
 let categoryStats={},allData=[],rawDataCount=0,streetsStats=[];
+let markersData = []; // Store marker data for zoom handling
 
 const monthNamesToNumbers={"يناير":1,"فبراير":2,"مارس":3,"أبريل":4,"مايو":5,"يونيو":6,"يوليو":7,"أغسطس":8,"سبتمبر":9,"أكتوبر":10,"نوفمبر":11,"ديسمبر":12,"1":1,"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"11":11,"12":12};
 const monthNumbersToNames={1:"يناير",2:"فبراير",3:"مارس",4:"أبريل",5:"مايو",6:"يونيو",7:"يوليو",8:"أغسطس",9:"سبتمبر",10:"أكتوبر",11:"نوفمبر",12:"ديسمبر"};
@@ -188,6 +189,11 @@ mapTypeControl:true,
 fullscreenControl:false,
 streetViewControl:false,
 zoomControl:true
+});
+
+// ✅ إضافة مستمع لتغيير مستوى التكبير لتحديث حجم الأعمدة
+map.addListener('zoom_changed', function() {
+    updateMarkersSize();
 });
 }
 
@@ -360,85 +366,74 @@ const percentage=total>0?((s.count/total)*100).toFixed(1):0;
 const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
 const countClass=s.count>100?'high':s.count>50?'medium':'';
 const districtColor=window.districtColors&&window.districtColors[s.district]?window.districtColors[s.district]:'#667eea';
-return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';\"></span></td><td>'+s.street+'</td><td>'+s.district+'</td><td class="coordCell">'+s.lng.toFixed(6)+'</td><td class="coordCell">'+s.lat.toFixed(6)+'</td><td><span class="countBadge '+countClass+'">'+s.count+'</span></td><td>'+percentage+'%</td></tr>';
+return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+s.street+'</td><td>'+s.district+'</td><td class="coordCell">'+s.lng.toFixed(6)+'</td><td class="coordCell">'+s.lat.toFixed(6)+'</td><td><span class="countBadge '+countClass+'">'+s.count+'</span></td><td>'+percentage+'%</td></tr>';
 }).join('');
 tablePage.innerHTML='<div class="tableHeader"><h2>📍 تفاصيل الشوارع</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي: '+streetsStats.length+'</p></div><table class="dataTable"><thead><tr><th style="width:7%">الترتيب</th><th style="width:5%"></th><th style="width:23%">الشارع</th><th style="width:18%">الحي</th><th style="width:13%">X</th><th style="width:13%">Y</th><th style="width:11%">البلاغات</th><th style="width:6%">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
 container.appendChild(tablePage);
 }
 }
 
-// ✅ دالة رسم الأعمدة ثلاثية الأبعاد - باستخدام SVG Marker
+// ✅ دالة رسم الأعمدة ثلاثية الأبعاد - محسنة مع تباعد ثابت وأسماء الأحياء
 function updateMap(data){
 clearMarkers();
 if(data.length===0)return;
 const bounds=new google.maps.LatLngBounds();
 window.districtColors={};
 
+// تخزين بيانات الأحياء للاستخدام عند تغيير التكبير
+markersData = data;
+
 const sortedData=[...data].sort((a,b)=>a.count-b.count);
 const maxCount=Math.max(...data.map(d=>d.count));
 const minCount=Math.min(...data.map(d=>d.count));
 
-// ✅ تباعد أكبر بين الأعمدة
-const spacing=0.015; // حوالي 1.5 كم
+// ✅ تباعد ثابت بالدرجات الجغرافية (حوالي 2 كم)
+const spacing = 0.018;
 
 sortedData.forEach((d,index)=>{
 const color=COLORS[index%COLORS.length];
 window.districtColors[d.name]=color;
 
-// ✅ حساب الارتفاع بالبكسل
+// ✅ حساب الارتفاع بالبكسل - ثابت لا يتغير مع التكبير
 const heightRatio=(d.count-minCount)/(maxCount-minCount||1);
 const minHeight=80;
 const maxHeight=250;
 const pixelHeight=Math.round(minHeight+(heightRatio*(maxHeight-minHeight)));
 
-// ✅ إيجاد موقع متباعد
+// ✅ إيجاد موقع متباعد بشكل احترافي
 let pos={lat:d.lat,lng:d.lng};
 let attempts=0;
-while(attempts<30){
+while(attempts<50){
 let tooClose=false;
 for(let m of markers){
 if(m.pos){
-const dist=Math.sqrt(Math.pow(pos.lat-m.pos.lat,2)+Math.pow(pos.lng-m.pos.lng,2));
-if(dist<spacing){tooClose=true;break;}
+// حساب المسافة بالكيلومترات
+const dist = calculateDistance(pos.lat, pos.lng, m.pos.lat, m.pos.lng);
+if(dist < 1.5) { // تباعد 1.5 كم على الأقل
+    tooClose=true;
+    break;
+}
 }
 }
 if(!tooClose)break;
-const angle=(attempts*Math.PI*2)/8;
-const radius=spacing*(1+Math.floor(attempts/8));
-pos={lat:d.lat+(Math.sin(angle)*radius),lng:d.lng+(Math.cos(angle)*radius/Math.cos(d.lat*Math.PI/180))};
+// ✅ تباعد حلزوني محسن
+const angle=(attempts * 137.5 * Math.PI / 180); // زاوية ذهبية
+const radius=spacing * (1 + Math.floor(attempts/8)) * 0.5;
+pos={
+    lat:d.lat+(Math.sin(angle)*radius),
+    lng:d.lng+(Math.cos(angle)*radius/Math.cos(d.lat*Math.PI/180))
+};
 attempts++;
 }
 
-// ✅ إنشاء SVG للعمود ثلاثي الأبعاد
-const svg=`
-<svg xmlns="http://www.w3.org/2000/svg" width="60" height="${pixelHeight+40}" viewBox="0 0 60 ${pixelHeight+40}">
-<defs>
-<linearGradient id="colGrad${index}" x1="0%" y1="0%" x2="100%" y2="0%">
-<stop offset="0%" style="stop-color:${color};stop-opacity:1" />
-<stop offset="100%" style="stop-color:${darkenColor(color,30)};stop-opacity:1" />
-</linearGradient>
-<filter id="shadow${index}">
-<feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.3"/>
-</filter>
-</defs>
-<!-- الظل -->
-<ellipse cx="30" cy="${pixelHeight+20}" rx="25" ry="10" fill="rgba(0,0,0,0.2)"/>
-<!-- الخط الواصل -->
-<line x1="30" y1="${pixelHeight+15}" x2="30" y2="35" stroke="${color}" stroke-width="3" opacity="0.6"/>
-<!-- العمود -->
-<rect x="15" y="20" width="30" height="${pixelHeight}" fill="url(#colGrad${index})" stroke="white" stroke-width="2" rx="5"/>
-<!-- القمة -->
-<circle cx="30" cy="20" r="15" fill="${color}" stroke="white" stroke-width="2"/>
-<!-- العدد -->
-<text x="30" y="25" text-anchor="middle" fill="white" font-size="12" font-weight="bold">${d.count}</text>
-</svg>
-`;
+// ✅ إنشاء SVG احترافي للعمود ثلاثي الأبعاد مع اسم الحي
+const svg=createProfessionalColumnSVG(d, color, pixelHeight, index);
 
 // ✅ إنشاء أيقونة مخصصة من SVG
 const icon={
 url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),
-scaledSize:new google.maps.Size(60,pixelHeight+40),
-anchor:new google.maps.Point(30,pixelHeight+20)
+scaledSize:new google.maps.Size(140,pixelHeight+60),
+anchor:new google.maps.Point(70,pixelHeight+30)
 };
 
 // ✅ إنشاء الـ Marker
@@ -450,21 +445,139 @@ title:d.name+' - '+d.count+' بلاغ',
 zIndex:1000+index
 });
 
-// ✅ نافذة معلومات
+// ✅ نافذة معلومات محسنة
 const infoWindow=new google.maps.InfoWindow({
-content:'<div style="text-align:center;padding:10px;direction:rtl;"><h3 style="color:'+color+';margin:0 0 5px;">'+d.name+'</h3><p style="font-size:18px;font-weight:bold;margin:0;">'+d.count+' بلاغ</p><p style="font-size:11px;color:#666;margin:5px 0 0;">'+d.municipality+'</p></div>'
+content:'<div style="text-align:center;padding:15px;direction:rtl;min-width:200px;"><h3 style="color:'+color+';margin:0 0 10px;font-size:16px;">'+d.name+'</h3><p style="font-size:24px;font-weight:bold;margin:0;color:#1e293b;">'+d.count+' <span style="font-size:14px;color:#64748b;">بلاغ</span></p><p style="font-size:12px;color:#64748b;margin:8px 0 0;">'+d.municipality+'</p></div>'
 });
 
 marker.addListener('click',()=>{
 infoWindow.open(map,marker);
 });
 
-markers.push({marker:marker,pos:pos});
+markers.push({marker:marker,pos:pos,color:color,height:pixelHeight,district:d});
 bounds.extend({lat:d.lat,lng:d.lng});
 bounds.extend({lat:pos.lat,lng:pos.lng});
 });
 
 map.fitBounds(bounds,{padding:100});
+}
+
+// ✅ دالة حساب المسافة بين نقطتين بالكيلومترات
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // نصف قطر الأرض بالكيلومترات
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// ✅ دالة إنشاء SVG احترافي للعمود مع اسم الحي
+function createProfessionalColumnSVG(district, color, pixelHeight, index) {
+    const darkColor = darkenColor(color, 30);
+    const label = district.name;
+    const count = district.count;
+
+    // ✅ تقسيم النص إذا كان طويلاً
+    const maxCharsPerLine = 12;
+    let lines = [];
+    if (label.length > maxCharsPerLine) {
+        const words = label.split(' ');
+        let currentLine = '';
+        words.forEach(word => {
+            if ((currentLine + word).length > maxCharsPerLine && currentLine.length > 0) {
+                lines.push(currentLine.trim());
+                currentLine = word + ' ';
+            } else {
+                currentLine += word + ' ';
+            }
+        });
+        if (currentLine.trim().length > 0) lines.push(currentLine.trim());
+    } else {
+        lines = [label];
+    }
+
+    const lineHeight = 16;
+    const labelHeight = lines.length * lineHeight + 10;
+    const totalWidth = 140;
+    const totalHeight = pixelHeight + labelHeight + 40;
+
+    let textElements = '';
+    lines.forEach((line, i) => {
+        const y = 15 + (i * lineHeight);
+        textElements += `<text x="70" y="${y}" text-anchor="middle" fill="#1e293b" font-size="13" font-weight="bold" font-family="Segoe UI, Arial, sans-serif">${line}</text>`;
+    });
+
+    return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}">
+    <defs>
+        <linearGradient id="colGrad${index}" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:${color};stop-opacity:1" />
+            <stop offset="50%" style="stop-color:${color};stop-opacity:0.9" />
+            <stop offset="100%" style="stop-color:${darkColor};stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="topGrad${index}" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:${lightenColor(color,20)};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:${color};stop-opacity:1" />
+        </linearGradient>
+        <filter id="shadow${index}" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="3" dy="4" stdDeviation="4" flood-opacity="0.3"/>
+        </filter>
+        <filter id="glow${index}">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+    </defs>
+
+    <!-- خلفية شفافة للتسمية -->
+    <rect x="5" y="0" width="130" height="${labelHeight}" fill="rgba(255,255,255,0.95)" rx="8" stroke="${color}" stroke-width="2"/>
+
+    <!-- خط واصل -->
+    <line x1="70" y1="${labelHeight}" x2="70" y2="${labelHeight + 15}" stroke="${color}" stroke-width="3" opacity="0.6"/>
+
+    <!-- الظل تحت العمود -->
+    <ellipse cx="70" cy="${totalHeight - 15}" rx="35" ry="12" fill="rgba(0,0,0,0.25)" filter="url(#shadow${index})"/>
+
+    <!-- العمود الرئيسي -->
+    <rect x="45" y="${labelHeight + 15}" width="50" height="${pixelHeight}" fill="url(#colGrad${index})" stroke="white" stroke-width="2" rx="6" filter="url(#shadow${index})"/>
+
+    <!-- قمة العمود (دائرية) -->
+    <ellipse cx="70" cy="${labelHeight + 15}" rx="25" ry="8" fill="url(#topGrad${index})" stroke="white" stroke-width="2"/>
+
+    <!-- دائرة العدد -->
+    <circle cx="70" cy="${labelHeight + 15}" r="18" fill="white" stroke="${color}" stroke-width="3" filter="url(#glow${index})"/>
+
+    <!-- ✅ العدد - بولد وأسود -->
+    <text x="70" y="${labelHeight + 20}" text-anchor="middle" fill="#000000" font-size="14" font-weight="900" font-family="Segoe UI, Arial, sans-serif">${count}</text>
+
+    <!-- اسم الحي -->
+    ${textElements}
+    </svg>
+    `;
+}
+
+// ✅ دالة تحديث حجم الأعمدة عند تغيير التكبير
+function updateMarkersSize() {
+    if (!markersData || markersData.length === 0) return;
+
+    const zoom = map.getZoom();
+    // ✅ لا نغير التباعد، فقط نحدث العرض إذا لزم الأمر
+    // الأعمدة تبقى بنفس الحجم والتباعد
+}
+
+// ✅ دالة لتفتيح اللون
+function lightenColor(hex, percent){
+    const num=parseInt(hex.replace("#",""),16);
+    const amt=Math.round(2.55*percent);
+    const R=Math.min(255,(num>>16)+amt);
+    const B=Math.min(255,((num>>8)&0x00FF)+amt);
+    const G=Math.min(255,(num&0x0000FF)+amt);
+    return "#"+(0x1000000+R*0x10000+B*0x100+G).toString(16).slice(1);
 }
 
 // ✅ دالة لتعتيم اللون
@@ -493,7 +606,7 @@ const percentage=total>0?((d.count/total)*100).toFixed(1):0;
 const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
 const countClass=d.count>100?'high':d.count>50?'medium':'';
 const districtColor=window.districtColors&&window.districtColors[d.name]?window.districtColors[d.name]:COLORS[globalIndex%COLORS.length];
-return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';\"></span></td><td>'+d.name+'</td><td>'+d.municipality+'</td><td><span class="countBadge '+countClass+'">'+d.count+'</span></td><td>'+percentage+'%</td></tr>';
+return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+d.name+'</td><td>'+d.municipality+'</td><td><span class="countBadge '+countClass+'">'+d.count+'</span></td><td>'+percentage+'%</td></tr>';
 }).join('');
 tablePage.innerHTML='<div class="tableHeader"><h2>تفاصيل الأحياء</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي: '+total.toLocaleString()+'</p></div><table class="dataTable"><thead><tr><th style="width:10%">الترتيب</th><th style="width:5%"></th><th style="width:28%">الحي</th><th style="width:25%">البلدية</th><th style="width:16%">البلاغات</th><th style="width:10%">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
 container.appendChild(tablePage);
