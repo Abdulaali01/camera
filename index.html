@@ -103,12 +103,17 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 .mapFullscreenExport{background:linear-gradient(135deg,#0b8f55 0%,#0a7a48 100%);color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all 0.3s;margin-right:10px}
 .mapFullscreenExport:hover{transform:scale(1.05)}
 .mapFullscreenButtons{display:flex}
-/* ✅ تعديل الحاوية لتسمح بالتمرير والتقاط الصورة الكاملة */
 .mapFullscreenContainer{flex:1;border-radius:12px;overflow:visible;position:relative;min-height:0}
 .mapFullscreenContainer #fullscreenMapContainer{width:100%;height:100%;min-height:600px}
 .mapExpandBtn{position:absolute;top:15px;left:15px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;padding:10px 15px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s}
 .mapExpandBtn:hover{transform:scale(1.05);box-shadow:0 6px 20px rgba(0,0,0,0.4)}
 .mapExpandBtn svg{width:18px;height:18px}
+
+/* ✅ إضافة أنماط للتحكم في التباعد */
+.spacingControl{background:#f0f9ff;border:1px solid #0ea5e9;padding:10px;border-radius:8px;margin:10px 0}
+.spacingControl label{font-size:12px;color:#0369a1;font-weight:600;display:block;margin-bottom:5px}
+.spacingControl input[type="range"]{width:100%;margin-bottom:5px}
+.spacingValue{text-align:center;font-size:14px;color:#0ea5e9;font-weight:700}
 </style>
 </head>
 <body>
@@ -166,6 +171,14 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 <button onclick="window.print()">🖨️ طباعة</button>
 </div>
 </div>
+
+<!-- ✅ تحكم في التباعد -->
+<div class="spacingControl" style="margin:10px 20px;display:none" id="spacingControl">
+    <label>📏 التباعد بين الأعمدة (كيلومتر):</label>
+    <input type="range" id="spacingSlider" min="0.5" max="5" step="0.5" value="2" onchange="updateSpacing(this.value)">
+    <div class="spacingValue" id="spacingValue">2 كم</div>
+</div>
+
 <div class="reportContent">
 <div id="debugInfo" class="debugInfo" style="display:none"></div>
 <div class="statsGrid">
@@ -228,6 +241,7 @@ let map,districts=[],districtChart=null,barChart=null,allDistricts=[];
 let categoryStats={},allData=[],rawDataCount=0,streetsStats=[];
 let markersData = []; // Store marker data for zoom handling
 let fullscreenMap = null; // ✅ خريطة ملء الشاشة
+let currentSpacing = 2.0; // ✅ التباعد الافتراضي بالكيلومترات
 
 const monthNamesToNumbers={"يناير":1,"فبراير":2,"مارس":3,"أبريل":4,"مايو":5,"يونيو":6,"يوليو":7,"أغسطس":8,"سبتمبر":9,"أكتوبر":10,"نوفمبر":11,"ديسمبر":12,"1":1,"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"11":11,"12":12};
 const monthNumbersToNames={1:"يناير",2:"فبراير",3:"مارس",4:"أبريل",5:"مايو",6:"يونيو",7:"يوليو",8:"أغسطس",9:"سبتمبر",10:"أكتوبر",11:"نوفمبر",12:"ديسمبر"};
@@ -246,11 +260,67 @@ fullscreenControl:false,
 streetViewControl:false,
 zoomControl:true
 });
+}
 
-// ✅ إضافة مستمع لتغيير مستوى التكبير لتحديث حجم الأعمدة
-map.addListener('zoom_changed', function() {
-    updateMarkersSize();
-});
+// ✅ تحديث التباعد
+function updateSpacing(value) {
+    currentSpacing = parseFloat(value);
+    document.getElementById('spacingValue').textContent = value + ' كم';
+    updateReport(); // إعادة رسم الخريطة بالتباعد الجديد
+}
+
+// ✅ حساب المواقع المتباعدة للأعمدة
+function calculateSpacedPositions(districtsData, spacingKm) {
+    const positions = [];
+    const usedPositions = [];
+    
+    // ترتيب الأحياء حسب عدد البلاغات (تنازلي)
+    const sortedData = [...districtsData].sort((a, b) => b.count - a.count);
+    
+    sortedData.forEach((district, index) => {
+        let bestLat = district.lat;
+        let bestLng = district.lng;
+        let attempts = 0;
+        const maxAttempts = 100;
+        
+        // محاولة إيجاد موقع متباعد
+        while (attempts < maxAttempts) {
+            let tooClose = false;
+            
+            // التحقق من المسافة من جميع المواقع المستخدمة
+            for (let used of usedPositions) {
+                const dist = calculateDistance(bestLat, bestLng, used.lat, used.lng);
+                if (dist < spacingKm) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            
+            if (!tooClose) {
+                break; // وجدنا موقع مناسب
+            }
+            
+            // ✅ تباعد حلزوني (Spiral Pattern) - زاوية ذهبية
+            const angle = attempts * 137.5 * (Math.PI / 180);
+            const radius = (spacingKm / 111) * (1 + Math.floor(attempts / 8)) * 0.5;
+            
+            bestLat = district.lat + (radius * Math.sin(angle));
+            bestLng = district.lng + (radius * Math.cos(angle) / Math.cos(district.lat * Math.PI / 180));
+            
+            attempts++;
+        }
+        
+        usedPositions.push({lat: bestLat, lng: bestLng});
+        positions.push({
+            ...district,
+            displayLat: bestLat,
+            displayLng: bestLng,
+            originalLat: district.lat,
+            originalLng: district.lng
+        });
+    });
+    
+    return positions;
 }
 
 // ✅ فتح الخريطة في وضع ملء الشاشة
@@ -261,7 +331,6 @@ function openFullscreenMap() {
     overlay.classList.add('active');
     document.body.style.overflow = 'hidden';
     
-    // إنشاء خريطة جديدة في وضع ملء الشاشة
     if (fullscreenMap) {
         fullscreenMap = null;
     }
@@ -277,7 +346,7 @@ function openFullscreenMap() {
             zoomControl: true
         });
         
-        // نسخ الأعمدة إلى الخريطة الجديدة
+        // نسخ الأعمدة إلى الخريطة الجديدة مع نفس التباعد
         copyMarkersToFullscreen();
     }, 100);
 }
@@ -293,7 +362,7 @@ function closeFullscreenMap() {
     }
 }
 
-// ✅ تصدير خريطة ملء الشاشة - محسن لالتقاط كامل المحتوى
+// ✅ تصدير خريطة ملء الشاشة
 function exportFullscreenMap() {
     if (!fullscreenMap) return;
     
@@ -302,40 +371,24 @@ function exportFullscreenMap() {
     const container = document.getElementById('fullscreenMapContainer');
     const overlay = document.getElementById('mapFullscreenOverlay');
     
-    // ✅ حفظ الأنماط الأصلية
     const originalHeight = container.style.height;
     const originalOverflow = overlay.style.overflow;
     
-    // ✅ توسيع الحاوية لتشمل جميع الأعمدة
-    // نحتاج إلى التقاط الخريطة بأكملها بما في ذلك الأعمدة العالية
-    const mapDiv = container.querySelector('div') || container;
-    
-    // ✅ إزالة قيود الارتفاع مؤقتاً
     container.style.height = 'auto';
     container.style.minHeight = '1000px';
     overlay.style.overflow = 'visible';
     
-    // ✅ الانتظار لتحميل الخريطة بالكامل
     setTimeout(() => {
-        // ✅ استخدام html2canvas مع إعدادات محسنة
         html2canvas(container, {
             scale: 2,
             useCORS: true,
             backgroundColor: "#fff",
-            logging: false,
-            // ✅ التقاط الارتفاع الكامل
             height: container.scrollHeight,
             windowHeight: container.scrollHeight,
-            // ✅ التأكد من التقاط المحتوى خارج viewport
             scrollY: 0,
             scrollX: 0,
-            // ✅ عدم قص المحتوى
-            x: 0,
-            y: 0,
-            // ✅ التقاط العنصر الأب للحصول على كل شيء
             captureBeyondViewport: true
         }).then(canvas => {
-            // ✅ استعادة الأنماط الأصلية
             container.style.height = originalHeight;
             container.style.minHeight = '';
             overlay.style.overflow = originalOverflow;
@@ -348,7 +401,6 @@ function exportFullscreenMap() {
             document.getElementById('loading').style.display = 'none';
         }).catch(err => {
             console.error(err);
-            // ✅ استعادة الأنماط في حالة الخطأ
             container.style.height = originalHeight;
             container.style.minHeight = '';
             overlay.style.overflow = originalOverflow;
@@ -361,11 +413,13 @@ function exportFullscreenMap() {
 function copyMarkersToFullscreen() {
     if (!fullscreenMap || districts.length === 0) return;
     
+    // استخدام نفس التباعد
+    const spacedDistricts = calculateSpacedPositions(districts, currentSpacing);
     const bounds = new google.maps.LatLngBounds();
     const maxCount = Math.max(...districts.map(d => d.count));
     const minCount = Math.min(...districts.map(d => d.count));
     
-    districts.forEach((d, index) => {
+    spacedDistricts.forEach((d, index) => {
         const color = window.districtColors && window.districtColors[d.name] ? window.districtColors[d.name] : COLORS[index % COLORS.length];
         
         const heightRatio = (d.count - minCount) / (maxCount - minCount || 1);
@@ -380,7 +434,7 @@ function copyMarkersToFullscreen() {
         };
         
         const marker = new google.maps.Marker({
-            position: {lat: d.lat, lng: d.lng},
+            position: {lat: d.displayLat, lng: d.displayLng},
             map: fullscreenMap,
             icon: icon,
             title: d.name + ' - ' + d.count + ' بلاغ',
@@ -395,7 +449,7 @@ function copyMarkersToFullscreen() {
             infoWindow.open(fullscreenMap, marker);
         });
         
-        bounds.extend({lat: d.lat, lng: d.lng});
+        bounds.extend({lat: d.displayLat, lng: d.displayLng});
     });
     
     fullscreenMap.fitBounds(bounds, {padding: 100});
@@ -407,23 +461,6 @@ if(m.marker)m.marker.setMap(null);
 if(m.label)m.label.setMap(null);
 });
 markers=[];
-}
-
-function spreadPoints(points,baseRadius){
-if(points.length<=1)return points.map(p=>({...p}));
-const result=[];
-const centerLat=points[0].lat;
-const centerLng=points[0].lng;
-result.push({...points[0]});
-const count=points.length-1;
-const radius=baseRadius*Math.sqrt(count)/100000;
-for(let i=0;i<count;i++){
-const angle=(2*Math.PI*i)/count;
-const offsetLat=radius*Math.cos(angle);
-const offsetLng=radius*Math.sin(angle)/Math.cos(centerLat*Math.PI/180);
-result.push({...points[i+1],lat:centerLat+offsetLat,lng:centerLng+offsetLng});
-}
-return result;
 }
 
 function importExcel(){
@@ -488,6 +525,9 @@ analyzeDataQuality();
 updateMonthFilter();
 updateMunicipalityFilter();
 updateReport();
+
+// ✅ إظهار تحكم التباعد بعد استيراد البيانات
+document.getElementById('spacingControl').style.display = 'block';
 }
 
 function analyzeDataQuality(){
@@ -541,7 +581,7 @@ document.getElementById("totalReports").textContent=total.toLocaleString();
 document.getElementById("totalDistricts").textContent=districts.length;
 document.getElementById("topDistrict").textContent=districts[0]?districts[0].name:"-";
 updateStreetsTable(filtered,total);
-updateMap(districts);
+updateMap(districts); // ✅ استخدام الدالة الجديدة
 updateTable(districts,total);
 updateDistrictChart(districts,total);
 updateBarChart();
@@ -577,60 +617,29 @@ container.appendChild(tablePage);
 }
 }
 
-// ✅ دالة رسم الأعمدة ثلاثية الأبعاد - محسنة مع تباعد ثابت وأسماء الأحياء
+// ✅ دالة رسم الأعمدة ثلاثية الأبعاد مع تباعد دائم
 function updateMap(data){
 clearMarkers();
 if(data.length===0)return;
 const bounds=new google.maps.LatLngBounds();
 window.districtColors={};
 
-// تخزين بيانات الأحياء للاستخدام عند تغيير التكبير
-markersData = data;
-
-const sortedData=[...data].sort((a,b)=>a.count-b.count);
+// ✅ حساب المواقع المتباعدة
+const spacedData = calculateSpacedPositions(data, currentSpacing);
 const maxCount=Math.max(...data.map(d=>d.count));
 const minCount=Math.min(...data.map(d=>d.count));
 
-// ✅ تباعد ثابت بالدرجات الجغرافية (حوالي 2 كم)
-const spacing = 0.018;
-
-sortedData.forEach((d,index)=>{
+spacedData.forEach((d,index)=>{
 const color=COLORS[index%COLORS.length];
 window.districtColors[d.name]=color;
 
-// ✅ حساب الارتفاع بالبكسل - ثابت لا يتغير مع التكبير
+// ✅ حساب الارتفاع بالبكسل
 const heightRatio=(d.count-minCount)/(maxCount-minCount||1);
 const minHeight=80;
 const maxHeight=250;
 const pixelHeight=Math.round(minHeight+(heightRatio*(maxHeight-minHeight)));
 
-// ✅ إيجاد موقع متباعد بشكل احترافي
-let pos={lat:d.lat,lng:d.lng};
-let attempts=0;
-while(attempts<50){
-let tooClose=false;
-for(let m of markers){
-if(m.pos){
-// حساب المسافة بالكيلومترات
-const dist = calculateDistance(pos.lat, pos.lng, m.pos.lat, m.pos.lng);
-if(dist < 1.5) { // تباعد 1.5 كم على الأقل
-    tooClose=true;
-    break;
-}
-}
-}
-if(!tooClose)break;
-// ✅ تباعد حلزوني محسن
-const angle=(attempts * 137.5 * Math.PI / 180); // زاوية ذهبية
-const radius=spacing * (1 + Math.floor(attempts/8)) * 0.5;
-pos={
-    lat:d.lat+(Math.sin(angle)*radius),
-    lng:d.lng+(Math.cos(angle)*radius/Math.cos(d.lat*Math.PI/180))
-};
-attempts++;
-}
-
-// ✅ إنشاء SVG احترافي للعمود ثلاثي الأبعاد مع اسم الحي
+// ✅ إنشاء SVG احترافي للعمود
 const svg=createProfessionalColumnSVG(d, color, pixelHeight, index);
 
 // ✅ إنشاء أيقونة مخصصة من SVG
@@ -640,9 +649,9 @@ scaledSize:new google.maps.Size(140,pixelHeight+60),
 anchor:new google.maps.Point(70,pixelHeight+30)
 };
 
-// ✅ إنشاء الـ Marker
+// ✅ إنشاء الـ Marker في الموقع المتباعد
 const marker=new google.maps.Marker({
-position:{lat:pos.lat,lng:pos.lng},
+position:{lat:d.displayLat,lng:d.displayLng}, // ✅ استخدام الموقع المتباعد
 map:map,
 icon:icon,
 title:d.name+' - '+d.count+' بلاغ',
@@ -658,9 +667,8 @@ marker.addListener('click',()=>{
 infoWindow.open(map,marker);
 });
 
-markers.push({marker:marker,pos:pos,color:color,height:pixelHeight,district:d});
-bounds.extend({lat:d.lat,lng:d.lng});
-bounds.extend({lat:pos.lat,lng:pos.lng});
+markers.push({marker:marker,pos:{lat:d.displayLat,lng:d.displayLng},color:color,height:pixelHeight,district:d});
+bounds.extend({lat:d.displayLat,lng:d.displayLng}); // ✅ امتداد الحدود للموقع المتباعد
 });
 
 map.fitBounds(bounds,{padding:100});
@@ -668,7 +676,7 @@ map.fitBounds(bounds,{padding:100});
 
 // ✅ دالة حساب المسافة بين نقطتين بالكيلومترات
 function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // نصف قطر الأرض بالكيلومترات
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -684,7 +692,6 @@ function createProfessionalColumnSVG(district, color, pixelHeight, index) {
     const label = district.name;
     const count = district.count;
 
-    // ✅ تقسيم النص إذا كان طويلاً
     const maxCharsPerLine = 12;
     let lines = [];
     if (label.length > maxCharsPerLine) {
@@ -738,43 +745,18 @@ function createProfessionalColumnSVG(district, color, pixelHeight, index) {
         </filter>
     </defs>
 
-    <!-- خلفية شفافة للتسمية -->
     <rect x="5" y="0" width="130" height="${labelHeight}" fill="rgba(255,255,255,0.95)" rx="8" stroke="${color}" stroke-width="2"/>
-
-    <!-- خط واصل -->
     <line x1="70" y1="${labelHeight}" x2="70" y2="${labelHeight + 15}" stroke="${color}" stroke-width="3" opacity="0.6"/>
-
-    <!-- الظل تحت العمود -->
     <ellipse cx="70" cy="${totalHeight - 15}" rx="35" ry="12" fill="rgba(0,0,0,0.25)" filter="url(#shadow${index})"/>
-
-    <!-- العمود الرئيسي -->
     <rect x="45" y="${labelHeight + 15}" width="50" height="${pixelHeight}" fill="url(#colGrad${index})" stroke="white" stroke-width="2" rx="6" filter="url(#shadow${index})"/>
-
-    <!-- قمة العمود (دائرية) -->
     <ellipse cx="70" cy="${labelHeight + 15}" rx="25" ry="8" fill="url(#topGrad${index})" stroke="white" stroke-width="2"/>
-
-    <!-- دائرة العدد -->
     <circle cx="70" cy="${labelHeight + 15}" r="18" fill="white" stroke="${color}" stroke-width="3" filter="url(#glow${index})"/>
-
-    <!-- ✅ العدد - بولد وأسود -->
     <text x="70" y="${labelHeight + 20}" text-anchor="middle" fill="#000000" font-size="14" font-weight="900" font-family="Segoe UI, Arial, sans-serif">${count}</text>
-
-    <!-- اسم الحي -->
     ${textElements}
     </svg>
     `;
 }
 
-// ✅ دالة تحديث حجم الأعمدة عند تغيير التكبير
-function updateMarkersSize() {
-    if (!markersData || markersData.length === 0) return;
-
-    const zoom = map.getZoom();
-    // ✅ لا نغير التباعد، فقط نحدث العرض إذا لزم الأمر
-    // الأعمدة تبقى بنفس الحجم والتباعد
-}
-
-// ✅ دالة لتفتيح اللون
 function lightenColor(hex, percent){
     const num=parseInt(hex.replace("#",""),16);
     const amt=Math.round(2.55*percent);
@@ -784,7 +766,6 @@ function lightenColor(hex, percent){
     return "#"+(0x1000000+R*0x10000+B*0x100+G).toString(16).slice(1);
 }
 
-// ✅ دالة لتعتيم اللون
 function darkenColor(hex,percent){
 const num=parseInt(hex.replace("#",""),16);
 const amt=Math.round(2.55*percent);
@@ -866,19 +847,16 @@ function exportBatchMaps() {
     
     document.getElementById("loading").style.display = "flex";
     
-    // تقسيم الأحياء إلى مجموعات من 5
     const batchSize = 5;
     const batches = [];
     for (let i = 0; i < districts.length; i += batchSize) {
         batches.push(districts.slice(i, i + batchSize));
     }
     
-    // إنشاء حاوية مؤقتة للخرائط
     const container = document.getElementById("batchMapsContainer");
     container.innerHTML = "";
     container.style.display = "block";
     
-    // إنشاء عناصر الخرائط لكل مجموعة
     batches.forEach((batch, index) => {
         const mapSection = document.createElement('div');
         mapSection.className = 'batchMapSection';
@@ -906,12 +884,10 @@ function exportBatchMaps() {
         container.appendChild(mapSection);
     });
     
-    // إنشاء الخرائط وتصديرها
     let currentBatch = 0;
     
     function processNextBatch() {
         if (currentBatch >= batches.length) {
-            // إنهاء
             container.innerHTML = "";
             container.style.display = "none";
             document.getElementById("loading").style.display = "none";
@@ -922,7 +898,6 @@ function exportBatchMaps() {
         const batch = batches[currentBatch];
         const mapContainer = document.getElementById(`mapContainer_${currentBatch}`);
         
-        // إنشاء خريطة جديدة لهذه المجموعة
         const batchMap = new google.maps.Map(mapContainer, {
             center: {lat: batch[0].lat, lng: batch[0].lng},
             zoom: 13,
@@ -933,15 +908,16 @@ function exportBatchMaps() {
             zoomControl: true
         });
         
-        // إضافة الأعمدة ثلاثية الأبعاد للمجموعة
         const bounds = new google.maps.LatLngBounds();
         const legendItems = [];
         
-        batch.forEach((district, idx) => {
+        // ✅ استخدام نفس التباعد للخرائط المجمعة
+        const spacedBatch = calculateSpacedPositions(batch, currentSpacing);
+        
+        spacedBatch.forEach((district, idx) => {
             const color = COLORS[idx % COLORS.length];
             const globalIndex = currentBatch * batchSize + idx;
             
-            // إنشاء العمود ثلاثي الأبعاد
             const heightRatio = district.count / Math.max(...batch.map(d => d.count));
             const pixelHeight = Math.round(80 + (heightRatio * 170));
             
@@ -954,14 +930,13 @@ function exportBatchMaps() {
             };
             
             const marker = new google.maps.Marker({
-                position: {lat: district.lat, lng: district.lng},
+                position: {lat: district.displayLat, lng: district.displayLng},
                 map: batchMap,
                 icon: icon,
                 title: district.name + ' - ' + district.count + ' بلاغ',
                 zIndex: 1000 + idx
             });
             
-            // نافذة معلومات
             const infoWindow = new google.maps.InfoWindow({
                 content: '<div style="text-align:center;padding:15px;direction:rtl;min-width:200px;"><h3 style="color:'+color+';margin:0 0 10px;font-size:16px;">'+district.name+'</h3><p style="font-size:24px;font-weight:bold;margin:0;color:#1e293b;">'+district.count+' <span style="font-size:14px;color:#64748b;">بلاغ</span></p><p style="font-size:12px;color:#64748b;margin:8px 0 0;">'+district.municipality+'</p></div>'
             });
@@ -970,13 +945,12 @@ function exportBatchMaps() {
                 infoWindow.open(batchMap, marker);
             });
             
-            bounds.extend({lat: district.lat, lng: district.lng});
+            bounds.extend({lat: district.displayLat, lng: district.displayLng});
             legendItems.push({name: district.name, color: color, count: district.count, rank: globalIndex + 1});
         });
         
         batchMap.fitBounds(bounds, {padding: 80});
         
-        // إضافة مفتاح الخريطة
         const legendContainer = document.getElementById(`legend_${currentBatch}`);
         legendContainer.innerHTML = legendItems.map(item => `
             <div class="batchMapLegendItem">
@@ -985,7 +959,6 @@ function exportBatchMaps() {
             </div>
         `).join('');
         
-        // انتظار تحميل الخريطة ثم التصدير
         setTimeout(() => {
             const mapSection = document.getElementById(`batchMap_${currentBatch}`);
             
@@ -1011,7 +984,6 @@ function exportBatchMaps() {
         }, 1500);
     }
     
-    // بدء المعالجة
     setTimeout(processNextBatch, 500);
 }
 
