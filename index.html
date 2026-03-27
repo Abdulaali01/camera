@@ -93,17 +93,19 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 .batchMapLegendItem{display:flex;align-items:center;gap:6px;margin-bottom:5px}
 .batchMapLegendColor{width:12px;height:12px;border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
 
-/* ✅ أنماط وضع ملء الشاشة للخريطة */
-.mapFullscreenOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10000;display:none;flex-direction:column;padding:20px}
+/* ✅ أنماط وضع ملء الشاشة للخريطة - محسنة */
+.mapFullscreenOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:10000;display:none;flex-direction:column;padding:20px;overflow:hidden}
 .mapFullscreenOverlay.active{display:flex}
-.mapFullscreenHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;padding:0 10px}
+.mapFullscreenHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;padding:0 10px;flex-shrink:0}
 .mapFullscreenTitle{color:white;font-size:20px;font-weight:700}
 .mapFullscreenClose{background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all 0.3s}
 .mapFullscreenClose:hover{transform:scale(1.05)}
 .mapFullscreenExport{background:linear-gradient(135deg,#0b8f55 0%,#0a7a48 100%);color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all 0.3s;margin-right:10px}
 .mapFullscreenExport:hover{transform:scale(1.05)}
 .mapFullscreenButtons{display:flex}
-.mapFullscreenContainer{flex:1;border-radius:12px;overflow:hidden;box-shadow:0 0 30px rgba(0,0,0,0.5)}
+/* ✅ تعديل الحاوية لتسمح بالتمرير والتقاط الصورة الكاملة */
+.mapFullscreenContainer{flex:1;border-radius:12px;overflow:visible;position:relative;min-height:0}
+.mapFullscreenContainer #fullscreenMapContainer{width:100%;height:100%;min-height:600px}
 .mapExpandBtn{position:absolute;top:15px;left:15px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;padding:10px 15px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s}
 .mapExpandBtn:hover{transform:scale(1.05);box-shadow:0 6px 20px rgba(0,0,0,0.4)}
 .mapExpandBtn svg{width:18px;height:18px}
@@ -291,29 +293,68 @@ function closeFullscreenMap() {
     }
 }
 
-// ✅ تصدير خريطة ملء الشاشة
+// ✅ تصدير خريطة ملء الشاشة - محسن لالتقاط كامل المحتوى
 function exportFullscreenMap() {
     if (!fullscreenMap) return;
     
     document.getElementById('loading').style.display = 'flex';
     
     const container = document.getElementById('fullscreenMapContainer');
+    const overlay = document.getElementById('mapFullscreenOverlay');
     
-    html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#fff"
-    }).then(canvas => {
-        const link = document.createElement("a");
-        link.download = 'خريطة_كاملة_' + new Date().toLocaleDateString('ar-SA') + '.png';
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-        
-        document.getElementById('loading').style.display = 'none';
-    }).catch(err => {
-        console.error(err);
-        document.getElementById('loading').style.display = 'none';
-    });
+    // ✅ حفظ الأنماط الأصلية
+    const originalHeight = container.style.height;
+    const originalOverflow = overlay.style.overflow;
+    
+    // ✅ توسيع الحاوية لتشمل جميع الأعمدة
+    // نحتاج إلى التقاط الخريطة بأكملها بما في ذلك الأعمدة العالية
+    const mapDiv = container.querySelector('div') || container;
+    
+    // ✅ إزالة قيود الارتفاع مؤقتاً
+    container.style.height = 'auto';
+    container.style.minHeight = '1000px';
+    overlay.style.overflow = 'visible';
+    
+    // ✅ الانتظار لتحميل الخريطة بالكامل
+    setTimeout(() => {
+        // ✅ استخدام html2canvas مع إعدادات محسنة
+        html2canvas(container, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: "#fff",
+            logging: false,
+            // ✅ التقاط الارتفاع الكامل
+            height: container.scrollHeight,
+            windowHeight: container.scrollHeight,
+            // ✅ التأكد من التقاط المحتوى خارج viewport
+            scrollY: 0,
+            scrollX: 0,
+            // ✅ عدم قص المحتوى
+            x: 0,
+            y: 0,
+            // ✅ التقاط العنصر الأب للحصول على كل شيء
+            captureBeyondViewport: true
+        }).then(canvas => {
+            // ✅ استعادة الأنماط الأصلية
+            container.style.height = originalHeight;
+            container.style.minHeight = '';
+            overlay.style.overflow = originalOverflow;
+            
+            const link = document.createElement("a");
+            link.download = 'خريطة_كاملة_' + new Date().toLocaleDateString('ar-SA') + '.png';
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+            
+            document.getElementById('loading').style.display = 'none';
+        }).catch(err => {
+            console.error(err);
+            // ✅ استعادة الأنماط في حالة الخطأ
+            container.style.height = originalHeight;
+            container.style.minHeight = '';
+            overlay.style.overflow = originalOverflow;
+            document.getElementById('loading').style.display = 'none';
+        });
+    }, 500);
 }
 
 // ✅ نسخ الأعمدة إلى خريطة ملء الشاشة
