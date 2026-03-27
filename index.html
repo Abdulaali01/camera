@@ -81,6 +81,17 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 .qualityTable td{padding:5px 4px;text-align:center;border:1px solid #fecaca;color:#450a0a}
 .qualityTable tr:nth-child(even){background:#fff5f5}
 .emptyCell{color:#dc2626;font-style:italic}
+
+/* ✅ أنماط خرائط المجموعات الجديدة */
+.batchMapSection{width:180mm;height:250mm;margin:0 auto 20px;page-break-after:always;break-after:page;display:flex;flex-direction:column;background:white;padding:10px;border:1px solid #e2e8f0;border-radius:8px}
+.batchMapTitle{font-size:16px;font-weight:700;color:#1e293b;margin-bottom:10px;display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid #e2e8f0}
+.batchMapTitle::before{content:"🗺️";font-size:18px}
+.batchMapContainer{flex:1;width:100%;border-radius:8px;border:1px solid #e2e8f0;position:relative}
+.batchMapInfo{position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.95);padding:10px 15px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);font-size:12px;z-index:10}
+.batchMapInfo strong{color:#1e3c72;display:block;margin-bottom:5px;font-size:14px}
+.batchMapLegend{position:absolute;bottom:10px;left:10px;background:rgba(255,255,255,0.95);padding:10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);font-size:11px;max-width:150px}
+.batchMapLegendItem{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.batchMapLegendColor{width:12px;height:12px;border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
 </style>
 </head>
 <body>
@@ -114,6 +125,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 <button onclick="exportBarChart()" class="accent">📊 التصنيفات</button>
 <button onclick="exportStreetsTable()" class="accent">🛣️ الشوارع</button>
 <button onclick="exportTable()" class="accent">📋 جدول</button>
+<button onclick="exportBatchMaps()" class="accent" style="background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)">🗺️ خرائط مجمعة</button>
 <button onclick="exportFullReport()" class="secondary">📑 الكل</button>
 <button onclick="window.print()">🖨️ طباعة</button>
 </div>
@@ -165,6 +177,8 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 </div>
 <div class="streetsTableSection" id="streetsTableSection"></div>
 <div class="tableSection" id="tableSection"></div>
+<!-- ✅ حاوية خرائط المجموعات -->
+<div id="batchMapsContainer" style="display:none"></div>
 </div>
 </div>
 
@@ -651,6 +665,164 @@ const pages=document.querySelectorAll(selector);
 let current=0;
 function next(){if(current>=pages.length){document.getElementById("loading").style.display="none";return;}pages[current].scrollIntoView({behavior:'instant'});setTimeout(()=>{html2canvas(pages[current],{scale:2,useCORS:true,backgroundColor:"#fff",width:794,height:1123}).then(canvas=>{const link=document.createElement("a");link.download=prefix+'_'+(current+1)+'_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';link.href=canvas.toDataURL("image/png");link.click();current++;setTimeout(next,400);}).catch(()=>{document.getElementById("loading").style.display="none";});},300);}
 next();
+}
+
+// ✅ دالة تصدير خرائط المجموعات (كل 5 أحياء)
+function exportBatchMaps() {
+    if (districts.length === 0) {
+        alert("لا توجد بيانات للتصدير");
+        return;
+    }
+    
+    document.getElementById("loading").style.display = "flex";
+    
+    // تقسيم الأحياء إلى مجموعات من 5
+    const batchSize = 5;
+    const batches = [];
+    for (let i = 0; i < districts.length; i += batchSize) {
+        batches.push(districts.slice(i, i + batchSize));
+    }
+    
+    // إنشاء حاوية مؤقتة للخرائط
+    const container = document.getElementById("batchMapsContainer");
+    container.innerHTML = "";
+    container.style.display = "block";
+    
+    // إنشاء عناصر الخرائط لكل مجموعة
+    batches.forEach((batch, index) => {
+        const mapSection = document.createElement('div');
+        mapSection.className = 'batchMapSection';
+        mapSection.id = `batchMap_${index}`;
+        
+        const totalReports = batch.reduce((sum, d) => sum + d.count, 0);
+        const startRank = index * batchSize + 1;
+        const endRank = Math.min((index + 1) * batchSize, districts.length);
+        
+        mapSection.innerHTML = `
+            <div class="batchMapTitle">
+                خريطة الأحياء (${startRank} - ${endRank})
+            </div>
+            <div class="batchMapContainer">
+                <div class="batchMapInfo">
+                    <strong>المجموعة ${index + 1} من ${batches.length}</strong>
+                    <div>إجمالي البلاغات: ${totalReports.toLocaleString()}</div>
+                    <div>عدد الأحياء: ${batch.length}</div>
+                </div>
+                <div class="batchMapLegend" id="legend_${index}"></div>
+                <div id="mapContainer_${index}" style="width:100%;height:100%;"></div>
+            </div>
+        `;
+        
+        container.appendChild(mapSection);
+    });
+    
+    // إنشاء الخرائط وتصديرها
+    let currentBatch = 0;
+    
+    function processNextBatch() {
+        if (currentBatch >= batches.length) {
+            // إنهاء
+            container.innerHTML = "";
+            container.style.display = "none";
+            document.getElementById("loading").style.display = "none";
+            alert(`تم تصدير ${batches.length} خريطة بنجاح!`);
+            return;
+        }
+        
+        const batch = batches[currentBatch];
+        const mapContainer = document.getElementById(`mapContainer_${currentBatch}`);
+        
+        // إنشاء خريطة جديدة لهذه المجموعة
+        const batchMap = new google.maps.Map(mapContainer, {
+            center: {lat: batch[0].lat, lng: batch[0].lng},
+            zoom: 13,
+            mapTypeId: "hybrid",
+            mapTypeControl: false,
+            fullscreenControl: false,
+            streetViewControl: false,
+            zoomControl: true
+        });
+        
+        // إضافة الأعمدة ثلاثية الأبعاد للمجموعة
+        const bounds = new google.maps.LatLngBounds();
+        const legendItems = [];
+        
+        batch.forEach((district, idx) => {
+            const color = COLORS[idx % COLORS.length];
+            const globalIndex = currentBatch * batchSize + idx;
+            
+            // إنشاء العمود ثلاثي الأبعاد
+            const heightRatio = district.count / Math.max(...batch.map(d => d.count));
+            const pixelHeight = Math.round(80 + (heightRatio * 170));
+            
+            const svg = createProfessionalColumnSVG(district, color, pixelHeight, idx);
+            
+            const icon = {
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+                scaledSize: new google.maps.Size(140, pixelHeight + 60),
+                anchor: new google.maps.Point(70, pixelHeight + 30)
+            };
+            
+            const marker = new google.maps.Marker({
+                position: {lat: district.lat, lng: district.lng},
+                map: batchMap,
+                icon: icon,
+                title: district.name + ' - ' + district.count + ' بلاغ',
+                zIndex: 1000 + idx
+            });
+            
+            // نافذة معلومات
+            const infoWindow = new google.maps.InfoWindow({
+                content: '<div style="text-align:center;padding:15px;direction:rtl;min-width:200px;"><h3 style="color:'+color+';margin:0 0 10px;font-size:16px;">'+district.name+'</h3><p style="font-size:24px;font-weight:bold;margin:0;color:#1e293b;">'+district.count+' <span style="font-size:14px;color:#64748b;">بلاغ</span></p><p style="font-size:12px;color:#64748b;margin:8px 0 0;">'+district.municipality+'</p></div>'
+            });
+            
+            marker.addListener('click', () => {
+                infoWindow.open(batchMap, marker);
+            });
+            
+            bounds.extend({lat: district.lat, lng: district.lng});
+            legendItems.push({name: district.name, color: color, count: district.count, rank: globalIndex + 1});
+        });
+        
+        batchMap.fitBounds(bounds, {padding: 80});
+        
+        // إضافة مفتاح الخريطة
+        const legendContainer = document.getElementById(`legend_${currentBatch}`);
+        legendContainer.innerHTML = legendItems.map(item => `
+            <div class="batchMapLegendItem">
+                <span class="batchMapLegendColor" style="background-color:${item.color}"></span>
+                <span>${item.rank}. ${item.name} (${item.count})</span>
+            </div>
+        `).join('');
+        
+        // انتظار تحميل الخريطة ثم التصدير
+        setTimeout(() => {
+            const mapSection = document.getElementById(`batchMap_${currentBatch}`);
+            
+            html2canvas(mapSection, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: "#fff",
+                width: 794,
+                height: 1123
+            }).then(canvas => {
+                const link = document.createElement("a");
+                link.download = `خريطة_الأحياء_${currentBatch + 1}_${batch[0].name}_${new Date().toLocaleDateString('ar-SA')}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+                
+                currentBatch++;
+                setTimeout(processNextBatch, 800);
+            }).catch(err => {
+                console.error(err);
+                currentBatch++;
+                setTimeout(processNextBatch, 800);
+            });
+        }, 1500);
+    }
+    
+    // بدء المعالجة
+    setTimeout(processNextBatch, 500);
 }
 
 function exportFullReport(){
