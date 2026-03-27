@@ -200,6 +200,7 @@ if(m.line)m.line.setMap(null);
 if(m.base)m.base.setMap(null);
 if(m.label)m.label.setMap(null);
 if(m.shadow)m.shadow.setMap(null);
+if(m.glow)m.glow.setMap(null);
 });
 markers=[];
 }
@@ -365,14 +366,14 @@ const percentage=total>0?((s.count/total)*100).toFixed(1):0;
 const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
 const countClass=s.count>100?'high':s.count>50?'medium':'';
 const districtColor=window.districtColors&&window.districtColors[s.district]?window.districtColors[s.district]:'#667eea';
-return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+s.street+'</td><td>'+s.district+'</td><td class="coordCell">'+s.lng.toFixed(6)+'</td><td class="coordCell">'+s.lat.toFixed(6)+'</td><td><span class="countBadge '+countClass+'">'+s.count+'</span></td><td>'+percentage+'%</td></tr>';
+return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';\"></span></td><td>'+s.street+'</td><td>'+s.district+'</td><td class="coordCell">'+s.lng.toFixed(6)+'</td><td class="coordCell">'+s.lat.toFixed(6)+'</td><td><span class="countBadge '+countClass+'">'+s.count+'</span></td><td>'+percentage+'%</td></tr>';
 }).join('');
 tablePage.innerHTML='<div class="tableHeader"><h2>📍 تفاصيل الشوارع</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي: '+streetsStats.length+'</p></div><table class="dataTable"><thead><tr><th style="width:7%">الترتيب</th><th style="width:5%"></th><th style="width:23%">الشارع</th><th style="width:18%">الحي</th><th style="width:13%">X</th><th style="width:13%">Y</th><th style="width:11%">البلاغات</th><th style="width:6%">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
 container.appendChild(tablePage);
 }
 }
 
-// ✅ دالة رسم الأعمدة ثلاثية الأبعاد
+// ✅ دالة رسم الأعمدة ثلاثية الأبعاد - محسّنة وأكبر
 function updateMap(data){
 clearMarkers();
 if(data.length===0)return;
@@ -386,17 +387,17 @@ const sortedData=[...data].sort((a,b)=>a.count-b.count);
 const maxCount=Math.max(...data.map(d=>d.count));
 const minCount=Math.min(...data.map(d=>d.count));
 
-// ✅ المسافة بين الأعمدة
-const spacing=0.004; // درجات تقريباً 400 متر
+// ✅ المسافة بين الأعمدة (أكبر لتجنب التداخل)
+const spacing=0.008; // حوالي 800 متر
 
 sortedData.forEach((d,index)=>{
 const color=COLORS[index%COLORS.length];
 window.districtColors[d.name]=color;
 
-// ✅ حساب الارتفاع بناءً على العدد (كلما زاد العدد زاد الارتفاع)
+// ✅ حساب الارتفاع بناءً على العدد (مضاعفة الأحجام)
 const heightRatio=(d.count-minCount)/(maxCount-minCount||1);
-const baseHeight=150; // ارتفاع أساسي بالمتر
-const extraHeight=heightRatio*400; // ارتفاع إضافي يصل إلى 400 متر
+const baseHeight=400; // ✅ ارتفاع أساسي أكبر (كان 150)
+const extraHeight=heightRatio*1200; // ✅ ارتفاع إضافي يصل إلى 1200م (كان 400)
 const totalHeight=baseHeight+extraHeight;
 
 // ✅ إيجاد موقع متباعد عن باقي الأعمدة
@@ -416,71 +417,82 @@ break;
 }
 }
 if(!tooClose)break;
-// إزاحة دائرية
 const angle=(attempts*Math.PI*2)/12;
 const radius=spacing*(1+Math.floor(attempts/12));
 pos={lat:d.lat+(Math.sin(angle)*radius),lng:d.lng+(Math.cos(angle)*radius/Math.cos(d.lat*Math.PI/180))};
 attempts++;
 }
 
-// ✅ رسم الظل أسفل العمود
-const shadow=new google.maps.Circle({
+// ✅ رسم الظل الخارجي (توهج) - أكبر
+const glow=new google.maps.Circle({
 center:{lat:pos.lat,lng:pos.lng},
-radius:totalHeight*0.8,
-fillColor:'rgba(0,0,0,0.15)',
-fillOpacity:0.3,
-strokeColor:'rgba(0,0,0,0.1)',
-strokeWeight:1,
+radius:totalHeight*1.3,
+fillColor:color,
+fillOpacity:0.15,
+strokeColor:'transparent',
+strokeWeight:0,
 map:map,
 zIndex:1
 });
 
-// ✅ رسم خط الاتصال من الأرض إلى القمة (العمود)
+// ✅ رسم الظل الأسود أسفل العمود
+const shadow=new google.maps.Circle({
+center:{lat:pos.lat,lng:pos.lng},
+radius:totalHeight*0.5,
+fillColor:'rgba(0,0,0,0.3)',
+fillOpacity:0.4,
+strokeColor:'rgba(0,0,0,0.2)',
+strokeWeight:1,
+map:map,
+zIndex:2
+});
+
+// ✅ رسم خط الاتصال من الأرض إلى القمة - أسمك
 const line=new google.maps.Polyline({
 path:[
-{lat:d.lat,lng:d.lng}, // النقطة الأصلية على الأرض
-{lat:pos.lat,lng:pos.lng}  // مركز الدائرة المرتفعة
+{lat:d.lat,lng:d.lng},
+{lat:pos.lat,lng:pos.lng}
 ],
 geodesic:true,
 strokeColor:color,
-strokeOpacity:0.6,
-strokeWeight:4,
+strokeOpacity:0.8,
+strokeWeight:6, // ✅ أسمك (كان 4)
 map:map,
 zIndex:50+index
 });
 
-// ✅ إنشاء دائرة في القمة (العمود المرتفع)
+// ✅ إنشاء دائرة في القمة (العمود المرتفع) - أكبر بكثير
 const column=new google.maps.Circle({
 center:{lat:pos.lat,lng:pos.lng},
-radius:totalHeight,
+radius:totalHeight, // ✅ نصف قطر = الارتفاع
 fillColor:color,
-fillOpacity:0.85,
+fillOpacity:0.9,
 strokeColor:'#fff',
-strokeWeight:3,
+strokeWeight:4, // ✅ أسمك (كان 3)
 map:map,
 zIndex:100+index
 });
 
-// ✅ دائرة صغيرة في القاعدة (النقطة الأصلية)
+// ✅ دائرة صغيرة في القاعدة (النقطة الأصلية) - أكبر
 const base=new google.maps.Circle({
 center:{lat:d.lat,lng:d.lng},
-radius:30,
+radius:80, // ✅ أكبر (كان 30)
 fillColor:color,
-fillOpacity:0.9,
+fillOpacity:1,
 strokeColor:'#fff',
-strokeWeight:2,
+strokeWeight:3,
 map:map,
 zIndex:200+index
 });
 
-// ✅ تسمية العدد داخل الدائرة
+// ✅ تسمية العدد داخل الدائرة - أكبر
 const label=new google.maps.Marker({
 position:{lat:pos.lat,lng:pos.lng},
 map:map,
 label:{
 text:String(d.count),
 color:'white',
-fontSize:'14px',
+fontSize:'18px', // ✅ أكبر (كان 14)
 fontWeight:'bold'
 },
 icon:{
@@ -496,7 +508,7 @@ zIndex:1000+index
 
 // ✅ نافذة معلومات
 const info=new google.maps.InfoWindow({
-content:'<div style="text-align:center;padding:10px;direction:rtl;font-size:12px;"><h3 style="margin:0 0 5px;color:'+color+';">'+d.name+'</h3><p style="margin:0;font-size:18px;font-weight:bold;">'+d.count+' بلاغ</p><p style="margin:5px 0 0;font-size:10px;color:#666;">'+d.municipality+'</p><p style="margin:3px 0 0;font-size:9px;color:#999;">الارتفاع: '+Math.round(totalHeight)+'م</p></div>'
+content:'<div style="text-align:center;padding:15px;direction:rtl;font-size:14px;"><h3 style="margin:0 0 8px;color:'+color+';">'+d.name+'</h3><p style="margin:0;font-size:24px;font-weight:bold;">'+d.count+' بلاغ</p><p style="margin:8px 0 0;font-size:12px;color:#666;">'+d.municipality+'</p><p style="margin:5px 0 0;font-size:11px;color:#999;">الارتفاع: '+Math.round(totalHeight)+'م</p></div>'
 });
 
 column.addListener('click',()=>info.open(map,label));
@@ -508,6 +520,7 @@ line:line,
 base:base,
 label:label,
 shadow:shadow,
+glow:glow,
 originalPos:{lat:d.lat,lng:d.lng},
 height:totalHeight
 });
@@ -516,7 +529,7 @@ bounds.extend({lat:d.lat,lng:d.lng});
 bounds.extend({lat:pos.lat,lng:pos.lng});
 });
 
-map.fitBounds(bounds,{padding:100});
+map.fitBounds(bounds,{padding:150});
 }
 
 function updateTable(data,total){
@@ -535,7 +548,7 @@ const percentage=total>0?((d.count/total)*100).toFixed(1):0;
 const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
 const countClass=d.count>100?'high':d.count>50?'medium':'';
 const districtColor=window.districtColors&&window.districtColors[d.name]?window.districtColors[d.name]:COLORS[globalIndex%COLORS.length];
-return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+d.name+'</td><td>'+d.municipality+'</td><td><span class="countBadge '+countClass+'">'+d.count+'</span></td><td>'+percentage+'%</td></tr>';
+return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';\"></span></td><td>'+d.name+'</td><td>'+d.municipality+'</td><td><span class="countBadge '+countClass+'">'+d.count+'</span></td><td>'+percentage+'%</td></tr>';
 }).join('');
 tablePage.innerHTML='<div class="tableHeader"><h2>تفاصيل الأحياء</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي: '+total.toLocaleString()+'</p></div><table class="dataTable"><thead><tr><th style="width:10%">الترتيب</th><th style="width:5%"></th><th style="width:28%">الحي</th><th style="width:25%">البلدية</th><th style="width:16%">البلاغات</th><th style="width:10%">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
 container.appendChild(tablePage);
