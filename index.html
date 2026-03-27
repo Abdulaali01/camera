@@ -24,7 +24,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 .controlPanel button.secondary{background:linear-gradient(135deg,#0b8f55 0%,#0a7a48 100%)}
 .controlPanel button.accent{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}
 .reportContent{padding:20px}
-.mapSection{width:180mm;height:250mm;margin:0 auto 20px;page-break-after:always;break-after:page;display:flex;flex-direction:column;background:white;padding:10px;border:1px solid #e2e8f0;border-radius:8px}
+.mapSection{width:180mm;height:250mm;margin:0 auto 20px;page-break-after:always;break-after:page;display:flex;flex-direction:column;background:white;padding:10px;border:1px solid #e2e8f0;border-radius:8px;position:relative}
 .sectionTitle{font-size:16px;font-weight:700;color:#1e293b;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .sectionTitle::before{content:"";width:3px;height:18px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:2px}
 #map{flex:1;width:100%;border-radius:8px;border:1px solid #e2e8f0}
@@ -92,10 +92,44 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 .batchMapLegend{position:absolute;bottom:10px;left:10px;background:rgba(255,255,255,0.95);padding:10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);font-size:11px;max-width:150px}
 .batchMapLegendItem{display:flex;align-items:center;gap:6px;margin-bottom:5px}
 .batchMapLegendColor{width:12px;height:12px;border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+
+/* ✅ أنماط وضع ملء الشاشة للخريطة */
+.mapFullscreenOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10000;display:none;flex-direction:column;padding:20px}
+.mapFullscreenOverlay.active{display:flex}
+.mapFullscreenHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;padding:0 10px}
+.mapFullscreenTitle{color:white;font-size:20px;font-weight:700}
+.mapFullscreenClose{background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all 0.3s}
+.mapFullscreenClose:hover{transform:scale(1.05)}
+.mapFullscreenExport{background:linear-gradient(135deg,#0b8f55 0%,#0a7a48 100%);color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all 0.3s;margin-right:10px}
+.mapFullscreenExport:hover{transform:scale(1.05)}
+.mapFullscreenButtons{display:flex}
+.mapFullscreenContainer{flex:1;border-radius:12px;overflow:hidden;box-shadow:0 0 30px rgba(0,0,0,0.5)}
+.mapExpandBtn{position:absolute;top:15px;left:15px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;padding:10px 15px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s}
+.mapExpandBtn:hover{transform:scale(1.05);box-shadow:0 6px 20px rgba(0,0,0,0.4)}
+.mapExpandBtn svg{width:18px;height:18px}
 </style>
 </head>
 <body>
 <div id="loading" class="loading" style="display:none">جاري التحميل...<div class="spinner"></div></div>
+
+<!-- ✅ واجهة ملء الشاشة للخريطة -->
+<div id="mapFullscreenOverlay" class="mapFullscreenOverlay">
+    <div class="mapFullscreenHeader">
+        <div class="mapFullscreenTitle">🗺️ خريطة الأحياء - وضع ملء الشاشة</div>
+        <div class="mapFullscreenButtons">
+            <button class="mapFullscreenExport" onclick="exportFullscreenMap()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                تصدير الخريطة
+            </button>
+            <button class="mapFullscreenClose" onclick="closeFullscreenMap()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                إغلاق
+            </button>
+        </div>
+    </div>
+    <div id="fullscreenMapContainer" class="mapFullscreenContainer"></div>
+</div>
+
 <div class="reportContainer">
 <div class="reportHeader">
 <h1>📊 تقرير تحليل الأحياء</h1>
@@ -139,6 +173,11 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 </div>
 <div class="mapSection" id="mapSection">
 <h2 class="sectionTitle">الخريطة التفاعلية - 3D</h2>
+<!-- ✅ زر تكبير الخريطة -->
+<button class="mapExpandBtn" onclick="openFullscreenMap()" title="تكبير الخريطة">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+    تكبير
+</button>
 <div id="map"></div>
 </div>
 <div class="districtChartContainer" id="districtChartContainer">
@@ -186,6 +225,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 let map,districts=[],districtChart=null,barChart=null,allDistricts=[];
 let categoryStats={},allData=[],rawDataCount=0,streetsStats=[];
 let markersData = []; // Store marker data for zoom handling
+let fullscreenMap = null; // ✅ خريطة ملء الشاشة
 
 const monthNamesToNumbers={"يناير":1,"فبراير":2,"مارس":3,"أبريل":4,"مايو":5,"يونيو":6,"يوليو":7,"أغسطس":8,"سبتمبر":9,"أكتوبر":10,"نوفمبر":11,"ديسمبر":12,"1":1,"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"11":11,"12":12};
 const monthNumbersToNames={1:"يناير",2:"فبراير",3:"مارس",4:"أبريل",5:"مايو",6:"يونيو",7:"يوليو",8:"أغسطس",9:"سبتمبر",10:"أكتوبر",11:"نوفمبر",12:"ديسمبر"};
@@ -209,6 +249,115 @@ zoomControl:true
 map.addListener('zoom_changed', function() {
     updateMarkersSize();
 });
+}
+
+// ✅ فتح الخريطة في وضع ملء الشاشة
+function openFullscreenMap() {
+    const overlay = document.getElementById('mapFullscreenOverlay');
+    const container = document.getElementById('fullscreenMapContainer');
+    
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // إنشاء خريطة جديدة في وضع ملء الشاشة
+    if (fullscreenMap) {
+        fullscreenMap = null;
+    }
+    
+    setTimeout(() => {
+        fullscreenMap = new google.maps.Map(container, {
+            center: map.getCenter(),
+            zoom: map.getZoom(),
+            mapTypeId: map.getMapTypeId(),
+            mapTypeControl: true,
+            fullscreenControl: false,
+            streetViewControl: false,
+            zoomControl: true
+        });
+        
+        // نسخ الأعمدة إلى الخريطة الجديدة
+        copyMarkersToFullscreen();
+    }, 100);
+}
+
+// ✅ إغلاق وضع ملء الشاشة
+function closeFullscreenMap() {
+    const overlay = document.getElementById('mapFullscreenOverlay');
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+    
+    if (fullscreenMap) {
+        fullscreenMap = null;
+    }
+}
+
+// ✅ تصدير خريطة ملء الشاشة
+function exportFullscreenMap() {
+    if (!fullscreenMap) return;
+    
+    document.getElementById('loading').style.display = 'flex';
+    
+    const container = document.getElementById('fullscreenMapContainer');
+    
+    html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#fff"
+    }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = 'خريطة_كاملة_' + new Date().toLocaleDateString('ar-SA') + '.png';
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        
+        document.getElementById('loading').style.display = 'none';
+    }).catch(err => {
+        console.error(err);
+        document.getElementById('loading').style.display = 'none';
+    });
+}
+
+// ✅ نسخ الأعمدة إلى خريطة ملء الشاشة
+function copyMarkersToFullscreen() {
+    if (!fullscreenMap || districts.length === 0) return;
+    
+    const bounds = new google.maps.LatLngBounds();
+    const maxCount = Math.max(...districts.map(d => d.count));
+    const minCount = Math.min(...districts.map(d => d.count));
+    
+    districts.forEach((d, index) => {
+        const color = window.districtColors && window.districtColors[d.name] ? window.districtColors[d.name] : COLORS[index % COLORS.length];
+        
+        const heightRatio = (d.count - minCount) / (maxCount - minCount || 1);
+        const pixelHeight = Math.round(80 + (heightRatio * 170));
+        
+        const svg = createProfessionalColumnSVG(d, color, pixelHeight, index);
+        
+        const icon = {
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+            scaledSize: new google.maps.Size(140, pixelHeight + 60),
+            anchor: new google.maps.Point(70, pixelHeight + 30)
+        };
+        
+        const marker = new google.maps.Marker({
+            position: {lat: d.lat, lng: d.lng},
+            map: fullscreenMap,
+            icon: icon,
+            title: d.name + ' - ' + d.count + ' بلاغ',
+            zIndex: 1000 + index
+        });
+        
+        const infoWindow = new google.maps.InfoWindow({
+            content: '<div style="text-align:center;padding:15px;direction:rtl;min-width:200px;"><h3 style="color:'+color+';margin:0 0 10px;font-size:16px;">'+d.name+'</h3><p style="font-size:24px;font-weight:bold;margin:0;color:#1e293b;">'+d.count+' <span style="font-size:14px;color:#64748b;">بلاغ</span></p><p style="font-size:12px;color:#64748b;margin:8px 0 0;">'+d.municipality+'</p></div>'
+        });
+        
+        marker.addListener('click', () => {
+            infoWindow.open(fullscreenMap, marker);
+        });
+        
+        bounds.extend({lat: d.lat, lng: d.lng});
+    });
+    
+    fullscreenMap.fitBounds(bounds, {padding: 100});
 }
 
 function clearMarkers(){
