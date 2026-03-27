@@ -27,7 +27,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 .mapSection{width:180mm;height:250mm;margin:0 auto 20px;page-break-after:always;break-after:page;display:flex;flex-direction:column;background:white;padding:10px;border:1px solid #e2e8f0;border-radius:8px}
 .sectionTitle{font-size:16px;font-weight:700;color:#1e293b;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .sectionTitle::before{content:"";width:3px;height:18px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:2px}
-#map{flex:1;width:100%;border-radius:8px;border:1px solid #e2e8f0;position:relative}
+#map{flex:1;width:100%;border-radius:8px;border:1px solid #e2e8f0}
 .statsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:20px}
 .statCard{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:15px;border-radius:10px;text-align:center}
 .statCard h3{font-size:11px;opacity:0.9;margin-bottom:5px}
@@ -81,11 +81,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 .qualityTable td{padding:5px 4px;text-align:center;border:1px solid #fecaca;color:#450a0a}
 .qualityTable tr:nth-child(even){background:#fff5f5}
 .emptyCell{color:#dc2626;font-style:italic}
-/* ✅ أنماط الأعمدة ثلاثية الأبعاد */
-.column3d-container{position:absolute;pointer-events:none;z-index:1000}
-.column3d{position:absolute;transform-style:preserve-3d;pointer-events:auto;cursor:pointer}
-.column3d:hover{transform:scale(1.05)}
-.column-label{position:absolute;background:rgba(0,0,0,0.8);color:white;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;white-space:nowrap;pointer-events:none;z-index:1001}
 </style>
 </head>
 <body>
@@ -183,7 +178,6 @@ const COLORS=["#667eea","#764ba2","#f093fb","#f5576c","#4facfe","#00f2fe","#43e9
 const ROWS_PER_PAGE=18;
 document.getElementById("reportDate").textContent=new Date().toLocaleDateString("ar-SA",{year:'numeric',month:'long',day:'numeric'});
 let markers=[];
-let overlay3D=null;
 
 function initMap(){
 map=new google.maps.Map(document.getElementById("map"),{
@@ -195,144 +189,13 @@ fullscreenControl:false,
 streetViewControl:false,
 zoomControl:true
 });
-
-// ✅ إنشاء طبقة مخصصة للأعمدة ثلاثية الأبعاد
-overlay3D=new Column3DOverlay(map);
 }
-
-// ✅ كلاس للطبقة المخصصة ثلاثية الأبعاد
-class Column3DOverlay{
-constructor(map){
-this.map=map;
-this.div=null;
-this.columns=[];
-this.setMap(map);
-}
-
-onAdd(){
-this.div=document.createElement('div');
-this.div.style.position='absolute';
-this.div.style.pointerEvents='none';
-this.getPanes().overlayMouseTarget.appendChild(this.div);
-}
-
-draw(){
-if(!this.div)return;
-const projection=this.getProjection();
-if(!projection)return;
-
-this.columns.forEach(col=>{
-const pos=projection.fromLatLngToDivPixel(col.position);
-if(pos){
-col.element.style.left=(pos.x-30)+'px';
-col.element.style.top=(pos.y-col.height)+'px';
-col.label.style.left=(pos.x-15)+'px';
-col.label.style.top=(pos.y-col.height-25)+'px';
-}
-});
-}
-
-onRemove(){
-if(this.div){
-this.div.parentNode.removeChild(this.div);
-this.div=null;
-}
-}
-
-addColumn(lat,lng,height,color,count,name,municipality){
-const projection=this.getProjection();
-if(!projection)return;
-
-const position=new google.maps.LatLng(lat,lng);
-const pos=projection.fromLatLngToDivPixel(position);
-
-// إنشاء عنصر العمود
-const column=document.createElement('div');
-column.className='column3d';
-column.style.width='60px';
-column.style.height=height+'px';
-column.style.left=(pos.x-30)+'px';
-column.style.top=(pos.y-height)+'px';
-column.style.background=`linear-gradient(to bottom, ${color} 0%, ${this.darkenColor(color,30)} 100%)`;
-column.style.borderRadius='8px 8px 0 0';
-column.style.boxShadow=`0 ${height/3}px ${height/2}px rgba(0,0,0,0.3), inset 0 0 20px rgba(255,255,255,0.3)`;
-column.style.border='2px solid rgba(255,255,255,0.8)';
-
-// إنشاء القاعدة (الدائرة السفلية)
-const base=document.createElement('div');
-base.style.position='absolute';
-base.style.width='20px';
-base.style.height='20px';
-base.style.background=color;
-base.style.borderRadius='50%';
-base.style.left='20px';
-base.style.bottom='-10px';
-base.style.boxShadow='0 0 10px rgba(0,0,0,0.5)';
-base.style.border='2px solid white';
-column.appendChild(base);
-
-// إنشاء الخط الواصل
-const line=document.createElement('div');
-line.style.position='absolute';
-line.style.width='4px';
-line.style.height=height+'px';
-line.style.background=`linear-gradient(to bottom, transparent 0%, ${color} 100%)`;
-line.style.left='28px';
-line.style.top=height+'px';
-line.style.opacity='0.6';
-column.appendChild(line);
-
-// إنشاء التسمية
-const label=document.createElement('div');
-label.className='column-label';
-label.textContent=count;
-label.style.left=(pos.x-15)+'px';
-label.style.top=(pos.y-height-25)+'px';
-
-// نافذة معلومات
-const infoWindow=new google.maps.InfoWindow({
-content:`<div style="text-align:center;padding:10px;direction:rtl;"><h3 style="color:${color};margin:0 0 5px;">${name}</h3><p style="font-size:20px;font-weight:bold;margin:0;">${count} بلاغ</p><p style="font-size:11px;color:#666;margin:5px 0 0;">${municipality}</p></div>`
-});
-
-column.addEventListener('click',()=>{
-infoWindow.setPosition(position);
-infoWindow.open(this.map);
-});
-
-this.div.appendChild(column);
-this.div.appendChild(label);
-
-this.columns.push({
-element:column,
-label:label,
-position:position,
-height:height
-});
-}
-
-clear(){
-if(this.div){
-this.div.innerHTML='';
-}
-this.columns=[];
-}
-
-darkenColor(color,percent){
-const num=parseInt(color.replace("#",""),16);
-const amt=Math.round(2.55*percent);
-const R=(num>>16)-amt;
-const B=((num>>8)&0x00FF)-amt;
-const G=(num&0x0000FF)-amt;
-return "#"+(0x1000000+(R<255?R<1?0:R:255)*0x10000+(B<255?B<1?0:B:255)*0x100+(G<255?G<1?0:G:255)).toString(16).slice(1);
-}
-}
-
-Column3DOverlay.prototype=new google.maps.OverlayView();
 
 function clearMarkers(){
-if(overlay3D){
-overlay3D.clear();
-}
+markers.forEach(m=>{
+if(m.marker)m.marker.setMap(null);
+if(m.label)m.label.setMap(null);
+});
 markers=[];
 }
 
@@ -504,10 +367,10 @@ container.appendChild(tablePage);
 }
 }
 
-// ✅ دالة رسم الأعمدة ثلاثية الأبعاد باستخدام SVG Overlay
+// ✅ دالة رسم الأعمدة ثلاثية الأبعاد - باستخدام SVG Marker
 function updateMap(data){
 clearMarkers();
-if(data.length===0||!overlay3D)return;
+if(data.length===0)return;
 const bounds=new google.maps.LatLngBounds();
 window.districtColors={};
 
@@ -522,11 +385,11 @@ sortedData.forEach((d,index)=>{
 const color=COLORS[index%COLORS.length];
 window.districtColors[d.name]=color;
 
-// ✅ حساب الارتفاع بالبكسل (وليس بالمتر)
+// ✅ حساب الارتفاع بالبكسل
 const heightRatio=(d.count-minCount)/(maxCount-minCount||1);
-const minHeight=80;  // ارتفاع أدنى بالبكسل
-const maxHeight=250; // ارتفاع أقصى بالبكسل
-const pixelHeight=minHeight+(heightRatio*(maxHeight-minHeight));
+const minHeight=80;
+const maxHeight=250;
+const pixelHeight=Math.round(minHeight+(heightRatio*(maxHeight-minHeight)));
 
 // ✅ إيجاد موقع متباعد
 let pos={lat:d.lat,lng:d.lng};
@@ -546,15 +409,72 @@ pos={lat:d.lat+(Math.sin(angle)*radius),lng:d.lng+(Math.cos(angle)*radius/Math.c
 attempts++;
 }
 
-// ✅ إضافة العمود للطبقة المخصصة
-overlay3D.addColumn(pos.lat,pos.lng,pixelHeight,color,d.count,d.name,d.municipality);
+// ✅ إنشاء SVG للعمود ثلاثي الأبعاد
+const svg=`
+<svg xmlns="http://www.w3.org/2000/svg" width="60" height="${pixelHeight+40}" viewBox="0 0 60 ${pixelHeight+40}">
+<defs>
+<linearGradient id="colGrad${index}" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" style="stop-color:${color};stop-opacity:1" />
+<stop offset="100%" style="stop-color:${darkenColor(color,30)};stop-opacity:1" />
+</linearGradient>
+<filter id="shadow${index}">
+<feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+</filter>
+</defs>
+<!-- الظل -->
+<ellipse cx="30" cy="${pixelHeight+20}" rx="25" ry="10" fill="rgba(0,0,0,0.2)"/>
+<!-- الخط الواصل -->
+<line x1="30" y1="${pixelHeight+15}" x2="30" y2="35" stroke="${color}" stroke-width="3" opacity="0.6"/>
+<!-- العمود -->
+<rect x="15" y="20" width="30" height="${pixelHeight}" fill="url(#colGrad${index})" stroke="white" stroke-width="2" rx="5"/>
+<!-- القمة -->
+<circle cx="30" cy="20" r="15" fill="${color}" stroke="white" stroke-width="2"/>
+<!-- العدد -->
+<text x="30" y="25" text-anchor="middle" fill="white" font-size="12" font-weight="bold">${d.count}</text>
+</svg>
+`;
 
-markers.push({pos:pos,color:color});
+// ✅ إنشاء أيقونة مخصصة من SVG
+const icon={
+url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),
+scaledSize:new google.maps.Size(60,pixelHeight+40),
+anchor:new google.maps.Point(30,pixelHeight+20)
+};
+
+// ✅ إنشاء الـ Marker
+const marker=new google.maps.Marker({
+position:{lat:pos.lat,lng:pos.lng},
+map:map,
+icon:icon,
+title:d.name+' - '+d.count+' بلاغ',
+zIndex:1000+index
+});
+
+// ✅ نافذة معلومات
+const infoWindow=new google.maps.InfoWindow({
+content:'<div style="text-align:center;padding:10px;direction:rtl;"><h3 style="color:'+color+';margin:0 0 5px;">'+d.name+'</h3><p style="font-size:18px;font-weight:bold;margin:0;">'+d.count+' بلاغ</p><p style="font-size:11px;color:#666;margin:5px 0 0;">'+d.municipality+'</p></div>'
+});
+
+marker.addListener('click',()=>{
+infoWindow.open(map,marker);
+});
+
+markers.push({marker:marker,pos:pos});
 bounds.extend({lat:d.lat,lng:d.lng});
 bounds.extend({lat:pos.lat,lng:pos.lng});
 });
 
 map.fitBounds(bounds,{padding:100});
+}
+
+// ✅ دالة لتعتيم اللون
+function darkenColor(hex,percent){
+const num=parseInt(hex.replace("#",""),16);
+const amt=Math.round(2.55*percent);
+const R=(num>>16)-amt;
+const B=((num>>8)&0x00FF)-amt;
+const G=(num&0x0000FF)-amt;
+return "#"+(0x1000000+(R<255?R<1?0:R:255)*0x10000+(B<255?B<1?0:B:255)*0x100+(G<255?G<1?0:G:255)).toString(16).slice(1);
 }
 
 function updateTable(data,total){
