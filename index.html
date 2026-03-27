@@ -27,7 +27,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 
 /* ✅ تخطيط الصف المزدوج - خريطة أوسع + رسم بياني */
 .dualSection{width:180mm;height:250mm;margin:0 auto 20px;page-break-after:always;break-after:page;display:flex;gap:15px;background:white;padding:15px;border:1px solid #e2e8f0;border-radius:8px}
-/* ✅ الخريطة تأخذ 65% والرسم 35% */
 .dualColumn.mapColumn{flex:1.85;display:flex;flex-direction:column;position:relative;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;background:#fafafa}
 .dualColumn.chartColumn{flex:1;display:flex;flex-direction:column;position:relative;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;background:#fafafa}
 .dualColumn h2{font-size:13px;font-weight:700;color:#1e293b;padding:10px;background:linear-gradient(135deg,#f1f5f9 0%,#e2e8f0 100%);border-bottom:2px solid #cbd5e1;display:flex;align-items:center;gap:8px;margin:0}
@@ -36,7 +35,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 .mapWrapper{flex:1;position:relative;background:#e2e8f0}
 #map{position:absolute;top:0;left:0;width:100%;height:100%}
 
-/* ✅ إخفاء الأعمدة عند الطباعة/التصدير */
+/* ✅ إخفاء العناصر عند الطباعة/التصدير */
 @media print{
     .gm-style .custom-marker-column{display:none !important}
     .mapExpandBtn{display:none !important}
@@ -117,8 +116,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;
 .spacingControl label{font-size:12px;color:#0369a1;font-weight:600;display:block;margin-bottom:5px}
 .spacingControl input[type="range"]{width:100%;margin-bottom:5px}
 .spacingValue{text-align:center;font-size:14px;color:#0ea5e9;font-weight:700}
-
-/* ✅ أنماط خاصة للطباعة - إخفاء العناصر غير المرغوبة */
 .print-hide{display:none !important}
 </style>
 </head>
@@ -250,13 +247,11 @@ let categoryStats={},allData=[],rawDataCount=0,streetsStats=[];
 let fullscreenMap = null;
 let currentSpacing = 2.0;
 let districtPolygons = [];
-let districtMarkers = []; // ✅ تخزين الأعمدة منفصلة
+let districtMarkers = [];
 
 const monthNamesToNumbers={"يناير":1,"فبراير":2,"مارس":3,"أبريل":4,"مايو":5,"يونيو":6,"يوليو":7,"أغسطس":8,"سبتمبر":9,"أكتوبر":10,"نوفمبر":11,"ديسمبر":12,"1":1,"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"11":11,"12":12};
 const monthNumbersToNames={1:"يناير",2:"فبراير",3:"مارس",4:"أبريل",5:"مايو",6:"يونيو",7:"يوليو",8:"أغسطس",9:"سبتمبر",10:"أكتوبر",11:"نوفمبر",12:"ديسمبر"};
-// ✅ ألوان صارخة متناسقة مع الرسم البياني
 const CHART_COLORS=['#dc2626','#ea580c','#d97706','#ca8a04','#65a30d','#16a34a','#059669','#0d9488','#0891b2','#0284c7','#2563eb','#4f46e5','#7c3aed','#9333ea','#c026d3','#db2777','#e11d48','#f43f5e'];
-const COLORS=['#dc2626','#ea580c','#d97706','#ca8a04','#65a30d','#16a34a','#059669','#0d9488','#0891b2','#0284c7','#2563eb','#4f46e5','#7c3aed','#9333ea','#c026d3','#db2777','#e11d48','#f43f5e','#667eea','#764ba2'];
 const ROWS_PER_PAGE=18;
 document.getElementById("reportDate").textContent=new Date().toLocaleDateString("ar-SA",{year:'numeric',month:'long',day:'numeric'});
 let markers=[];
@@ -390,7 +385,7 @@ function copyMarkersToFullscreen() {
     const maxCount = Math.max(...districts.map(d => d.count));
     const minCount = Math.min(...districts.map(d => d.count));
     spacedDistricts.forEach((d, index) => {
-        const color = window.districtColors && window.districtColors[d.name] ? window.districtColors[d.name] : COLORS[index % COLORS.length];
+        const color = window.districtColors && window.districtColors[d.name] ? window.districtColors[d.name] : CHART_COLORS[index % CHART_COLORS.length];
         createDistrictPolygon(d, color, fullscreenMap);
         const heightRatio = (d.count - minCount) / (maxCount - minCount || 1);
         const pixelHeight = Math.round(80 + (heightRatio * 170));
@@ -565,29 +560,38 @@ function updateStreetsTable(filteredData,total){
     }
 }
 
-// ✅ إنشاء مضلع دائري للحي مع تظليل غامق صارخ
+// ✅ إنشاء مضلع كبير يغطي الحي بالكامل (شكل عشوائي طبيعي)
 function createDistrictPolygon(district, color, targetMap) {
-    const radius = 0.012; // ✅ زيادة حجم المضلع
+    const baseRadius = 0.025; // ✅ نصف قطر كبير (~2.5 كم)
+    const numPoints = 16; // ✅ عدد نقاط كافي للشكل الطبيعي
     const points = [];
-    const numPoints = 36; // ✅ دقة أعلى للدائرة
+    
+    // ✅ إنشاء شكل عشوائي غير منتظم (يشبه حدود الحي)
     for (let i = 0; i < numPoints; i++) {
-        const angle = (i / numPoints) * 2 * Math.PI;
-        const lat = district.lat + (radius * Math.cos(angle));
-        const lng = district.lng + (radius * Math.sin(angle) / Math.cos(district.lat * Math.PI / 180));
+        const baseAngle = (i / numPoints) * 2 * Math.PI;
+        // ✅ إضافة عشوائية للمسافة لجعل الشكل طبيعي
+        const randomFactor = 0.7 + (Math.sin(i * 3.7) * 0.3) + (Math.cos(i * 2.3) * 0.2);
+        const radius = baseRadius * randomFactor;
+        
+        const lat = district.lat + (radius * Math.cos(baseAngle));
+        const lng = district.lng + (radius * Math.sin(baseAngle) / Math.cos(district.lat * Math.PI / 180));
         points.push({lat: lat, lng: lng});
     }
-    // ✅ لون صارخ غامق للإطار
-    const strokeColor = color;
+    
+    // ✅ إغلاق المضلع
+    points.push(points[0]);
+    
     const polygon = new google.maps.Polygon({
         paths: points,
-        strokeColor: strokeColor,
+        strokeColor: color,
         strokeOpacity: 1,
-        strokeWeight: 4, // ✅ خط أثخن
+        strokeWeight: 4,
         fillColor: color,
-        fillOpacity: 0.25, // ✅ تظليل شفاف نسبياً
+        fillOpacity: 0.2, // ✅ شفافية مناسبة
         map: targetMap,
         zIndex: 1
     });
+    
     districtPolygons.push(polygon);
     return polygon;
 }
@@ -602,14 +606,13 @@ function updateMap(data){
     const minCount=Math.min(...data.map(d=>d.count));
     
     spacedData.forEach((d,index)=>{
-        // ✅ نفس لون الرسم البياني
         const color=CHART_COLORS[index % CHART_COLORS.length];
         window.districtColors[d.name]=color;
         
-        // ✅ رسم المضلع أولاً (في الأسفل)
+        // ✅ رسم المضلع الكبير أولاً
         createDistrictPolygon(d, color, map);
         
-        // ✅ رسم العمود (في الأعلى)
+        // ✅ رسم العمود
         const heightRatio=(d.count-minCount)/(maxCount-minCount||1);
         const minHeight=80;
         const maxHeight=250;
@@ -622,7 +625,7 @@ function updateMap(data){
             icon:icon,
             title:d.name+' - '+d.count+' بلاغ',
             zIndex:1000+index,
-            className: 'custom-marker-column' // ✅ للتحكم في الإخفاء
+            className: 'custom-marker-column'
         });
         
         const infoWindow=new google.maps.InfoWindow({
@@ -743,7 +746,7 @@ function updateTable(data,total){
             const percentage=total>0?((d.count/total)*100).toFixed(1):0;
             const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
             const countClass=d.count>100?'high':d.count>50?'medium':'';
-            const districtColor=window.districtColors&&window.districtColors[d.name]?window.districtColors[d.name]:COLORS[globalIndex%COLORS.length];
+            const districtColor=window.districtColors&&window.districtColors[d.name]?window.districtColors[d.name]:CHART_COLORS[globalIndex%CHART_COLORS.length];
             return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+d.name+'</td><td>'+d.municipality+'</td><td><span class="countBadge '+countClass+'">'+d.count+'</span></td><td>'+percentage+'%</td></tr>';
         }).join('');
         tablePage.innerHTML='<div class="tableHeader"><h2>تفاصيل الأحياء</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي: '+total.toLocaleString()+'</p></div><table class="dataTable"><thead><tr><th style="width:10%">الترتيب</th><th style="width:5%"></th><th style="width:28%">الحي</th><th style="width:25%">البلدية</th><th style="width:16%">البلاغات</th><th style="width:10%">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
@@ -751,16 +754,11 @@ function updateTable(data,total){
     }
 }
 
-// ✅ رسم بياني يعرض جميع الأحياء مع الأرقام
 function updateDistrictChart(data,total){
     const ctx=document.getElementById("districtChartCanvas").getContext("2d");
     if(districtChart)districtChart.destroy();
-    
-    // ✅ عرض جميع الأحياء وليس 15 فقط
-    const chartData = [...data].reverse(); // عكس الترتيب للعرض من الأعلى
-    
+    const chartData = [...data].reverse();
     document.getElementById("districtChartCanvas").parentElement.style.overflowY = chartData.length > 10 ? 'auto' : 'hidden';
-    
     districtChart=new Chart(ctx,{
         type:'bar',
         data:{
@@ -794,19 +792,8 @@ function updateDistrictChart(data,total){
                 }
             },
             scales:{
-                x:{
-                    beginAtZero:true,
-                    grid:{color:'#e2e8f0'},
-                    ticks:{font:{size:10}}
-                },
-                y:{
-                    grid:{display:false},
-                    ticks:{
-                        font:{size:10,weight:'bold'},
-                        autoSkip:false, // ✅ عرض جميع التسميات
-                        maxRotation:0
-                    }
-                }
+                x:{beginAtZero:true,grid:{color:'#e2e8f0'},ticks:{font:{size:10}}},
+                y:{grid:{display:false},ticks:{font:{size:10,weight:'bold'},autoSkip:false,maxRotation:0}}
             }
         }
     });
@@ -819,18 +806,13 @@ function updateBarChart(){
     const totalCategories=categories.reduce((sum,c)=>sum+c.count,0);
     document.getElementById("barChartSubtitle").textContent='التصنيفات: '+categories.length+' - البلاغات: '+totalCategories.toLocaleString();
     const reversedData=[...categories].reverse();
-    barChart=new Chart(ctx,{type:'bar',data:{labels:reversedData.map(c=>c.name),datasets:[{label:'البلاغات',data:reversedData.map(c=>c.count),backgroundColor:reversedData.map((c,i)=>COLORS[(categories.length-1-i)%COLORS.length]),borderWidth:0,borderRadius:6,barPercentage:0.6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{left:10,right:60,top:10,bottom:10}},plugins:{legend:{display:false},datalabels:{color:'#1e293b',font:{size:12,weight:'bold'},formatter:(v)=>v.toLocaleString(),anchor:'end',align:'end',offset:5}},scales:{x:{beginAtZero:true,grid:{color:'#e2e8f0'}},y:{grid:{display:false},ticks:{font:{size:11,weight:'bold'}}}}}});
+    barChart=new Chart(ctx,{type:'bar',data:{labels:reversedData.map(c=>c.name),datasets:[{label:'البلاغات',data:reversedData.map(c=>c.count),backgroundColor:reversedData.map((c,i)=>CHART_COLORS[(categories.length-1-i)%CHART_COLORS.length]),borderWidth:0,borderRadius:6,barPercentage:0.6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{left:10,right:60,top:10,bottom:10}},plugins:{legend:{display:false},datalabels:{color:'#1e293b',font:{size:12,weight:'bold'},formatter:(v)=>v.toLocaleString(),anchor:'end',align:'end',offset:5}},scales:{x:{beginAtZero:true,grid:{color:'#e2e8f0'}},y:{grid:{display:false},ticks:{font:{size:11,weight:'bold'}}}}}});
 }
 
-// ✅ تصدير مع إخفاء الأعمدة والأزرار
 function exportDualSection(){
-    // ✅ إخفاء الأعمدة مؤقتاً
     districtMarkers.forEach(m => m.setMap(null));
     document.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
-    
     doExport(document.getElementById("dualSection"),'خريطة_ورسم_بيانى_A4');
-    
-    // ✅ إعادة إظهار الأعمدة بعد التصدير
     setTimeout(() => {
         districtMarkers.forEach(m => m.setMap(map));
         document.querySelectorAll('.no-print').forEach(el => el.style.display = '');
