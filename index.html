@@ -262,6 +262,34 @@ zoomControl:true
 });
 }
 
+// ✅ دالة توزيع النقاط حول مركز معين لتجنب التداخل
+function spreadPoints(points, spreadRadius) {
+    if (!points || points.length === 0) return [];
+    if (points.length === 1) return points;
+    
+    const center = points.reduce((acc, p) => ({lat: acc.lat + p.lat, lng: acc.lng + p.lng}), {lat: 0, lng: 0});
+    center.lat /= points.length;
+    center.lng /= points.length;
+    
+    const spread = [];
+    const angleStep = (2 * Math.PI) / points.length;
+    const radiusInDegrees = spreadRadius / 111000; // Convert meters to degrees (approximate)
+    
+    points.forEach((point, index) => {
+        const angle = index * angleStep;
+        const offsetLat = Math.sin(angle) * radiusInDegrees;
+        const offsetLng = Math.cos(angle) * radiusInDegrees / Math.cos(center.lat * Math.PI / 180);
+        
+        spread.push({
+            lat: center.lat + offsetLat,
+            lng: center.lng + offsetLng,
+            original: point
+        });
+    });
+    
+    return spread;
+}
+
 // ✅ تحديث التباعد
 function updateSpacing(value) {
     currentSpacing = parseFloat(value);
