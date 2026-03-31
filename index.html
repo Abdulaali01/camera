@@ -3,893 +3,683 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>تقرير تحليل الأحياء - 3D</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<title>تحليل الأحياء - نظام ربع سنوي</title>
+
+<!-- المكتبات -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<!-- MarkerCluster -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
 <style>
-@page{size:A4 portrait;margin:15mm}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;min-height:100vh;padding:20px}
-.reportContainer{max-width:210mm;margin:0 auto;background:white;border-radius:10px;box-shadow:0 4px 6px rgba(0,0,0,0.1);overflow:hidden}
-.reportHeader{background:linear-gradient(135deg,#1e3c72 0%,#2a5298 100%);color:white;padding:20px;text-align:center}
-.reportHeader h1{font-size:24px;margin-bottom:8px}
-.reportHeader .subtitle{font-size:14px;opacity:0.9}
-.reportDate{margin-top:10px;font-size:12px;background:rgba(255,255,255,0.2);display:inline-block;padding:5px 15px;border-radius:15px}
-.controlPanel{background:#f8fafc;padding:15px;border-bottom:1px solid #e2e8f0;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.controlPanel input,.controlPanel select{padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;outline:none}
-.controlPanel button{padding:8px 16px;border:none;border-radius:6px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.3s}
-.controlPanel button:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(102,126,234,0.3)}
-.controlPanel button.secondary{background:linear-gradient(135deg,#0b8f55 0%,#0a7a48 100%)}
-.controlPanel button.accent{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}
-.reportContent{padding:20px}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); min-height: 100vh; }
+.top-bar { position: fixed; top: 0; left: 0; right: 0; background: rgba(255,255,255,0.98); backdrop-filter: blur(10px); padding: 12px 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 100000; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-bottom: 3px solid #1e3c72; }
+.top-bar input, .top-bar select, .top-bar button { padding: 8px 14px; border-radius: 10px; border: 2px solid #e0e0e0; font-size: 13px; }
+.top-bar button { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; border: none; cursor: pointer; font-weight: 600; transition: all 0.3s; }
+.top-bar button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(30,60,114,0.4); }
+.btn-export { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important; }
+.btn-compare { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important; }
+.main-container { margin-top: 80px; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
 
-/* ✅ تخطيط الصف المزدوج - خريطة أوسع + رسم بياني */
-.dualSection{width:180mm;height:250mm;margin:0 auto 20px;page-break-after:always;break-after:page;display:flex;gap:15px;background:white;padding:15px;border:1px solid #e2e8f0;border-radius:8px}
-.dualColumn.mapColumn{flex:1.85;display:flex;flex-direction:column;position:relative;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;background:#fafafa}
-.dualColumn.chartColumn{flex:1;display:flex;flex-direction:column;position:relative;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;background:#fafafa}
-.dualColumn h2{font-size:13px;font-weight:700;color:#1e293b;padding:10px;background:linear-gradient(135deg,#f1f5f9 0%,#e2e8f0 100%);border-bottom:2px solid #cbd5e1;display:flex;align-items:center;gap:8px;margin:0}
-.dualColumn h2::before{content:"";width:3px;height:14px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:2px}
-.chartWrapper{flex:1;padding:10px;position:relative;background:white;overflow:hidden}
-.mapWrapper{flex:1;position:relative;background:#e2e8f0}
-#map{position:absolute;top:0;left:0;width:100%;height:100%}
+/* الخريطة - إصلاح مهم */
+.map-wrapper { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2); position: relative; height: 70vh; width: 100%; z-index: 1; }
+#map { height: 100%; width: 100%; z-index: 1; }
 
-/* ✅ إخفاء العناصر عند الطباعة/التصدير */
-@media print{
-    .gm-style .custom-marker-column{display:none !important}
-    .mapExpandBtn{display:none !important}
-    .gm-fullscreen-control{display:none !important}
-    .gm-svpc{display:none !important}
-    .gm-style-mtc{display:none !important}
-    button[title*="تكبير"]{display:none !important}
-}
+/* تخصيص Cluster */
+.marker-cluster-small { background-color: rgba(30,60,114,0.6) !important; }
+.marker-cluster-small div { background-color: #1e3c72 !important; color: white !important; font-weight: bold !important; }
+.marker-cluster-medium { background-color: rgba(42,82,152,0.6) !important; }
+.marker-cluster-medium div { background-color: #2a5298 !important; color: white !important; font-weight: bold !important; }
+.marker-cluster-large { background-color: rgba(245,87,108,0.6) !important; }
+.marker-cluster-large div { background-color: #f5576c !important; color: white !important; font-weight: bold !important; }
 
-.statsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:20px}
-.statCard{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:15px;border-radius:10px;text-align:center}
-.statCard h3{font-size:11px;opacity:0.9;margin-bottom:5px}
-.statCard .number{font-size:24px;font-weight:800}
-.barChartContainer{width:180mm;height:250mm;margin:0 auto 20px;page-break-after:always;break-after:page;background:white;padding:20px;border:1px solid #e2e8f0;border-radius:8px;display:flex;flex-direction:column}
-.barChartWrapper{width:100%;height:100%;position:relative}
-.chartPrintHeader{text-align:center;margin-bottom:15px}
-.chartPrintHeader h2{font-size:18px;color:#1e293b;margin-bottom:5px}
-.chartPrintHeader p{color:#64748b;font-size:12px}
-.tableSection,.streetsTableSection{width:180mm;margin:0 auto}
-.tablePage{width:180mm;height:277mm;margin:0 auto 20px;page-break-after:always;break-after:page;background:white;padding:15mm;border:1px solid #e2e8f0;border-radius:8px;display:flex;flex-direction:column;overflow:hidden}
-.tablePage:last-child{page-break-after:auto}
-.tableHeader{text-align:center;margin-bottom:15px;padding-bottom:10px;border-bottom:2px solid #1e3c72}
-.tableHeader h2{font-size:18px;color:#1e3c72;margin-bottom:5px}
-.tableHeader p{color:#64748b;font-size:12px}
-.dataTable{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
-.dataTable thead{background:linear-gradient(135deg,#1e3c72 0%,#2a5298 100%);color:white}
-.dataTable th{padding:10px 6px;text-align:center;font-weight:700;font-size:11px;border:1px solid #1e3c72;white-space:nowrap}
-.dataTable td{padding:8px 6px;text-align:center;border:1px solid #e2e8f0;font-size:11px;height:35px}
-.dataTable tr:nth-child(even){background:#f8fafc}
-.dataTable tbody tr{page-break-inside:avoid}
-.rank{display:inline-block;width:24px;height:24px;line-height:24px;border-radius:50%;font-weight:700;color:white;font-size:11px}
-.rank.gold{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}
-.rank.silver{background:linear-gradient(135deg,#64748b 0%,#475569 100%)}
-.rank.bronze{background:linear-gradient(135deg,#b45309 0%,#92400e 100%)}
-.rank.normal{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
-.countBadge{display:inline-block;padding:4px 10px;border-radius:12px;font-weight:700;color:white;background:linear-gradient(135deg,#10b981 0%,#059669 100%);font-size:10px}
-.countBadge.high{background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)}
-.countBadge.medium{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}
-.coordCell{font-family:monospace;font-size:9px;direction:ltr;color:#059669}
-.colorIndicator{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.2)}
-.pageFooter{margin-top:auto;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#64748b}
-.filterContainer{display:flex;gap:8px;align-items:center;flex:1}
-.filterContainer input,.filterContainer select{flex:1;min-width:120px}
-.exportButtons{display:flex;gap:8px;flex-wrap:wrap}
-@media print{@page{size:A4 portrait;margin:0}body{background:white;padding:0;margin:0}.reportContainer{box-shadow:none;border-radius:0;max-width:100%}.controlPanel{display:none}.reportHeader{border-radius:0}.dualSection,.barChartContainer,.tablePage{width:210mm;height:297mm;margin:0;border:none;border-radius:0;page-break-after:always;break-after:page}.dualSection:last-child,.barChartContainer:last-child,.tablePage:last-child{page-break-after:auto}.dualColumn{height:100%}}
-.loading{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;z-index:9999;font-size:16px;color:#667eea;font-weight:700}
-.spinner{width:30px;height:30px;border:3px solid #e0e7ff;border-top-color:#667eea;border-radius:50%;animation:spin 1s linear infinite;margin-left:10px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.debugInfo{background:#fef3c7;border:1px solid #f59e0b;padding:10px;margin:10px 0;border-radius:6px;font-size:12px;color:#92400e}
-.dataQualitySection{width:180mm;margin:0 auto 20px;background:white;padding:20px;border:1px solid #e2e8f0;border-radius:8px}
-.dataQualityHeader{text-align:center;margin-bottom:15px;padding-bottom:10px;border-bottom:2px solid #dc2626}
-.dataQualityHeader h2{font-size:16px;color:#dc2626;margin-bottom:5px}
-.dataQualityHeader p{color:#64748b;font-size:11px}
-.qualityGrid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
-.qualityBox{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px}
-.qualityBox h4{font-size:12px;color:#991b1b;margin-bottom:10px;display:flex;align-items:center;gap:5px}
-.qualityBox h4 .count{background:#dc2626;color:white;padding:2px 8px;border-radius:10px;font-size:10px}
-.qualityTable{width:100%;border-collapse:collapse;font-size:10px}
-.qualityTable th{background:#fee2e2;padding:6px 4px;text-align:center;font-weight:600;color:#7f1d1d;border:1px solid #fecaca}
-.qualityTable td{padding:5px 4px;text-align:center;border:1px solid #fecaca;color:#450a0a}
-.qualityTable tr:nth-child(even){background:#fff5f5}
-.emptyCell{color:#dc2626;font-style:italic}
-.mapFullscreenOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:10000;display:none;flex-direction:column;padding:20px;overflow:hidden}
-.mapFullscreenOverlay.active{display:flex}
-.mapFullscreenHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;padding:0 10px;flex-shrink:0}
-.mapFullscreenTitle{color:white;font-size:20px;font-weight:700}
-.mapFullscreenClose{background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all 0.3s}
-.mapFullscreenClose:hover{transform:scale(1.05)}
-.mapFullscreenExport{background:linear-gradient(135deg,#0b8f55 0%,#0a7a48 100%);color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all 0.3s;margin-right:10px}
-.mapFullscreenExport:hover{transform:scale(1.05)}
-.mapFullscreenButtons{display:flex}
-.mapFullscreenContainer{flex:1;border-radius:12px;overflow:visible;position:relative;min-height:0}
-.mapFullscreenContainer #fullscreenMapContainer{width:100%;height:100%;min-height:600px}
-.mapExpandBtn{position:absolute;top:15px;left:15px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;padding:10px 15px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s}
-.mapExpandBtn:hover{transform:scale(1.05);box-shadow:0 6px 20px rgba(0,0,0,0.4)}
-.mapExpandBtn svg{width:18px;height:18px}
-.spacingControl{background:#f0f9ff;border:1px solid #0ea5e9;padding:10px;border-radius:8px;margin:10px 0}
-.spacingControl label{font-size:12px;color:#0369a1;font-weight:600;display:block;margin-bottom:5px}
-.spacingControl input[type="range"]{width:100%;margin-bottom:5px}
-.spacingValue{text-align:center;font-size:14px;color:#0ea5e9;font-weight:700}
-.print-hide{display:none !important}
+/* النقاط الدائرية */
+.custom-circle-marker { border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,0.5); transition: all 0.3s; }
+.custom-circle-marker:hover { transform: scale(1.2); z-index: 1000 !important; }
+
+/* أزرار التكبير */
+.custom-zoom { position: absolute; bottom: 30px; right: 30px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; z-index: 1000; border: 2px solid #1e3c72; }
+.zoom-btn { width: 48px; height: 48px; border: none; background: white; font-size: 24px; cursor: pointer; color: #1e3c72; font-weight: bold; transition: all 0.3s; }
+.zoom-btn:hover { background: #1e3c72; color: white; }
+.zoom-btn:first-child { border-bottom: 1px solid #e0e0e0; }
+
+/* الإحصائيات */
+.stats-section { display: grid; grid-template-columns: 250px 1fr 1fr; gap: 20px; }
+.card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
+.card-title { font-size: 16px; font-weight: 700; color: #333; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 3px solid #1e3c72; display: flex; align-items: center; gap: 8px; }
+.stat-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; margin-bottom: 8px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 10px; font-size: 13px; }
+.stat-value { font-weight: 700; color: #1e3c72; font-size: 18px; }
+.quarter-badge { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+
+/* الدليل */
+.legend-container { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+.legend-item { display: flex; align-items: center; gap: 8px; padding: 10px; background: #f8f9fa; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-size: 12px; border-right: 4px solid transparent; }
+.legend-item:hover { background: #e9ecef; transform: translateX(-5px); border-right-color: #1e3c72; }
+.legend-color-box { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.legend-text { flex: 1; text-align: right; font-weight: 500; }
+.legend-count { background: #333; color: white; padding: 3px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
+
+/* المخطط */
+.chart-scroll-container { position: relative; height: 350px; overflow-y: auto; overflow-x: hidden; border-radius: 10px; background: #f8f9fa; padding: 10px; }
+.chart-canvas-wrapper { position: relative; height: max-content; min-height: 100%; }
+
+/* مقارنة الأرباع */
+.compare-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; }
+.quarter-card { background: white; border-radius: 15px; padding: 20px; text-align: center; box-shadow: 0 5px 20px rgba(0,0,0,0.1); border-top: 4px solid; transition: all 0.3s; }
+.quarter-card:hover { transform: translateY(-5px); }
+.quarter-card.q1 { border-top-color: #e74c3c; } .quarter-card.q2 { border-top-color: #f39c12; } .quarter-card.q3 { border-top-color: #27ae60; } .quarter-card.q4 { border-top-color: #3498db; }
+.quarter-title { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 10px; }
+.quarter-value { font-size: 32px; font-weight: bold; color: #1e3c72; margin: 10px 0; }
+.quarter-trend { font-size: 12px; padding: 5px 10px; border-radius: 20px; display: inline-block; font-weight: 600; }
+.trend-up { background: #d4edda; color: #155724; } .trend-down { background: #f8d7da; color: #721c24; }
+
+/* نافذة التفاصيل */
+.district-popup { min-width: 250px; }
+.popup-header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 15px; border-radius: 10px 10px 0 0; margin: -13px -13px 10px -13px; font-weight: bold; font-size: 16px; }
+.popup-stat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+.popup-stat:last-child { border-bottom: none; } .popup-label { color: #666; } .popup-value { font-weight: bold; color: #1e3c72; }
+
+/* Responsive */
+@media (max-width: 1200px) { .stats-section { grid-template-columns: 1fr 1fr; } .compare-section { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { .stats-section { grid-template-columns: 1fr; } .compare-section { grid-template-columns: 1fr; } }
 </style>
 </head>
+
 <body>
-<div id="loading" class="loading" style="display:none">جاري التحميل...<div class="spinner"></div></div>
 
-<div id="mapFullscreenOverlay" class="mapFullscreenOverlay">
-    <div class="mapFullscreenHeader">
-        <div class="mapFullscreenTitle">🗺️ خريطة الأحياء - وضع ملء الشاشة</div>
-        <div class="mapFullscreenButtons">
-            <button class="mapFullscreenExport" onclick="exportFullscreenMap()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                تصدير الخريطة
-            </button>
-            <button class="mapFullscreenClose" onclick="closeFullscreenMap()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                إغلاق
-            </button>
+<div class="top-bar">
+    <input type="file" id="file" accept=".xlsx,.xls">
+    <button onclick="loadExcel()">📁 رفع ملف Excel</button>
+    <select id="quarterFilter" onchange="applyCurrentFilter()">
+        <option value="all">📅 كل الأرباع</option>
+        <option value="Q1">الربع الأول</option>
+        <option value="Q2">الربع الثاني</option>
+        <option value="Q3">الربع الثالث</option>
+        <option value="Q4">الربع الرابع</option>
+    </select>
+    <select id="municipalityFilter" onchange="applyCurrentFilter()"><option value="all">🏛️ كل البلديات</option></select>
+    <select id="filterSelect" onchange="applyCurrentFilter()">
+        <option value="all">📊 كل الأحياء</option>
+        <option value="50">🔥 أعلى 50</option>
+        <option value="100">🔥 أعلى 100</option>
+        <option value="200">🔥 أعلى 200</option>
+    </select>
+    <input id="searchBox" placeholder="🔍 بحث عن حي..." oninput="applyCurrentFilter()">
+    <button onclick="fitAll()">🌍 إظهار الكل</button>
+    <button class="btn-export" onclick="exportFullPage()">📸 تصدير التقرير</button>
+    <button class="btn-compare" onclick="showQuarterComparison()">📊 مقارنة الأرباع</button>
+    <button onclick="exportExcel()">📊 Excel</button>
+    <button onclick="clearAllData()" style="background: #ff4757 !important;">🗑️ مسح</button>
+</div>
+
+<div class="main-container" id="captureArea">
+    <div class="map-wrapper" id="mapSection">
+        <div id="map"></div>
+        <div class="custom-zoom">
+            <button class="zoom-btn" onclick="map.zoomIn()">+</button>
+            <button class="zoom-btn" onclick="map.zoomOut()">−</button>
         </div>
     </div>
-    <div id="fullscreenMapContainer" class="mapFullscreenContainer"></div>
-</div>
 
-<div class="reportContainer">
-<div class="reportHeader">
-<h1>📊 تقرير تحليل الأحياء</h1>
-<div class="subtitle">تقرير شامل يوضح توزيع البلاغات حسب الأحياء والشوارع والتصنيفات</div>
-<div class="reportDate" id="reportDate"></div>
-</div>
-<div class="controlPanel">
-<input type="file" id="excelFile" accept=".xlsx,.xls" style="flex:1;min-width:150px">
-<button onclick="importExcel()">📥 استيراد</button>
-<select id="filterCount" onchange="updateReport()">
-<option value="5">أعلى 5</option>
-<option value="10">أعلى 10</option>
-<option value="15">أعلى 15</option>
-<option value="20">أعلى 20</option>
-<option value="50">أعلى 50</option>
-<option value="100">أعلى 100</option>
-<option value="all" selected>الكل</option>
-</select>
-<div class="filterContainer">
-<select id="municipalityFilter" onchange="updateReport()"><option value="">جميع البلديات</option></select>
-<select id="monthFilter" onchange="updateReport()"><option value="">جميع الشهور</option></select>
-<input type="text" id="districtFilter" placeholder="🔍 البحث في الأحياء..." oninput="updateReport()">
-</div>
-<div class="exportButtons">
-<button onclick="exportDualSection()" class="accent">🗺️+📊 خريطة ورسم</button>
-<button onclick="exportBarChart()" class="accent">📊 التصنيفات</button>
-<button onclick="exportStreetsTable()" class="accent">🛣️ الشوارع</button>
-<button onclick="exportTable()" class="accent">📋 جدول</button>
-<button onclick="window.print()">🖨️ طباعة</button>
-</div>
-</div>
+    <div class="stats-section" id="statsSection">
+        <div class="card">
+            <div class="card-title">🎨 دليل الأحياء</div>
+            <div id="legendBox" class="legend-container"></div>
+        </div>
 
-<div class="spacingControl" style="margin:10px 20px;display:none" id="spacingControl">
-    <label>📏 التباعد بين الأعمدة (كيلومتر):</label>
-    <input type="range" id="spacingSlider" min="0.5" max="5" step="0.5" value="2" onchange="updateSpacing(this.value)">
-    <div class="spacingValue" id="spacingValue">2 كم</div>
-</div>
+        <div class="card">
+            <div class="card-title">📊 توزيع التقارير <span class="quarter-badge" id="currentQuarterBadge">الكل</span></div>
+            <div class="chart-scroll-container">
+                <div class="chart-canvas-wrapper" id="chartWrapper">
+                    <canvas id="chart"></canvas>
+                </div>
+            </div>
+        </div>
 
-<div class="reportContent">
-<div id="debugInfo" class="debugInfo" style="display:none"></div>
-<div class="statsGrid">
-<div class="statCard"><h3>إجمالي البلاغات المستوردة</h3><div class="number" id="totalReports">0</div></div>
-<div class="statCard"><h3>عدد الأحياء الفريدة</h3><div class="number" id="totalDistricts">0</div></div>
-<div class="statCard"><h3>أعلى حي</h3><div class="number" id="topDistrict">-</div></div>
-</div>
-
-<!-- ✅ القسم المزدوج: خريطة أوسع + رسم بياني -->
-<div class="dualSection" id="dualSection">
-    <!-- ✅ العمود الأيمن: الخريطة (أوسع) -->
-    <div class="dualColumn mapColumn">
-        <h2>🗺️ الخريطة التفاعلية</h2>
-        <div class="mapWrapper">
-            <button class="mapExpandBtn no-print" onclick="openFullscreenMap()" title="تكبير الخريطة">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-                تكبير
-            </button>
-            <div id="map"></div>
+        <div class="card">
+            <div class="card-title">📈 إحصائيات عامة</div>
+            <div class="stat-item"><span>إجمالي التقارير</span><span class="stat-value" id="totalReports">0</span></div>
+            <div class="stat-item"><span>عدد الأحياء</span><span class="stat-value" id="totalDistricts">0</span></div>
+            <div class="stat-item"><span>متوسط التقارير/حي</span><span class="stat-value" id="avgReports">0</span></div>
+            <div class="stat-item"><span>الأعلى تقارير</span><span class="stat-value" id="topDistrict" style="font-size:14px;">-</span></div>
         </div>
     </div>
-    
-    <!-- ✅ العمود الأيسر: الرسم البياني -->
-    <div class="dualColumn chartColumn">
-        <h2>📊 توزيع البلاغات حسب الأحياء</h2>
-        <div class="chartWrapper">
-            <canvas id="districtChartCanvas"></canvas>
+
+    <div id="compareSection" style="display:none;">
+        <div class="card" style="margin-top:20px;">
+            <div class="card-title">📊 مقارنة الأداء الربع سنوي</div>
+            <div class="compare-section" id="quarterComparison"></div>
         </div>
     </div>
-</div>
-
-<div class="barChartContainer" id="barChartContainer">
-<div class="chartPrintHeader">
-<h2>توزيع البلاغات حسب التصنيف/التخصص</h2>
-<p id="barChartSubtitle">إجمالي التصنيفات: 0</p>
-</div>
-<div class="barChartWrapper"><canvas id="barChartCanvas"></canvas></div>
-</div>
-
-<div class="dataQualitySection" id="dataQualitySection" style="display:none">
-<div class="dataQualityHeader">
-<h2>⚠️ تحليل جودة البيانات</h2>
-<p>الشوارع بدون أحياء والأحياء غير المذكورة</p>
-</div>
-<div class="qualityGrid">
-<div class="qualityBox">
-<h4>📍 شوارع بدون حي <span class="count" id="streetsWithoutDistrictCount">0</span></h4>
-<div style="max-height:200px;overflow-y:auto">
-<table class="qualityTable"><thead><tr><th>الشارع</th><th>الإحداثيات</th></tr></thead><tbody id="streetsWithoutDistrictBody"></tbody></table>
-</div>
-</div>
-<div class="qualityBox">
-<h4>🏘️ أحياء غير مذكورة <span class="count" id="unknownDistrictsCount">0</span></h4>
-<div style="max-height:200px;overflow-y:auto">
-<table class="qualityTable"><thead><tr><th>الحي</th><th>العدد</th></tr></thead><tbody id="unknownDistrictsBody"></tbody></table>
-</div>
-</div>
-</div>
-</div>
-<div class="streetsTableSection" id="streetsTableSection"></div>
-<div class="tableSection" id="tableSection"></div>
-</div>
 </div>
 
 <script>
-let map,districts=[],districtChart=null,barChart=null,allDistricts=[];
-let categoryStats={},allData=[],rawDataCount=0,streetsStats=[];
-let fullscreenMap = null;
-let currentSpacing = 2.0;
-let districtPolygons = [];
-let districtMarkers = [];
+// تسجيل البلجن
+Chart.register(ChartDataLabels);
 
-const monthNamesToNumbers={"يناير":1,"فبراير":2,"مارس":3,"أبريل":4,"مايو":5,"يونيو":6,"يوليو":7,"أغسطس":8,"سبتمبر":9,"أكتوبر":10,"نوفمبر":11,"ديسمبر":12,"1":1,"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"11":11,"12":12};
-const monthNumbersToNames={1:"يناير",2:"فبراير",3:"مارس",4:"أبريل",5:"مايو",6:"يونيو",7:"يوليو",8:"أغسطس",9:"سبتمبر",10:"أكتوبر",11:"نوفمبر",12:"ديسمبر"};
-const CHART_COLORS=['#dc2626','#ea580c','#d97706','#ca8a04','#65a30d','#16a34a','#059669','#0d9488','#0891b2','#0284c7','#2563eb','#4f46e5','#7c3aed','#9333ea','#c026d3','#db2777','#e11d48','#f43f5e'];
-const ROWS_PER_PAGE=18;
-document.getElementById("reportDate").textContent=new Date().toLocaleDateString("ar-SA",{year:'numeric',month:'long',day:'numeric'});
-let markers=[];
+// المتغيرات العامة
+let map = null;
+let markersCluster = null;
+let rawData = [];
+let visibleDistricts = [];
+let chart = null;
+let allMunicipalities = new Set();
 
-function initMap(){
-map=new google.maps.Map(document.getElementById("map"),{
-center:{lat:24.7136,lng:46.6753},
-zoom:11,
-mapTypeId:"hybrid",
-mapTypeControl:true,
-fullscreenControl:false,
-streetViewControl:false,
-zoomControl:true
-});
-}
+// ألوان حسب القيمة
+const getColorByValue = (value, max) => {
+    const ratio = value / max;
+    if (ratio > 0.8) return '#e74c3c';
+    if (ratio > 0.6) return '#e67e22';
+    if (ratio > 0.4) return '#f39c12';
+    if (ratio > 0.2) return '#27ae60';
+    return '#3498db';
+};
 
-function spreadPoints(points, spreadRadius) {
-    if (!points || points.length === 0) return [];
-    if (points.length === 1) return points;
-    const center = points.reduce((acc, p) => ({lat: acc.lat + p.lat, lng: acc.lng + p.lng}), {lat: 0, lng: 0});
-    center.lat /= points.length;
-    center.lng /= points.length;
-    const spread = [];
-    const angleStep = (2 * Math.PI) / points.length;
-    const radiusInDegrees = spreadRadius / 111000;
-    points.forEach((point, index) => {
-        const angle = index * angleStep;
-        const offsetLat = Math.sin(angle) * radiusInDegrees;
-        const offsetLng = Math.cos(angle) * radiusInDegrees / Math.cos(center.lat * Math.PI / 180);
-        spread.push({lat: center.lat + offsetLat, lng: center.lng + offsetLng, original: point});
-    });
-    return spread;
-}
+// استخراج الربع من التاريخ
+const getQuarterFromDate = (dateStr) => {
+    if (!dateStr || dateStr === 'غير معروف') return 'غير محدد';
+    let month = null;
+    if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        if (parts.length >= 2) month = parseInt(parts[0]) || parseInt(parts[1]);
+    } else if (dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length >= 2) month = parseInt(parts[1]);
+    }
+    if (!month || isNaN(month)) return 'غير محدد';
+    if (month >= 1 && month <= 3) return 'Q1';
+    if (month >= 4 && month <= 6) return 'Q2';
+    if (month >= 7 && month <= 9) return 'Q3';
+    if (month >= 10 && month <= 12) return 'Q4';
+    return 'غير محدد';
+};
 
-function updateSpacing(value) {
-    currentSpacing = parseFloat(value);
-    document.getElementById('spacingValue').textContent = value + ' كم';
-    updateReport();
-}
+// تهيئة الخريطة - إصلاح مهم
+function initMap() {
+    // التأكد من أن العنصر موجود
+    const mapElement = document.getElementById('map');
+    if (!mapElement) {
+        console.error('عنصر الخريطة غير موجود!');
+        return;
+    }
 
-function calculateSpacedPositions(districtsData, spacingKm) {
-    const positions = [];
-    const usedPositions = [];
-    const sortedData = [...districtsData].sort((a, b) => b.count - a.count);
-    sortedData.forEach((district, index) => {
-        let bestLat = district.lat;
-        let bestLng = district.lng;
-        let attempts = 0;
-        const maxAttempts = 100;
-        while (attempts < maxAttempts) {
-            let tooClose = false;
-            for (let used of usedPositions) {
-                const dist = calculateDistance(bestLat, bestLng, used.lat, used.lng);
-                if (dist < spacingKm) { tooClose = true; break; }
-            }
-            if (!tooClose) break;
-            const angle = attempts * 137.5 * (Math.PI / 180);
-            const radius = (spacingKm / 111) * (1 + Math.floor(attempts / 8)) * 0.5;
-            bestLat = district.lat + (radius * Math.sin(angle));
-            bestLng = district.lng + (radius * Math.cos(angle) / Math.cos(district.lat * Math.PI / 180));
-            attempts++;
+    // إنشاء الخريطة
+    map = L.map('map', {
+        zoomControl: false,
+        attributionControl: false,
+        preferCanvas: true
+    }).setView([24.7136, 46.6753], 6); // مركز السعودية
+
+    // إضافة طبقة الخريطة
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // إنشاء مجموعة التجميع
+    markersCluster = L.markerClusterGroup({
+        chunkedLoading: true,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        maxClusterRadius: 80,
+        disableClusteringAtZoom: 16,
+        iconCreateFunction: function(cluster) {
+            const count = cluster.getChildCount();
+            let size = count > 100 ? 'large' : count > 50 ? 'medium' : 'small';
+            return L.divIcon({
+                html: '<div><span>' + count + '</span></div>',
+                className: 'marker-cluster marker-cluster-' + size,
+                iconSize: L.point(40, 40)
+            });
         }
-        usedPositions.push({lat: bestLat, lng: bestLng});
-        positions.push({...district, displayLat: bestLat, displayLng: bestLng, originalLat: district.lat, originalLng: district.lng});
     });
-    return positions;
+
+    map.addLayer(markersCluster);
+    console.log('✅ تم تهيئة الخريطة بنجاح');
 }
 
-function openFullscreenMap() {
-    const overlay = document.getElementById('mapFullscreenOverlay');
-    const container = document.getElementById('fullscreenMapContainer');
-    overlay.classList.add('active');
-    document.body.style.overflow = 'hidden';
-    if (fullscreenMap) fullscreenMap = null;
-    setTimeout(() => {
-        fullscreenMap = new google.maps.Map(container, {
-            center: map.getCenter(),
-            zoom: map.getZoom(),
-            mapTypeId: map.getMapTypeId(),
-            mapTypeControl: true,
-            fullscreenControl: false,
-            streetViewControl: false,
-            zoomControl: true
-        });
-        copyMarkersToFullscreen();
-    }, 100);
-}
+// تحميل Excel
+function loadExcel() {
+    const file = document.getElementById("file").files[0];
+    if (!file) { alert('الرجاء اختيار ملف'); return; }
 
-function closeFullscreenMap() {
-    const overlay = document.getElementById('mapFullscreenOverlay');
-    overlay.classList.remove('active');
-    document.body.style.overflow = '';
-    if (fullscreenMap) fullscreenMap = null;
-}
-
-function exportFullscreenMap() {
-    if (!fullscreenMap) return;
-    document.getElementById('loading').style.display = 'flex';
-    const container = document.getElementById('fullscreenMapContainer');
-    const overlay = document.getElementById('mapFullscreenOverlay');
-    const originalHeight = container.style.height;
-    const originalOverflow = overlay.style.overflow;
-    container.style.height = 'auto';
-    container.style.minHeight = '1000px';
-    overlay.style.overflow = 'visible';
-    setTimeout(() => {
-        html2canvas(container, {scale: 2, useCORS: true, backgroundColor: "#fff", height: container.scrollHeight, windowHeight: container.scrollHeight, scrollY: 0, scrollX: 0, captureBeyondViewport: true})
-        .then(canvas => {
-            container.style.height = originalHeight;
-            container.style.minHeight = '';
-            overlay.style.overflow = originalOverflow;
-            const link = document.createElement("a");
-            link.download = 'خريطة_كاملة_' + new Date().toLocaleDateString('ar-SA') + '.png';
-            link.href = canvas.toDataURL("image/png");
-            link.click();
-            document.getElementById('loading').style.display = 'none';
-        }).catch(err => {
-            console.error(err);
-            container.style.height = originalHeight;
-            container.style.minHeight = '';
-            overlay.style.overflow = originalOverflow;
-            document.getElementById('loading').style.display = 'none';
-        });
-    }, 500);
-}
-
-function copyMarkersToFullscreen() {
-    if (!fullscreenMap || districts.length === 0) return;
-    const spacedDistricts = calculateSpacedPositions(districts, currentSpacing);
-    const bounds = new google.maps.LatLngBounds();
-    const maxCount = Math.max(...districts.map(d => d.count));
-    const minCount = Math.min(...districts.map(d => d.count));
-    spacedDistricts.forEach((d, index) => {
-        const color = window.districtColors && window.districtColors[d.name] ? window.districtColors[d.name] : CHART_COLORS[index % CHART_COLORS.length];
-        createDistrictPolygon(d, color, fullscreenMap);
-        const heightRatio = (d.count - minCount) / (maxCount - minCount || 1);
-        const pixelHeight = Math.round(80 + (heightRatio * 170));
-        const svg = createProfessionalColumnSVG(d, color, pixelHeight, index);
-        const icon = {url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), scaledSize: new google.maps.Size(140, pixelHeight + 60), anchor: new google.maps.Point(70, pixelHeight + 30)};
-        const marker = new google.maps.Marker({position: {lat: d.displayLat, lng: d.displayLng}, map: fullscreenMap, icon: icon, title: d.name + ' - ' + d.count + ' بلاغ', zIndex: 1000 + index});
-        const infoWindow = new google.maps.InfoWindow({content: '<div style="text-align:center;padding:15px;direction:rtl;min-width:200px;"><h3 style="color:'+color+';margin:0 0 10px;font-size:16px;">'+d.name+'</h3><p style="font-size:24px;font-weight:bold;margin:0;color:#1e293b;">'+d.count+' <span style="font-size:14px;color:#64748b;">بلاغ</span></p><p style="font-size:12px;color:#64748b;margin:8px 0 0;">'+d.municipality+'</p></div>'});
-        marker.addListener('click', () => { infoWindow.open(fullscreenMap, marker); });
-        bounds.extend({lat: d.displayLat, lng: d.displayLng});
-    });
-    fullscreenMap.fitBounds(bounds, {padding: 100});
-}
-
-function clearMarkers(){
-    markers.forEach(m=>{ if(m.marker)m.marker.setMap(null); if(m.label)m.label.setMap(null); });
-    markers=[];
-    districtPolygons.forEach(p => p.setMap(null));
-    districtPolygons = [];
-    districtMarkers.forEach(m => m.setMap(null));
-    districtMarkers = [];
-}
-
-function importExcel(){
-    const file=document.getElementById("excelFile").files[0];
-    if(!file){alert("اختر ملف Excel أولاً");return;}
-    document.getElementById("loading").style.display="flex";
-    const reader=new FileReader();
-    reader.onload=function(e){
-        try{
-            const data=new Uint8Array(e.target.result);
-            const workbook=XLSX.read(data,{type:"array"});
-            const sheet=workbook.Sheets[workbook.SheetNames[0]];
-            const rows=XLSX.utils.sheet_to_json(sheet,{header:1});
-            rawDataCount=rows.length;
-            processData(rows);
-            document.getElementById("loading").style.display="none";
-            alert("تم استيراد البيانات بنجاح!\nالبلاغات الصالحة: "+allData.length);
-        }catch(err){
-            document.getElementById("loading").style.display="none";
-            alert("خطأ: "+err.message);
-        }
+    const reader = new FileReader();
+    reader.onload = e => {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+        processRows(rows);
     };
     reader.readAsArrayBuffer(file);
 }
 
-function extractMonth(monthValue){
-    if(!monthValue)return null;
-    const monthStr=String(monthValue).trim();
-    for(let name in monthNamesToNumbers){if(monthStr.includes(name))return monthNamesToNumbers[name];}
-    const num=parseInt(monthStr);
-    if(num>=1&&num<=12)return num;
-    return null;
-}
+// معالجة البيانات
+function processRows(rows) {
+    rawData = [];
+    allMunicipalities.clear();
+    const districtMap = {};
 
-function processData(rows){
-    allData=[];
-    const headers=rows[0]||[];
-    let streetColumnIndex=6;
-    for(let i=0;i<headers.length;i++){
-        const header=String(headers[i]||"").trim();
-        if(header.includes("شارع")||header==="الشارع"){streetColumnIndex=i;break;}
-    }
-    for(let i=1;i<rows.length;i++){
-        const row=rows[i];
-        if(!row)continue;
-        const lat=parseFloat(row[0]);
-        const lng=parseFloat(row[1]);
-        const name=row[2]?String(row[2]).trim():"";
-        const category=row[3]?String(row[3]).trim():"غير مصنف";
-        const municipality=row[4]?String(row[4]).trim():"غير محددة";
-        const streetValue=row[streetColumnIndex];
-        const street=streetValue?String(streetValue).trim():"";
-        const monthValue=row[5]||row[7];
-        const month=extractMonth(monthValue);
-        if(!isNaN(lat)&&!isNaN(lng)){
-            allData.push({lat,lng,name:name||"غير محدد",category,municipality,street:street||"غير محدد",month,monthName:monthValue});
+    for (let i = 1; i < rows.length; i++) {
+        let r = rows[i];
+        if (!r || r.length < 3) continue;
+
+        let lng = parseFloat(r[0]);
+        let lat = parseFloat(r[1]);
+        let name = String(r[2] || "غير معروف").trim();
+        let muni = String(r[3] || "غير محدد").trim();
+        let date = String(r[4] || "غير معروف").trim();
+        let category = String(r[5] || "غير محدد").trim();
+
+        if (isNaN(lat) || isNaN(lng)) continue;
+
+        allMunicipalities.add(muni);
+        const quarter = getQuarterFromDate(date);
+        const key = name + "||" + muni;
+
+        if (!districtMap[key]) {
+            districtMap[key] = {
+                name: name,
+                municipality: muni,
+                centerLat: lat,
+                centerLng: lng,
+                totalCount: 0,
+                quarters: { Q1: 0, Q2: 0, Q3: 0, Q4: 0 },
+                categories: new Set()
+            };
         }
+
+        districtMap[key].totalCount++;
+        if (districtMap[key].quarters[quarter] !== undefined) {
+            districtMap[key].quarters[quarter]++;
+        }
+        districtMap[key].categories.add(category);
     }
-    document.getElementById("debugInfo").style.display="block";
-    document.getElementById("debugInfo").innerHTML="📊 إحصائيات:<br>• إجمالي الصفوف: "+rawDataCount+"<br>• البلاغات الصالحة: <strong>"+allData.length+"</strong>";
-    analyzeDataQuality();
-    updateMonthFilter();
-    updateMunicipalityFilter();
-    updateReport();
-    document.getElementById('spacingControl').style.display = 'block';
+
+    const maxCount = Math.max(...Object.values(districtMap).map(x => x.totalCount), 1);
+
+    rawData = Object.values(districtMap).map((d, i) => ({
+        ...d,
+        uniqueId: i,
+        color: getColorByValue(d.totalCount, maxCount)
+    })).sort((a, b) => b.totalCount - a.totalCount);
+
+    fillSelect("municipalityFilter", allMunicipalities);
+
+    document.getElementById("totalReports").textContent = rawData.reduce((s, d) => s + d.totalCount, 0).toLocaleString();
+    document.getElementById("totalDistricts").textContent = rawData.length.toLocaleString();
+    document.getElementById("avgReports").textContent = Math.round(rawData.reduce((s, d) => s + d.totalCount, 0) / rawData.length).toLocaleString();
+    document.getElementById("topDistrict").textContent = rawData[0]?.name || "-";
+
+    showNotification(`✅ تم تحميل ${rawData.length} حي`);
+    applyCurrentFilter();
 }
 
-function analyzeDataQuality(){
-    const qualitySection=document.getElementById("dataQualitySection");
-    const streetsWithoutDistrict=allData.filter(d=>!d.name||d.name===""||d.name==="غير محدد");
-    const unknownDistricts=allData.filter(d=>d.name==="غير محدد");
-    if(streetsWithoutDistrict.length>0||unknownDistricts.length>0){
-        qualitySection.style.display="block";
-        document.getElementById("streetsWithoutDistrictCount").textContent=streetsWithoutDistrict.length;
-        document.getElementById("unknownDistrictsCount").textContent=unknownDistricts.length;
-    }else{qualitySection.style.display="none";}
-}
-
-function updateMonthFilter(){
-    const select=document.getElementById("monthFilter");
-    const availableMonths=[...new Set(allData.map(d=>d.month).filter(m=>m))].sort((a,b)=>a-b);
-    let optionsHtml='<option value="">جميع الشهور</option>';
-    availableMonths.forEach(m=>{optionsHtml+='<option value="'+m+'">'+(monthNumbersToNames[m]||"شهر "+m)+'</option>';});
-    select.innerHTML=optionsHtml;
-}
-
-function updateMunicipalityFilter(){
-    const select=document.getElementById("municipalityFilter");
-    const municipalities=[...new Set(allData.map(d=>d.municipality))].sort();
-    select.innerHTML='<option value="">جميع البلديات</option>';
-    municipalities.forEach(m=>{select.innerHTML+='<option value="'+m+'">'+m+'</option>';});
-}
-
-function updateReport(){
-    const filterCount=document.getElementById("filterCount").value;
-    const searchTerm=document.getElementById("districtFilter").value.toLowerCase().trim();
-    const municipalityFilter=document.getElementById("municipalityFilter").value;
-    const monthFilter=document.getElementById("monthFilter").value;
-    let filtered=allData;
-    if(municipalityFilter){filtered=filtered.filter(d=>d.municipality===municipalityFilter);}
-    if(monthFilter){const monthNum=parseInt(monthFilter);filtered=filtered.filter(d=>d.month===monthNum);}
-    if(searchTerm){filtered=filtered.filter(d=>d.name.toLowerCase().includes(searchTerm)||d.municipality.toLowerCase().includes(searchTerm)||d.street.toLowerCase().includes(searchTerm));}
-    const districtsMap={};
-    categoryStats={};
-    filtered.forEach(d=>{
-        const key=d.name+"_"+d.municipality;
-        if(districtsMap[key]){districtsMap[key].count++;districtsMap[key].rawPoints.push({lat:d.lat,lng:d.lng});}
-        else{districtsMap[key]={name:d.name,municipality:d.municipality,count:1,rawPoints:[{lat:d.lat,lng:d.lng}],lat:d.lat,lng:d.lng};}
-        if(categoryStats[d.category])categoryStats[d.category]++;else categoryStats[d.category]=1;
+// ملء القائمة المنسدلة
+function fillSelect(id, set) {
+    let el = document.getElementById(id);
+    el.innerHTML = '<option value="all">' + (id === 'municipalityFilter' ? '🏛️ كل البلديات' : '📅 كل الأشهر') + '</option>';
+    [...set].sort().forEach(v => {
+        el.innerHTML += `<option value="${v}">${v}</option>`;
     });
-    Object.values(districtsMap).forEach(district=>{district.points=spreadPoints(district.rawPoints,50);});
-    allDistricts=Object.values(districtsMap).sort((a,b)=>b.count-a.count);
-    if(filterCount!=="all"){districts=allDistricts.slice(0,parseInt(filterCount));}else{districts=allDistricts;}
-    const total=filtered.length;
-    document.getElementById("totalReports").textContent=total.toLocaleString();
-    document.getElementById("totalDistricts").textContent=districts.length;
-    document.getElementById("topDistrict").textContent=districts[0]?districts[0].name:"-";
-    updateStreetsTable(filtered,total);
-    updateMap(districts);
-    updateTable(districts,total);
-    updateDistrictChart(districts,total);
-    updateBarChart();
 }
 
-function updateStreetsTable(filteredData,total){
-    const streetsMap={};
-    filteredData.forEach(d=>{
-        const streetKey=d.street+"_"+d.name;
-        if(streetsMap[streetKey]){streetsMap[streetKey].count++;}
-        else{streetsMap[streetKey]={street:d.street,district:d.name,lat:d.lat,lng:d.lng,count:1};}
-    });
-    streetsStats=Object.values(streetsMap).sort((a,b)=>b.count-a.count);
-    const container=document.getElementById("streetsTableSection");
-    container.innerHTML="";
-    const totalPages=Math.ceil(streetsStats.length/ROWS_PER_PAGE);
-    for(let page=0;page<totalPages;page++){
-        const start=page*ROWS_PER_PAGE;
-        const end=Math.min(start+ROWS_PER_PAGE,streetsStats.length);
-        const pageData=streetsStats.slice(start,end);
-        const tablePage=document.createElement('div');
-        tablePage.className='tablePage';
-        const rowsHtml=pageData.map((s,index)=>{
-            const globalIndex=start+index;
-            const percentage=total>0?((s.count/total)*100).toFixed(1):0;
-            const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
-            const countClass=s.count>100?'high':s.count>50?'medium':'';
-            const districtColor=window.districtColors&&window.districtColors[s.district]?window.districtColors[s.district]:'#667eea';
-            return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+s.street+'</td><td>'+s.district+'</td><td class="coordCell">'+s.lng.toFixed(6)+'</td><td class="coordCell">'+s.lat.toFixed(6)+'</td><td><span class="countBadge '+countClass+'">'+s.count+'</span></td><td>'+percentage+'%</td></tr>';
-        }).join('');
-        tablePage.innerHTML='<div class="tableHeader"><h2>📍 تفاصيل الشوارع</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي: '+streetsStats.length+'</p></div><table class="dataTable"><thead><tr><th style="width:7%">الترتيب</th><th style="width:5%"></th><th style="width:23%">الشارع</th><th style="width:18%">الحي</th><th style="width:13%">X</th><th style="width:13%">Y</th><th style="width:11%">البلاغات</th><th style="width:6%">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
-        container.appendChild(tablePage);
+// تطبيق الفلتر
+function applyCurrentFilter() {
+    const quarter = document.getElementById("quarterFilter").value;
+    const muni = document.getElementById("municipalityFilter").value;
+    const top = document.getElementById("filterSelect").value;
+    const search = document.getElementById("searchBox").value.toLowerCase();
+
+    const quarterNames = { 'all': 'الكل', 'Q1': 'الربع الأول', 'Q2': 'الربع الثاني', 'Q3': 'الربع الثالث', 'Q4': 'الربع الرابع' };
+    document.getElementById("currentQuarterBadge").textContent = quarterNames[quarter] || quarter;
+
+    let filtered = rawData.filter(d =>
+        (muni === "all" || d.municipality === muni) &&
+        d.name.toLowerCase().includes(search) &&
+        (quarter === "all" || d.quarters[quarter] > 0)
+    );
+
+    if (quarter !== "all") {
+        filtered.sort((a, b) => b.quarters[quarter] - a.quarters[quarter]);
     }
+
+    visibleDistricts = filtered.slice(0, top === "all" ? Infinity : parseInt(top));
+
+    drawMap();
+    drawChart();
+    buildLegend();
+    buildExport();
 }
 
-// ✅ إنشاء مضلع كبير يغطي الحي بالكامل (شكل عشوائي طبيعي)
-function createDistrictPolygon(district, color, targetMap) {
-    const baseRadius = 0.025; // ✅ نصف قطر كبير (~2.5 كم)
-    const numPoints = 16; // ✅ عدد نقاط كافي للشكل الطبيعي
-    const points = [];
-    
-    // ✅ إنشاء شكل عشوائي غير منتظم (يشبه حدود الحي)
-    for (let i = 0; i < numPoints; i++) {
-        const baseAngle = (i / numPoints) * 2 * Math.PI;
-        // ✅ إضافة عشوائية للمسافة لجعل الشكل طبيعي
-        const randomFactor = 0.7 + (Math.sin(i * 3.7) * 0.3) + (Math.cos(i * 2.3) * 0.2);
-        const radius = baseRadius * randomFactor;
-        
-        const lat = district.lat + (radius * Math.cos(baseAngle));
-        const lng = district.lng + (radius * Math.sin(baseAngle) / Math.cos(district.lat * Math.PI / 180));
-        points.push({lat: lat, lng: lng});
+// رسم الخريطة
+function drawMap() {
+    if (!markersCluster) {
+        console.error('markersCluster غير مهيأ!');
+        return;
     }
-    
-    // ✅ إغلاق المضلع
-    points.push(points[0]);
-    
-    const polygon = new google.maps.Polygon({
-        paths: points,
-        strokeColor: color,
-        strokeOpacity: 1,
-        strokeWeight: 4,
-        fillColor: color,
-        fillOpacity: 0.2, // ✅ شفافية مناسبة
-        map: targetMap,
-        zIndex: 1
-    });
-    
-    districtPolygons.push(polygon);
-    return polygon;
-}
 
-function updateMap(data){
-    clearMarkers();
-    if(data.length===0)return;
-    const bounds=new google.maps.LatLngBounds();
-    window.districtColors={};
-    const spacedData = calculateSpacedPositions(data, currentSpacing);
-    const maxCount=Math.max(...data.map(d=>d.count));
-    const minCount=Math.min(...data.map(d=>d.count));
-    
-    spacedData.forEach((d,index)=>{
-        const color=CHART_COLORS[index % CHART_COLORS.length];
-        window.districtColors[d.name]=color;
-        
-        // ✅ رسم المضلع الكبير أولاً
-        createDistrictPolygon(d, color, map);
-        
-        // ✅ رسم العمود
-        const heightRatio=(d.count-minCount)/(maxCount-minCount||1);
-        const minHeight=80;
-        const maxHeight=250;
-        const pixelHeight=Math.round(minHeight+(heightRatio*(maxHeight-minHeight)));
-        const svg=createProfessionalColumnSVG(d, color, pixelHeight, index);
-        const icon={url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),scaledSize:new google.maps.Size(140,pixelHeight+60),anchor:new google.maps.Point(70,pixelHeight+30)};
-        const marker=new google.maps.Marker({
-            position:{lat:d.displayLat, lng:d.displayLng},
-            map:map,
-            icon:icon,
-            title:d.name+' - '+d.count+' بلاغ',
-            zIndex:1000+index,
-            className: 'custom-marker-column'
+    markersCluster.clearLayers();
+
+    if (visibleDistricts.length === 0) return;
+
+    const maxCount = Math.max(...visibleDistricts.map(d => d.totalCount), 1);
+    const quarter = document.getElementById("quarterFilter").value;
+
+    visibleDistricts.forEach(d => {
+        const count = quarter === "all" ? d.totalCount : d.quarters[quarter];
+        if (count === 0) return;
+
+        const radius = Math.max(15, Math.min(60, count / maxCount * 50));
+        const color = getColorByValue(count, maxCount);
+
+        const marker = L.marker([d.centerLat, d.centerLng], {
+            icon: L.divIcon({
+                className: 'custom-circle-marker',
+                html: count > 99 ? '99+' : count,
+                iconSize: [radius, radius],
+                iconAnchor: [radius / 2, radius / 2]
+            })
         });
-        
-        const infoWindow=new google.maps.InfoWindow({
-            content:'<div style="text-align:center;padding:15px;direction:rtl;min-width:200px;"><h3 style="color:'+color+';margin:0 0 10px;font-size:16px;">'+d.name+'</h3><p style="font-size:24px;font-weight:bold;margin:0;color:#1e293b;">'+d.count+' <span style="font-size:14px;color:#64748b;">بلاغ</span></p><p style="font-size:12px;color:#64748b;margin:8px 0 0;">'+d.municipality+'</p></div>'
-        });
-        
-        marker.addListener('click',()=>{infoWindow.open(map,marker);});
-        markers.push({marker:marker,pos:{lat:d.displayLat,lng:d.displayLng},color:color,height:pixelHeight,district:d});
-        districtMarkers.push(marker);
-        bounds.extend({lat:d.displayLat,lng:d.displayLng});
-    });
-    
-    map.fitBounds(bounds,{padding:100});
-}
 
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-}
-
-function createProfessionalColumnSVG(district, color, pixelHeight, index) {
-    const darkColor = darkenColor(color, 30);
-    const label = district.name;
-    const count = district.count;
-    const maxCharsPerLine = 12;
-    let lines = [];
-    if (label.length > maxCharsPerLine) {
-        const words = label.split(' ');
-        let currentLine = '';
-        words.forEach(word => {
-            if ((currentLine + word).length > maxCharsPerLine && currentLine.length > 0) {
-                lines.push(currentLine.trim());
-                currentLine = word + ' ';
-            } else {
-                currentLine += word + ' ';
+        // تخصيص العنصر بعد إضافته
+        marker.on('add', function() {
+            const el = this.getElement();
+            if (el) {
+                el.style.backgroundColor = color;
+                el.style.width = radius + 'px';
+                el.style.height = radius + 'px';
             }
         });
-        if (currentLine.trim().length > 0) lines.push(currentLine.trim());
-    } else {
-        lines = [label];
-    }
-    const lineHeight = 16;
-    const labelHeight = lines.length * lineHeight + 10;
-    const totalWidth = 140;
-    const totalHeight = pixelHeight + labelHeight + 40;
-    let textElements = '';
-    lines.forEach((line, i) => {
-        const y = 15 + (i * lineHeight);
-        textElements += `<text x="70" y="${y}" text-anchor="middle" fill="#1e293b" font-size="13" font-weight="bold" font-family="Segoe UI, Arial, sans-serif">${line}</text>`;
+
+        const popupContent = `
+            <div class="district-popup">
+                <div class="popup-header">${d.name}</div>
+                <div class="popup-stat"><span class="popup-label">البلدية:</span><span class="popup-value">${d.municipality}</span></div>
+                <div class="popup-stat"><span class="popup-label">إجمالي التقارير:</span><span class="popup-value">${d.totalCount}</span></div>
+                <div class="popup-stat"><span class="popup-label">Q1:</span><span class="popup-value">${d.quarters.Q1}</span></div>
+                <div class="popup-stat"><span class="popup-label">Q2:</span><span class="popup-value">${d.quarters.Q2}</span></div>
+                <div class="popup-stat"><span class="popup-label">Q3:</span><span class="popup-value">${d.quarters.Q3}</span></div>
+                <div class="popup-stat"><span class="popup-label">Q4:</span><span class="popup-value">${d.quarters.Q4}</span></div>
+            </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        markersCluster.addLayer(marker);
     });
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}">
-    <defs>
-        <linearGradient id="colGrad${index}" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:${color};stop-opacity:1" />
-            <stop offset="50%" style="stop-color:${color};stop-opacity:0.9" />
-            <stop offset="100%" style="stop-color:${darkColor};stop-opacity:1" />
-        </linearGradient>
-        <linearGradient id="topGrad${index}" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" style="stop-color:${lightenColor(color,20)};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:${color};stop-opacity:1" />
-        </linearGradient>
-        <filter id="shadow${index}" x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="3" dy="4" stdDeviation="4" flood-opacity="0.3"/>
-        </filter>
-        <filter id="glow${index}">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-            <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-        </filter>
-    </defs>
-    <rect x="5" y="0" width="130" height="${labelHeight}" fill="rgba(255,255,255,0.95)" rx="8" stroke="${color}" stroke-width="2"/>
-    <line x1="70" y1="${labelHeight}" x2="70" y2="${labelHeight + 15}" stroke="${color}" stroke-width="3" opacity="0.6"/>
-    <ellipse cx="70" cy="${totalHeight - 15}" rx="35" ry="12" fill="rgba(0,0,0,0.25)" filter="url(#shadow${index})"/>
-    <rect x="45" y="${labelHeight + 15}" width="50" height="${pixelHeight}" fill="url(#colGrad${index})" stroke="white" stroke-width="2" rx="6" filter="url(#shadow${index})"/>
-    <ellipse cx="70" cy="${labelHeight + 15}" rx="25" ry="8" fill="url(#topGrad${index})" stroke="white" stroke-width="2"/>
-    <circle cx="70" cy="${labelHeight + 15}" r="18" fill="white" stroke="${color}" stroke-width="3" filter="url(#glow${index})"/>
-    <text x="70" y="${labelHeight + 20}" text-anchor="middle" fill="#000000" font-size="14" font-weight="900" font-family="Segoe UI, Arial, sans-serif">${count}</text>
-    ${textElements}
-    </svg>`;
-}
 
-function lightenColor(hex, percent){
-    const num=parseInt(hex.replace("#",""),16);
-    const amt=Math.round(2.55*percent);
-    const R=Math.min(255,(num>>16)+amt);
-    const B=Math.min(255,((num>>8)&0x00FF)+amt);
-    const G=Math.min(255,(num&0x0000FF)+amt);
-    return "#"+(0x1000000+R*0x10000+B*0x100+G).toString(16).slice(1);
-}
-
-function darkenColor(hex,percent){
-    const num=parseInt(hex.replace("#",""),16);
-    const amt=Math.round(2.55*percent);
-    const R=(num>>16)-amt;
-    const B=((num>>8)&0x00FF)-amt;
-    const G=(num&0x0000FF)-amt;
-    return "#"+(0x1000000+(R<255?R<1?0:R:255)*0x10000+(B<255?B<1?0:B:255)*0x100+(G<255?G<1?0:G:255)).toString(16).slice(1);
-}
-
-function updateTable(data,total){
-    const container=document.getElementById("tableSection");
-    container.innerHTML="";
-    const totalPages=Math.ceil(data.length/ROWS_PER_PAGE);
-    for(let page=0;page<totalPages;page++){
-        const start=page*ROWS_PER_PAGE;
-        const end=Math.min(start+ROWS_PER_PAGE,data.length);
-        const pageData=data.slice(start,end);
-        const tablePage=document.createElement('div');
-        tablePage.className='tablePage';
-        const rowsHtml=pageData.map((d,index)=>{
-            const globalIndex=start+index;
-            const percentage=total>0?((d.count/total)*100).toFixed(1):0;
-            const rankClass=globalIndex===0?'gold':globalIndex===1?'silver':globalIndex===2?'bronze':'normal';
-            const countClass=d.count>100?'high':d.count>50?'medium':'';
-            const districtColor=window.districtColors&&window.districtColors[d.name]?window.districtColors[d.name]:CHART_COLORS[globalIndex%CHART_COLORS.length];
-            return '<tr><td><span class="rank '+rankClass+'">'+(globalIndex+1)+'</span></td><td><span class="colorIndicator" style="background-color:'+districtColor+';"></span></td><td>'+d.name+'</td><td>'+d.municipality+'</td><td><span class="countBadge '+countClass+'">'+d.count+'</span></td><td>'+percentage+'%</td></tr>';
-        }).join('');
-        tablePage.innerHTML='<div class="tableHeader"><h2>تفاصيل الأحياء</h2><p>صفحة '+(page+1)+' من '+totalPages+' | إجمالي: '+total.toLocaleString()+'</p></div><table class="dataTable"><thead><tr><th style="width:10%">الترتيب</th><th style="width:5%"></th><th style="width:28%">الحي</th><th style="width:25%">البلدية</th><th style="width:16%">البلاغات</th><th style="width:10%">%</th></tr></thead><tbody>'+rowsHtml+'</tbody></table><div class="pageFooter">تقرير تحليل الأحياء | '+new Date().toLocaleDateString('ar-SA')+'</div>';
-        container.appendChild(tablePage);
+    // تكبير لإظهار جميع النقاط
+    const bounds = visibleDistricts.map(d => [d.centerLat, d.centerLng]);
+    if (bounds.length > 0 && map) {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
     }
 }
 
-function updateDistrictChart(data,total){
-    const ctx=document.getElementById("districtChartCanvas").getContext("2d");
-    if(districtChart)districtChart.destroy();
-    const chartData = [...data].reverse();
-    document.getElementById("districtChartCanvas").parentElement.style.overflowY = chartData.length > 10 ? 'auto' : 'hidden';
-    districtChart=new Chart(ctx,{
-        type:'bar',
-        data:{
-            labels:chartData.map(d=>d.name),
-            datasets:[{
-                label:'البلاغات',
-                data:chartData.map(d=>d.count),
-                backgroundColor:chartData.map((d,i)=>{
-                    const colorIndex = (data.length - 1 - i) % CHART_COLORS.length;
-                    return CHART_COLORS[colorIndex];
-                }),
-                borderWidth:0,
-                borderRadius:4,
-                barPercentage:0.6
+// رسم المخطط
+function drawChart() {
+    if (chart) chart.destroy();
+
+    const ctx = document.getElementById("chart").getContext("2d");
+    const quarter = document.getElementById("quarterFilter").value;
+
+    const labels = visibleDistricts.map(d => d.name);
+    const data = visibleDistricts.map(d => quarter === "all" ? d.totalCount : d.quarters[quarter]);
+    const colors = visibleDistricts.map(d => d.color);
+
+    const canvasHeight = Math.max(350, labels.length * 40);
+    document.getElementById("chart").height = canvasHeight;
+    document.getElementById("chartWrapper").style.height = canvasHeight + 'px';
+
+    chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors,
+                borderRadius: 8,
+                borderSkipped: false,
+                barThickness: 25
             }]
         },
-        options:{
-            indexAxis:'y',
-            responsive:true,
-            maintainAspectRatio:false,
-            layout:{padding:{left:10,right:80,top:10,bottom:10}},
-            plugins:{
-                legend:{display:false},
-                datalabels:{
-                    color:'#1e293b',
-                    font:{size:11,weight:'bold'},
-                    formatter:(v)=>v.toLocaleString(),
-                    anchor:'end',
-                    align:'end',
-                    offset:5
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'right',
+                    color: '#333',
+                    font: { weight: 'bold', size: 11 },
+                    formatter: (value) => value.toLocaleString(),
+                    offset: 5
                 }
             },
-            scales:{
-                x:{beginAtZero:true,grid:{color:'#e2e8f0'},ticks:{font:{size:10}}},
-                y:{grid:{display:false},ticks:{font:{size:10,weight:'bold'},autoSkip:false,maxRotation:0}}
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0,0,0,0.05)' },
+                    ticks: { callback: function(value) { return value.toLocaleString(); } }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { font: { size: 11, weight: '500' }, autoSkip: false }
+                }
+            },
+            onClick: (e, elements) => {
+                if (elements.length > 0 && map) {
+                    const district = visibleDistricts[elements[0].index];
+                    map.flyTo([district.centerLat, district.centerLng], 16, { duration: 1.5 });
+                }
             }
         }
     });
 }
 
-function updateBarChart(){
-    const ctx=document.getElementById("barChartCanvas").getContext("2d");
-    if(barChart)barChart.destroy();
-    const categories=Object.entries(categoryStats).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count);
-    const totalCategories=categories.reduce((sum,c)=>sum+c.count,0);
-    document.getElementById("barChartSubtitle").textContent='التصنيفات: '+categories.length+' - البلاغات: '+totalCategories.toLocaleString();
-    const reversedData=[...categories].reverse();
-    barChart=new Chart(ctx,{type:'bar',data:{labels:reversedData.map(c=>c.name),datasets:[{label:'البلاغات',data:reversedData.map(c=>c.count),backgroundColor:reversedData.map((c,i)=>CHART_COLORS[(categories.length-1-i)%CHART_COLORS.length]),borderWidth:0,borderRadius:6,barPercentage:0.6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{left:10,right:60,top:10,bottom:10}},plugins:{legend:{display:false},datalabels:{color:'#1e293b',font:{size:12,weight:'bold'},formatter:(v)=>v.toLocaleString(),anchor:'end',align:'end',offset:5}},scales:{x:{beginAtZero:true,grid:{color:'#e2e8f0'}},y:{grid:{display:false},ticks:{font:{size:11,weight:'bold'}}}}}});
+// بناء الدليل
+function buildLegend() {
+    const container = document.getElementById("legendBox");
+    const quarter = document.getElementById("quarterFilter").value;
+
+    const sorted = [...visibleDistricts].sort((a, b) => {
+        const countA = quarter === "all" ? a.totalCount : a.quarters[quarter];
+        const countB = quarter === "all" ? b.totalCount : b.quarters[quarter];
+        return countB - countA;
+    });
+
+    container.innerHTML = sorted.slice(0, 20).map((d, i) => {
+        const count = quarter === "all" ? d.totalCount : d.quarters[quarter];
+        return `
+            <div class="legend-item" onclick="highlightDistrict(${d.uniqueId})" title="${d.name}">
+                <div class="legend-color-box" style="background:${d.color};">${i + 1}</div>
+                <span class="legend-text">${d.name}</span>
+                <span class="legend-count">${count}</span>
+            </div>
+        `;
+    }).join("");
 }
 
-function exportDualSection(){
-    districtMarkers.forEach(m => m.setMap(null));
-    document.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
-    doExport(document.getElementById("dualSection"),'خريطة_ورسم_بيانى_A4');
-    setTimeout(() => {
-        districtMarkers.forEach(m => m.setMap(map));
-        document.querySelectorAll('.no-print').forEach(el => el.style.display = '');
-    }, 1000);
-}
-
-function exportBarChart(){doExport(document.getElementById("barChartContainer"),'التصنيفات_بار_A4');}
-
-function doExport(element,prefix){
-    document.getElementById("loading").style.display="flex";
-    setTimeout(()=>{
-        html2canvas(element,{scale:2,useCORS:true,backgroundColor:"#fff",width:794,height:1123})
-        .then(canvas=>{
-            const link=document.createElement("a");
-            link.download=prefix+'_'+new Date().toLocaleDateString('ar-SA')+'.png';
-            link.href=canvas.toDataURL("image/png");
-            link.click();
-            document.getElementById("loading").style.display="none";
-        }).catch(err=>{
-            console.error(err);
-            document.getElementById("loading").style.display="none";
+// تظليل حي
+function highlightDistrict(uniqueId) {
+    const district = visibleDistricts.find(d => d.uniqueId === uniqueId);
+    if (district && map) {
+        map.flyTo([district.centerLat, district.centerLng], 16, { duration: 1.5 });
+        markersCluster.getLayers().forEach(layer => {
+            const latLng = layer.getLatLng();
+            if (Math.abs(latLng.lat - district.centerLat) < 0.0001 && Math.abs(latLng.lng - district.centerLng) < 0.0001) {
+                layer.openPopup();
+            }
         });
-    },500);
-}
-
-function exportStreetsTable(){exportTablePages('#streetsTableSection .tablePage','الشوارع_صفحة');}
-function exportTable(){exportTablePages('#tableSection .tablePage','الأحياء_صفحة');}
-
-function exportTablePages(selector,prefix){
-    document.getElementById("loading").style.display="flex";
-    const pages=document.querySelectorAll(selector);
-    let current=0;
-    function next(){
-        if(current>=pages.length){document.getElementById("loading").style.display="none";return;}
-        pages[current].scrollIntoView({behavior:'instant'});
-        setTimeout(()=>{
-            html2canvas(pages[current],{scale:2,useCORS:true,backgroundColor:"#fff",width:794,height:1123})
-            .then(canvas=>{
-                const link=document.createElement("a");
-                link.download=prefix+'_'+(current+1)+'_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';
-                link.href=canvas.toDataURL("image/png");
-                link.click();
-                current++;
-                setTimeout(next,400);
-            }).catch(()=>{document.getElementById("loading").style.display="none";});
-        },300);
     }
-    next();
 }
 
-function exportFullReport(){
-    document.getElementById("loading").style.display="flex";
-    const controlPanel=document.querySelector('.controlPanel');
-    controlPanel.style.display='none';
-    const sections=[document.getElementById("dualSection"),document.getElementById("barChartContainer"),...document.querySelectorAll('#streetsTableSection .tablePage'),...document.querySelectorAll('#tableSection .tablePage')];
-    let i=0;
-    function next(){
-        if(i>=sections.length){controlPanel.style.display='';document.getElementById("loading").style.display="none";return;}
-        if(!sections[i]){i++;next();return;}
-        sections[i].scrollIntoView({behavior:'instant'});
-        setTimeout(()=>{
-            html2canvas(sections[i],{scale:2,useCORS:true,backgroundColor:"#fff",width:794,height:1123})
-            .then(canvas=>{
-                const link=document.createElement("a");
-                const names=["خريطة_ورسم","تصنيفات_بار"];
-                let name=i<2?names[i]:"صفحة_"+(i-1);
-                link.download=name+'_A4_'+new Date().toLocaleDateString('ar-SA')+'.png';
-                link.href=canvas.toDataURL("image/png");
-                link.click();
-                i++;
-                setTimeout(next,500);
-            }).catch(()=>{controlPanel.style.display='';document.getElementById("loading").style.display="none";});
-        },400);
+// مقارنة الأرباع
+function showQuarterComparison() {
+    const section = document.getElementById("compareSection");
+    const container = document.getElementById("quarterComparison");
+
+    if (section.style.display === "none") {
+        section.style.display = "block";
+
+        const totals = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+        rawData.forEach(d => {
+            totals.Q1 += d.quarters.Q1;
+            totals.Q2 += d.quarters.Q2;
+            totals.Q3 += d.quarters.Q3;
+            totals.Q4 += d.quarters.Q4;
+        });
+
+        const quarters = [
+            { key: 'Q1', name: 'الربع الأول', color: '#e74c3c' },
+            { key: 'Q2', name: 'الربع الثاني', color: '#f39c12' },
+            { key: 'Q3', name: 'الربع الثالث', color: '#27ae60' },
+            { key: 'Q4', name: 'الربع الرابع', color: '#3498db' }
+        ];
+
+        const maxTotal = Math.max(...Object.values(totals), 1);
+        const months = ['يناير-مارس', 'أبريل-يونيو', 'يوليو-سبتمبر', 'أكتوبر-ديسمبر'];
+
+        container.innerHTML = quarters.map((q, i) => {
+            const total = totals[q.key];
+            const prevTotal = i > 0 ? totals[quarters[i - 1].key] : total;
+            const trend = total > prevTotal ? 'up' : total < prevTotal ? 'down' : 'same';
+
+            return `
+                <div class="quarter-card ${q.key.toLowerCase()}">
+                    <div class="quarter-title">${q.name}</div>
+                    <div style="color:#666;font-size:12px;margin-bottom:10px;">${months[i]}</div>
+                    <div class="quarter-value" style="color:${q.color};">${total.toLocaleString()}</div>
+                    <div style="margin:10px 0;background:#eee;height:8px;border-radius:4px;overflow:hidden;">
+                        <div style="width:${(total / maxTotal * 100)}%;height:100%;background:${q.color};"></div>
+                    </div>
+                    <span class="quarter-trend ${trend === 'up' ? 'trend-up' : 'trend-down'}">
+                        ${trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} 
+                        ${trend === 'up' ? 'ارتفاع' : trend === 'down' ? 'انخفاض' : 'ثبات'}
+                    </span>
+                </div>
+            `;
+        }).join('');
+
+        section.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        section.style.display = "none";
     }
-    next();
 }
+
+// تصدير Excel
+let exportRows = [];
+function buildExport() {
+    exportRows = [["الحي", "البلدية", "إجمالي التقارير", "Q1", "Q2", "Q3", "Q4", "التصنيفات"]];
+    visibleDistricts.forEach(d => {
+        exportRows.push([d.name, d.municipality, d.totalCount, d.quarters.Q1, d.quarters.Q2, d.quarters.Q3, d.quarters.Q4, [...d.categories].join(", ")]);
+    });
+}
+
+function exportExcel() {
+    if (exportRows.length <= 1) { alert('لا توجد بيانات'); return; }
+    let ws = XLSX.utils.aoa_to_sheet(exportRows);
+    let wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "الأحياء");
+    XLSX.writeFile(wb, "تحليل_الأحياء_الربع_سنوي.xlsx");
+}
+
+// تصدير الصفحة
+async function exportFullPage() {
+    showNotification('⏳ جاري تصدير التقرير...');
+    try {
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/dom-to-image-more/3.2.0/dom-to-image-more.min.js');
+        const node = document.getElementById('captureArea');
+        await new Promise(r => setTimeout(r, 1000));
+
+        const dataUrl = await domtoimage.toPng(node, {
+            quality: 1,
+            bgcolor: '#1e3c72',
+            width: node.offsetWidth,
+            height: node.offsetHeight
+        });
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+
+        img.onload = () => {
+            const titleHeight = 120;
+            canvas.width = img.width;
+            canvas.height = img.height + titleHeight;
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, titleHeight);
+            gradient.addColorStop(0, '#1e3c72');
+            gradient.addColorStop(1, '#2a5298');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, titleHeight);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 45px "Segoe UI",Tahoma';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('📊 تقرير تحليل الأحياء', canvas.width / 2, titleHeight / 2 - 15);
+            ctx.font = '22px "Segoe UI",Tahoma';
+            ctx.fillText(`${document.getElementById("currentQuarterBadge").textContent} | ${new Date().toLocaleDateString('ar-SA')}`, canvas.width / 2, titleHeight / 2 + 30);
+            ctx.drawImage(img, 0, titleHeight);
+
+            canvas.toBlob(blob => {
+                saveAs(blob, `تقرير_الأحياء_${new Date().toLocaleDateString('ar-SA')}.png`);
+                showNotification('✅ تم تصدير التقرير!');
+            });
+        };
+        img.src = dataUrl;
+    } catch (err) {
+        console.error(err);
+        alert('حدث خطأ: ' + err.message);
+    }
+}
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+
+function fitAll() {
+    if (visibleDistricts.length === 0 || !map) return;
+    const bounds = visibleDistricts.map(d => [d.centerLat, d.centerLng]);
+    map.fitBounds(bounds, { padding: [50, 50] });
+}
+
+function clearAllData() {
+    if (confirm('هل أنت متأكد؟')) location.reload();
+}
+
+function showNotification(message) {
+    const notif = document.createElement('div');
+    notif.style.cssText = 'position:fixed; top:90px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.85); color:white; padding:15px 30px; border-radius:30px; font-weight:600; z-index:100001;';
+    notif.textContent = message;
+    document.body.appendChild(notif);
+    setTimeout(() => { notif.style.opacity = '0'; setTimeout(() => notif.remove(), 300); }, 3000);
+}
+
+// تهيئة عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 جاري تهيئة الخريطة...');
+    initMap();
+});
 </script>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCKAdhnhp11pzOQXn8rQxcA-dB5HpSZx0Y&libraries=geometry&callback=initMap&language=ar&region=SA" async defer></script>
 </body>
 </html>
