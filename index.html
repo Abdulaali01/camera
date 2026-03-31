@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+
+html_content = '''<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -74,22 +75,23 @@ body {
     margin-top: 70px; 
     padding: 15px; 
     display: flex; 
-    flex-direction: row-reverse; /* الخريطة يمين، البطاقات يسار */
+    flex-direction: row; /* تغيير من row-reverse إلى row */
     gap: 15px; 
     height: calc(100vh - 90px);
     min-height: 600px;
 }
 
-/* الخريطة - الجزء الأيمن (أكبر) */
+/* الخريطة - على اليمين (نستخدم order) */
 .map-wrapper { 
     background: white; 
     border-radius: 20px; 
     overflow: hidden; 
     box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
     position: relative; 
-    flex: 1.8; /* الخريطة أكبر */
+    flex: 1.8;
     height: 100%;
     min-height: 500px;
+    order: 2; /* الخريطة على اليمين */
 }
 #map { 
     height: 100%; 
@@ -219,14 +221,15 @@ body {
     border-bottom: 1px solid #e0e0e0; 
 }
 
-/* القسم الأيسر - البطاقات */
+/* القسم الأيسر - البطاقات (نستخدم order) */
 .stats-section { 
     display: flex;
     flex-direction: column;
     gap: 15px; 
-    flex: 1; /* البطاقات أصغر */
+    flex: 1;
     height: 100%;
     min-width: 350px;
+    order: 1; /* البطاقات على اليسار */
 }
 
 /* البطاقات */
@@ -406,80 +409,98 @@ body {
     margin-top: 2px;
 }
 
-/* تصدير السلايد */
-.slide-export-mode {
-    width: 1920px !important;
-    height: 1080px !important;
-    margin: 0 !important;
-    padding: 20px !important;
+/* ========== وضع تصدير السلايد ========== */
+.slide-export-container {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
-    z-index: 99999 !important;
+    width: 1920px !important;
+    height: 1080px !important;
     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+    z-index: 99999 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 20px !important;
+    padding: 20px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
 }
-.slide-export-mode .top-bar {
-    display: none !important;
-}
-.slide-export-mode .main-container {
-    margin-top: 0 !important;
+
+.slide-export-container .map-wrapper {
+    flex: 1.6 !important;
     height: 100% !important;
+    order: 2 !important;
+    border-radius: 15px !important;
+}
+
+.slide-export-container .stats-section {
+    flex: 1 !important;
+    height: 100% !important;
+    order: 1 !important;
+    min-width: 400px !important;
+}
+
+.slide-export-container .card {
     padding: 15px !important;
+    border-radius: 15px !important;
 }
-.slide-export-mode .map-wrapper {
-    flex: 1.6;
+
+.slide-export-container .card-title {
+    font-size: 22px !important;
+    margin-bottom: 10px !important;
 }
-.slide-export-mode .stats-section {
-    flex: 1;
+
+.slide-export-container .stat-item {
+    padding: 10px !important;
+    font-size: 16px !important;
 }
-.slide-export-mode .card {
-    padding: 15px;
+
+.slide-export-container .stat-value {
+    font-size: 24px !important;
 }
-.slide-export-mode .card-title {
-    font-size: 22px;
-    margin-bottom: 10px;
+
+.slide-export-container .municipality-simple-label {
+    font-size: 18px !important;
+    padding: 12px 16px !important;
+    min-width: 180px !important;
 }
-.slide-export-mode .stat-item {
-    padding: 10px;
-    font-size: 16px;
+
+.slide-export-container .municipality-simple-label .muni-name {
+    font-size: 20px !important;
 }
-.slide-export-mode .stat-value {
-    font-size: 24px;
-}
-.slide-export-mode .municipality-simple-label {
-    font-size: 18px;
-    padding: 12px 16px;
-    min-width: 180px;
-}
-.slide-export-mode .municipality-simple-label .muni-name {
-    font-size: 20px;
-}
-.slide-export-mode .municipality-simple-label .muni-count {
-    font-size: 24px;
+
+.slide-export-container .municipality-simple-label .muni-count {
+    font-size: 24px !important;
 }
 
 /* Responsive */
 @media (max-width: 1400px) { 
     .main-container {
-        flex-direction: column-reverse;
+        flex-direction: column;
         height: auto;
     }
     .map-wrapper {
         flex: none;
         height: 60vh;
         min-height: 400px;
+        order: 1;
     }
     .stats-section {
         flex: none;
         min-width: auto;
+        order: 2;
     }
 }
 @media (max-width: 768px) { 
     .main-container {
-        flex-direction: column-reverse;
+        flex-direction: column;
     }
     .map-wrapper {
         height: 50vh;
+        order: 1;
+    }
+    .stats-section {
+        order: 2;
     }
 }
 </style>
@@ -513,16 +534,7 @@ body {
 </div>
 
 <div class="main-container" id="captureArea">
-    <!-- الخريطة على اليمين (بسبب flex-direction: row-reverse) -->
-    <div class="map-wrapper" id="mapSection">
-        <div id="map"></div>
-        <div class="custom-zoom">
-            <button class="zoom-btn" onclick="map.zoomIn()">+</button>
-            <button class="zoom-btn" onclick="map.zoomOut()">−</button>
-        </div>
-    </div>
-
-    <!-- البطاقات على اليسار -->
+    <!-- البطاقات على اليسار (order: 1) -->
     <div class="stats-section" id="statsSection">
         <div class="card">
             <div class="card-title">📊 توزيع البلديات <span class="quarter-badge" id="currentQuarterBadge">الكل</span></div>
@@ -540,6 +552,15 @@ body {
             <div class="stat-item"><span>عدد الأحياء</span><span class="stat-value" id="totalDistricts">0</span></div>
             <div class="stat-item"><span>متوسط البلاغات/بلدية</span><span class="stat-value" id="avgReports">0</span></div>
             <div class="stat-item"><span>الأعلى بلاغات</span><span class="stat-value" id="topMunicipality" style="font-size:14px;">-</span></div>
+        </div>
+    </div>
+
+    <!-- الخريطة على اليمين (order: 2) -->
+    <div class="map-wrapper" id="mapSection">
+        <div id="map"></div>
+        <div class="custom-zoom">
+            <button class="zoom-btn" onclick="map.zoomIn()">+</button>
+            <button class="zoom-btn" onclick="map.zoomOut()">−</button>
         </div>
     </div>
 </div>
@@ -578,14 +599,13 @@ const monthNames = {
               'july', 'august', 'september', 'october', 'november', 'december']
 };
 
-// استخراج الربع من التاريخ - دالة محسنة
+// استخراج الربع من التاريخ
 const getQuarterFromDate = (dateStr) => {
     if (!dateStr || dateStr === 'غير معروف' || dateStr === '') return null;
 
     dateStr = String(dateStr).toLowerCase().trim();
     let month = null;
 
-    // البحث عن اسم الشهر بالعربية
     for (let i = 0; i < monthNames.arabic.length; i++) {
         if (dateStr.includes(monthNames.arabic[i].toLowerCase())) {
             month = i + 1;
@@ -593,7 +613,6 @@ const getQuarterFromDate = (dateStr) => {
         }
     }
 
-    // البحث عن اسم الشهر بالإنجليزية
     if (!month) {
         for (let i = 0; i < monthNames.english.length; i++) {
             if (dateStr.includes(monthNames.english[i])) {
@@ -603,13 +622,11 @@ const getQuarterFromDate = (dateStr) => {
         }
     }
 
-    // تنسيق: MM/DD/YYYY أو DD/MM/YYYY
     if (!month && dateStr.includes('/')) {
         const parts = dateStr.split('/');
         if (parts.length >= 2) {
             let m1 = parseInt(parts[0]);
             let m2 = parseInt(parts[1]);
-
             if (m1 > 12 && m2 <= 12) {
                 month = m2;
             } else {
@@ -618,13 +635,11 @@ const getQuarterFromDate = (dateStr) => {
         }
     }
 
-    // تنسيق: YYYY-MM-DD أو DD-MM-YYYY
     if (!month && dateStr.includes('-')) {
         const parts = dateStr.split('-');
         if (parts.length >= 3) {
             let m1 = parseInt(parts[0]);
             let m2 = parseInt(parts[1]);
-
             if (m1 > 31) {
                 month = m2;
             } else if (m2 > 12) {
@@ -637,8 +652,8 @@ const getQuarterFromDate = (dateStr) => {
         }
     }
 
-    if (!month && dateStr.match(/(?:^|[^\d])([1-9]|1[0-2])(?:[^\d]|$)/)) {
-        const monthMatch = dateStr.match(/(?:^|[^\d])([1-9]|1[0-2])(?:[^\d]|$)/);
+    if (!month && dateStr.match(/(?:^|[^\\d])([1-9]|1[0-2])(?:[^\\d]|$)/)) {
+        const monthMatch = dateStr.match(/(?:^|[^\\d])([1-9]|1[0-2])(?:[^\\d]|$)/);
         month = parseInt(monthMatch[1]);
     }
 
@@ -750,7 +765,7 @@ function processRows(rows) {
             quarterCounts.unknown++;
         }
         districtMap[key].categories.add(category);
-
+        
         if (satisfaction.includes('راضي') && !satisfaction.includes('غير')) {
             districtMap[key].satisfaction.satisfied++;
         } else if (satisfaction.includes('غير')) {
@@ -777,7 +792,7 @@ function processRows(rows) {
         muniMap[d.municipality].quarters.Q3 += d.quarters.Q3;
         muniMap[d.municipality].quarters.Q4 += d.quarters.Q4;
         muniMap[d.municipality].points.push([d.lng, d.lat]);
-
+        
         if (d.quarters.Q1 > 0) {
             muniMap[d.municipality].satisfaction.Q1.satisfied += d.satisfaction.satisfied;
             muniMap[d.municipality].satisfaction.Q1.unsatisfied += d.satisfaction.unsatisfied;
@@ -1113,7 +1128,7 @@ function showQuarterComparison() {
             totals.Q2 += m.quarters.Q2;
             totals.Q3 += m.quarters.Q3;
             totals.Q4 += m.quarters.Q4;
-
+            
             satisfactionTotals.Q1.satisfied += m.satisfaction.Q1.satisfied;
             satisfactionTotals.Q1.unsatisfied += m.satisfaction.Q1.unsatisfied;
             satisfactionTotals.Q2.satisfied += m.satisfaction.Q2.satisfied;
@@ -1138,7 +1153,7 @@ function showQuarterComparison() {
             const total = totals[q.key];
             const prevTotal = i > 0 ? totals[quarters[i - 1].key] : total;
             const trend = total > prevTotal ? 'up' : total < prevTotal ? 'down' : 'same';
-
+            
             const sat = satisfactionTotals[q.key];
             const totalSat = sat.satisfied + sat.unsatisfied;
             const satisfiedPercent = totalSat > 0 ? Math.round((sat.satisfied / totalSat) * 100) : 0;
@@ -1156,7 +1171,7 @@ function showQuarterComparison() {
                         ${trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} 
                         ${trend === 'up' ? 'ارتفاع' : trend === 'down' ? 'انخفاض' : 'ثبات'}
                     </span>
-
+                    
                     <div class="satisfaction-boxes">
                         <div class="satisfaction-box satisfied">
                             <div class="label">راضي</div>
@@ -1206,82 +1221,169 @@ function exportExcel() {
     XLSX.writeFile(wb, "تحليل_البلديات_الربع_سنوي.xlsx");
 }
 
-// تصدير السلايد (1920x1080)
+// تصدير السلايد (1920x1080) - طريقة محسنة
 async function exportSlide() {
     showNotification('⏳ جاري تصدير السلايد...');
+    
     try {
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/dom-to-image-more/3.2.0/dom-to-image-more.min.js');
-
+        
         const captureArea = document.getElementById('captureArea');
-
-        // تفعيل وضع السلايد
-        captureArea.classList.add('slide-export-mode');
-
-        // انتظار إعادة التخطيط
-        await new Promise(r => setTimeout(r, 500));
-
-        // إعادة رسم الخريطة للتأكد من وضوحها
-        if (map) {
-            map.invalidateSize();
-            await new Promise(r => setTimeout(r, 1000));
+        const originalParent = captureArea.parentNode;
+        const originalNextSibling = captureArea.nextSibling;
+        
+        // إنشاء حاوية مؤقتة للتصدير
+        const tempContainer = document.createElement('div');
+        tempContainer.className = 'slide-export-container';
+        tempContainer.id = 'tempExportContainer';
+        
+        // نسخ المحتوى
+        const clone = captureArea.cloneNode(true);
+        
+        // نقل الخريطة إلى الكلون (لأنها لا تُنسخ بشكل صحيح)
+        const originalMap = document.getElementById('map');
+        const mapClone = originalMap.cloneNode(true);
+        
+        // إضافة الكلون إلى الحاوية المؤقتة
+        tempContainer.appendChild(clone);
+        document.body.appendChild(tempContainer);
+        
+        // إعادة تهيئة الخريطة في الكلون
+        const mapDiv = tempContainer.querySelector('#map');
+        mapDiv.innerHTML = '';
+        mapDiv.style.width = '100%';
+        mapDiv.style.height = '100%';
+        
+        // إنشاء خريطة مؤقتة للتصدير
+        const tempMap = L.map(mapDiv, {
+            zoomControl: false,
+            attributionControl: false,
+            preferCanvas: true
+        });
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(tempMap);
+        
+        const tempLayer = L.layerGroup().addTo(tempMap);
+        
+        // نسخ المضلعات
+        const quarter = document.getElementById("quarterFilter").value;
+        
+        visibleMunicipalities.forEach(muni => {
+            const count = quarter === "all" ? muni.totalCount : muni.quarters[quarter];
+            
+            // إنشاء المضلع
+            const lats = muni.points.map(p => p[1]);
+            const lngs = muni.points.map(p => p[0]);
+            
+            if (muni.points.length >= 3) {
+                try {
+                    const pointsCollection = turf.points(muni.points);
+                    const hull = turf.convex(pointsCollection);
+                    if (hull) {
+                        const coords = hull.geometry.coordinates[0].map(c => [c[1], c[0]]);
+                        L.polygon(coords, {
+                            color: muni.color,
+                            fillColor: muni.color,
+                            fillOpacity: 0.3,
+                            weight: 3
+                        }).addTo(tempLayer);
+                    }
+                } catch (e) {
+                    // fallback
+                }
+            }
+            
+            // إضافة الـ label
+            const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+            const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
+            
+            const labelHtml = `
+                <div style="background:rgba(255,255,255,0.95);border:3px solid ${muni.color};border-radius:12px;padding:12px 16px;font-size:18px;font-weight:bold;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,0.3);min-width:180px;direction:rtl;">
+                    <div style="color:${muni.color};font-size:20px;margin-bottom:6px;border-bottom:2px solid ${muni.color};padding-bottom:6px;">${muni.name}</div>
+                    <div style="font-size:24px;color:#e74c3c;font-weight:bold;">${count.toLocaleString()} بلاغ</div>
+                </div>
+            `;
+            
+            L.marker([centerLat, centerLng], {
+                icon: L.divIcon({
+                    className: 'temp-label',
+                    html: labelHtml,
+                    iconSize: [200, 80],
+                    iconAnchor: [100, 40]
+                })
+            }).addTo(tempLayer);
+        });
+        
+        // ضبط إطار الخريطة
+        if (visibleMunicipalities.length > 0) {
+            const allPoints = visibleMunicipalities.flatMap(m => m.points.map(p => [p[1], p[0]]));
+            tempMap.fitBounds(allPoints, { padding: [80, 80], maxZoom: 12 });
         }
-
-        const dataUrl = await domtoimage.toPng(captureArea, {
+        
+        // انتظار تحميل الخريطة
+        await new Promise(r => setTimeout(r, 2000));
+        
+        // تصدير الصورة
+        const dataUrl = await domtoimage.toPng(tempContainer, {
             quality: 1,
             bgcolor: '#1e3c72',
             width: 1920,
-            height: 1080,
-            style: {
-                transform: 'scale(1)',
-                transformOrigin: 'top left'
-            }
+            height: 1080
         });
-
-        // إزالة وضع السلايد
-        captureArea.classList.remove('slide-export-mode');
-        if (map) map.invalidateSize();
-
+        
+        // إزالة الحاوية المؤقتة
+        document.body.removeChild(tempContainer);
+        
+        // إنشاء canvas للمعالجة النهائية
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
-
+        
         img.onload = () => {
             canvas.width = 1920;
             canvas.height = 1080;
-
+            
             // خلفية متدرجة
             const gradient = ctx.createLinearGradient(0, 0, 0, 1080);
             gradient.addColorStop(0, '#1e3c72');
             gradient.addColorStop(1, '#2a5298');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, 1920, 1080);
-
+            
             // رسم الصورة
             ctx.drawImage(img, 0, 0, 1920, 1080);
-
+            
             // إضافة عنوان في الأعلى
             ctx.fillStyle = 'rgba(255,255,255,0.95)';
-            ctx.fillRect(20, 20, 1880, 80);
-
+            ctx.fillRect(20, 20, 1880, 90);
+            
             ctx.fillStyle = '#1e3c72';
-            ctx.font = 'bold 40px "Segoe UI",Tahoma';
+            ctx.font = 'bold 45px "Segoe UI",Tahoma';
             ctx.textAlign = 'right';
             ctx.textBaseline = 'middle';
-            ctx.fillText('📊 تقرير تحليل البلديات', 1860, 60);
-
-            ctx.font = '24px "Segoe UI",Tahoma';
+            ctx.fillText('📊 تقرير تحليل البلديات', 1860, 55);
+            
+            ctx.font = '26px "Segoe UI",Tahoma';
             ctx.fillStyle = '#666';
             ctx.fillText(`${document.getElementById("currentQuarterBadge").textContent} | ${new Date().toLocaleDateString('ar-SA')}`, 1860, 95);
-
+            
+            // حفظ الملف
             canvas.toBlob(blob => {
                 saveAs(blob, `سلايد_البلديات_${new Date().toLocaleDateString('ar-SA')}.png`);
                 showNotification('✅ تم تصدير السلايد! (1920×1080)');
             });
         };
         img.src = dataUrl;
+        
     } catch (err) {
         console.error(err);
-        document.getElementById('captureArea').classList.remove('slide-export-mode');
+        // تنظيف في حالة الخطأ
+        const tempContainer = document.getElementById('tempExportContainer');
+        if (tempContainer) {
+            document.body.removeChild(tempContainer);
+        }
         alert('حدث خطأ: ' + err.message);
     }
 }
@@ -1324,4 +1426,17 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 </body>
-</html>
+</html>'''
+
+# Save the file
+output_path = '/mnt/kimi/output/municipality_dashboard_fixed.html'
+with open(output_path, 'w', encoding='utf-8') as f:
+    f.write(html_content)
+
+print(f"✅ تم حفظ الملف المُصلح في: {output_path}")
+print(f"📄 حجم الملف: {len(html_content)} حرف")
+print("\n🔧 الإصلاحات:")
+print("   • استخدام order: 1 و order: 2 بدلاً من row-reverse")
+print("   • إنشاء حاوية منفصلة للتصدير (slide-export-container)")
+print("   • إعادة رسم الخريطة في الحاوية المؤقتة للتصدير")
+print("   • ضبط الأبعاد بدقة 1920×1080")
