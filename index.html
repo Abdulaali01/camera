@@ -1,24 +1,16 @@
-
-html_content = '''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>تحليل الأحياء - نظام ربع سنوي</title>
 
-<!-- المكتبات -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
-<!-- Leaflet CSS & JS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
-<!-- Turf.js للمضلعات -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
-<!-- html2canvas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
@@ -30,14 +22,10 @@ body {
     min-height: 100vh; 
 }
 
-/* شريط الأدوات العلوي */
 .top-bar { 
     position: fixed; 
-    top: 0; 
-    left: 0; 
-    right: 0; 
+    top: 0; left: 0; right: 0; 
     background: rgba(255,255,255,0.98); 
-    backdrop-filter: blur(10px); 
     padding: 10px 20px; 
     box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
     z-index: 100000; 
@@ -45,7 +33,6 @@ body {
     gap: 8px; 
     flex-wrap: wrap; 
     align-items: center; 
-    border-bottom: 3px solid #1e3c72; 
 }
 .top-bar input, .top-bar select, .top-bar button { 
     padding: 8px 14px; 
@@ -59,20 +46,11 @@ body {
     border: none; 
     cursor: pointer; 
     font-weight: 600; 
-    transition: all 0.3s; 
-}
-.top-bar button:hover { 
-    transform: translateY(-2px); 
-    box-shadow: 0 6px 20px rgba(30,60,114,0.4); 
 }
 .btn-export { 
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important; 
 }
-.btn-compare { 
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important; 
-}
 
-/* الحاوية الرئيسية - تخطيط أفقي دائماً */
 .main-container { 
     margin-top: 70px; 
     padding: 15px; 
@@ -83,7 +61,6 @@ body {
     min-height: 600px;
 }
 
-/* الخريطة - على اليمين (أكبر) */
 .map-wrapper { 
     background: white; 
     border-radius: 20px; 
@@ -95,25 +72,8 @@ body {
     min-height: 500px;
     order: 2;
 }
-#map { 
-    height: 100%; 
-    width: 100%; 
-    z-index: 1; 
-}
+#map { height: 100%; width: 100%; z-index: 1; }
 
-/* تخصيص المضلعات */
-.municipality-polygon { 
-    stroke: #fff; 
-    stroke-width: 3; 
-    fill-opacity: 0.4;
-    transition: all 0.3s;
-}
-.municipality-polygon:hover {
-    fill-opacity: 0.6;
-    stroke-width: 4;
-}
-
-/* البطاقة البسيطة - اسم البلدية والرقم فقط */
 .municipality-simple-label {
     background: rgba(255,255,255,0.95);
     border: 2px solid #1e3c72;
@@ -125,6 +85,18 @@ body {
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     min-width: 140px;
     direction: rtl;
+    cursor: move !important;
+    user-select: none;
+    position: relative;
+    z-index: 10000;
+}
+.municipality-simple-label:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+.municipality-simple-label.dragging {
+    opacity: 0.8;
+    z-index: 10001;
 }
 .municipality-simple-label .muni-name {
     color: #1e3c72;
@@ -139,62 +111,9 @@ body {
     font-weight: bold;
 }
 
-/* الجدول داخل المضلع - يظهر عند الفلترة */
-.municipality-label {
-    background: rgba(255,255,255,0.95);
-    border: 2px solid #1e3c72;
-    border-radius: 10px;
-    padding: 10px;
-    font-size: 12px;
-    font-weight: bold;
-    text-align: center;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    min-width: 180px;
-}
-.municipality-label h4 {
-    margin: 0 0 8px 0;
-    color: #1e3c72;
-    font-size: 14px;
-    border-bottom: 2px solid #1e3c72;
-    padding-bottom: 5px;
-}
-.muni-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11px;
-}
-.muni-table th {
-    background: #1e3c72;
-    color: white;
-    padding: 4px;
-    text-align: right;
-}
-.muni-table td {
-    padding: 3px 4px;
-    border-bottom: 1px solid #eee;
-    text-align: right;
-}
-.muni-table tr:nth-child(even) {
-    background: #f5f5f5;
-}
-.muni-table .rank {
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    background: #e74c3c;
-    color: white;
-    border-radius: 50%;
-    text-align: center;
-    line-height: 18px;
-    font-size: 10px;
-    margin-left: 5px;
-}
-
-/* أزرار التكبير */
 .custom-zoom { 
     position: absolute; 
-    bottom: 30px; 
-    right: 30px; 
+    bottom: 30px; right: 30px; 
     background: white; 
     border-radius: 12px; 
     box-shadow: 0 4px 20px rgba(0,0,0,0.3); 
@@ -205,25 +124,12 @@ body {
     border: 2px solid #1e3c72; 
 }
 .zoom-btn { 
-    width: 48px; 
-    height: 48px; 
-    border: none; 
-    background: white; 
-    font-size: 24px; 
-    cursor: pointer; 
-    color: #1e3c72; 
-    font-weight: bold; 
-    transition: all 0.3s; 
-}
-.zoom-btn:hover { 
-    background: #1e3c72; 
-    color: white; 
-}
-.zoom-btn:first-child { 
-    border-bottom: 1px solid #e0e0e0; 
+    width: 48px; height: 48px; 
+    border: none; background: white; 
+    font-size: 24px; cursor: pointer; 
+    color: #1e3c72; font-weight: bold; 
 }
 
-/* القسم الأيسر - البطاقات (أصغر) */
 .stats-section { 
     display: flex;
     flex-direction: column;
@@ -234,7 +140,6 @@ body {
     order: 1;
 }
 
-/* البطاقات */
 .card { 
     background: white; 
     border-radius: 20px; 
@@ -246,183 +151,67 @@ body {
     overflow: hidden;
 }
 .card-title { 
-    font-size: 18px; 
-    font-weight: 700; 
-    color: #333; 
-    margin-bottom: 15px; 
-    padding-bottom: 10px; 
+    font-size: 18px; font-weight: 700; color: #333; 
+    margin-bottom: 15px; padding-bottom: 10px; 
     border-bottom: 3px solid #1e3c72; 
-    display: flex; 
-    align-items: center; 
-    gap: 8px; 
+    display: flex; align-items: center; gap: 8px; 
     flex-shrink: 0;
 }
 .stat-item { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    padding: 12px; 
-    margin-bottom: 8px; 
+    display: flex; justify-content: space-between; align-items: center; 
+    padding: 12px; margin-bottom: 8px; 
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
-    border-radius: 10px; 
-    font-size: 14px; 
+    border-radius: 10px; font-size: 14px; 
 }
-.stat-value { 
-    font-weight: 700; 
-    color: #1e3c72; 
-    font-size: 20px; 
-}
+.stat-value { font-weight: 700; color: #1e3c72; font-size: 20px; }
 .quarter-badge { 
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
-    color: white; 
-    padding: 4px 12px; 
-    border-radius: 20px; 
-    font-size: 12px; 
-    font-weight: bold; 
+    color: white; padding: 4px 12px; border-radius: 20px; 
+    font-size: 12px; font-weight: bold; 
 }
 
-/* المخطط */
 .chart-scroll-container { 
-    position: relative; 
-    flex: 1;
-    overflow-y: auto; 
-    overflow-x: hidden; 
-    border-radius: 10px; 
-    background: #f8f9fa; 
-    padding: 10px; 
+    position: relative; flex: 1;
+    overflow-y: auto; overflow-x: hidden; 
+    border-radius: 10px; background: #f8f9fa; padding: 10px; 
 }
-.chart-canvas-wrapper { 
-    position: relative; 
-    height: max-content; 
-    min-height: 100%; 
-}
+.chart-canvas-wrapper { position: relative; height: max-content; min-height: 100%; }
 
-/* مقارنة الأرباع - مع التقييم */
-.compare-section { 
-    display: grid; 
-    grid-template-columns: repeat(4, 1fr); 
-    gap: 15px; 
-    margin-top: 20px; 
-}
-.quarter-card { 
-    background: white; 
-    border-radius: 15px; 
-    padding: 20px; 
-    text-align: center; 
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1); 
-    border-top: 4px solid; 
-    transition: all 0.3s; 
-    position: relative; 
-}
-.quarter-card:hover { 
-    transform: translateY(-5px); 
-}
-.quarter-card.q1 { 
-    border-top-color: #e74c3c; 
-} 
-.quarter-card.q2 { 
-    border-top-color: #f39c12; 
-} 
-.quarter-card.q3 { 
-    border-top-color: #27ae60; 
-} 
-.quarter-card.q4 { 
-    border-top-color: #3498db; 
-}
-.quarter-title { 
-    font-size: 18px; 
-    font-weight: bold; 
-    color: #333; 
-    margin-bottom: 5px; 
-}
-.quarter-months { 
-    font-size: 11px; 
-    color: #666; 
-    margin-bottom: 10px; 
-}
-.quarter-value { 
-    font-size: 28px; 
-    font-weight: bold; 
-    color: #1e3c72; 
-    margin: 8px 0; 
-}
-.quarter-trend { 
-    font-size: 12px; 
-    padding: 5px 10px; 
-    border-radius: 20px; 
-    display: inline-block; 
-    font-weight: 600; 
-}
-.trend-up { 
-    background: #d4edda; 
-    color: #155724; 
-} 
-.trend-down { 
-    background: #f8d7da; 
-    color: #721c24; 
-}
-
-/* مربعات التقييم */
-.satisfaction-boxes {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    justify-content: center;
-}
-.satisfaction-box {
-    flex: 1;
-    padding: 8px 5px;
-    border-radius: 8px;
-    text-align: center;
-    font-size: 11px;
-}
-.satisfaction-box.satisfied {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    border: 2px solid #28a745;
-}
-.satisfaction-box.unsatisfied {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-    border: 2px solid #dc3545;
-}
-.satisfaction-box .label {
-    font-weight: bold;
-    margin-bottom: 3px;
-    font-size: 10px;
-}
-.satisfaction-box.satisfied .label { 
-    color: #155724; 
-}
-.satisfaction-box.unsatisfied .label { 
-    color: #721c24; 
-}
-.satisfaction-box .percentage {
-    font-size: 16px;
-    font-weight: bold;
-}
-.satisfaction-box.satisfied .percentage { 
-    color: #28a745; 
-}
-.satisfaction-box.unsatisfied .percentage { 
-    color: #dc3545; 
-}
-.satisfaction-box .count {
-    font-size: 10px;
-    color: #666;
-    margin-top: 2px;
-}
-
-/* قسم المقارنة */
 #compareSection {
     display: none;
     margin-top: 20px;
     padding: 0 20px 20px 20px;
 }
 
-#compareSection .card {
-    max-width: 100%;
+.compare-section { 
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; 
 }
+.quarter-card { 
+    background: white; border-radius: 15px; padding: 20px; 
+    text-align: center; box-shadow: 0 5px 20px rgba(0,0,0,0.1); 
+    border-top: 4px solid;
+}
+.quarter-card.q1 { border-top-color: #e74c3c; } 
+.quarter-card.q2 { border-top-color: #f39c12; } 
+.quarter-card.q3 { border-top-color: #27ae60; } 
+.quarter-card.q4 { border-top-color: #3498db; }
+.quarter-title { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 5px; }
+.quarter-months { font-size: 11px; color: #666; margin-bottom: 10px; }
+.quarter-value { font-size: 28px; font-weight: bold; color: #1e3c72; margin: 8px 0; }
 
-/* ========== حاوية التصدير - 16:9 أفقي ========== */
+.satisfaction-boxes { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
+.satisfaction-box { flex: 1; padding: 8px 5px; border-radius: 8px; text-align: center; font-size: 11px; }
+.satisfaction-box.satisfied { background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); border: 2px solid #28a745; }
+.satisfaction-box.unsatisfied { background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); border: 2px solid #dc3545; }
+.satisfaction-box .label { font-weight: bold; margin-bottom: 3px; font-size: 10px; }
+.satisfaction-box.satisfied .label { color: #155724; }
+.satisfaction-box.unsatisfied .label { color: #721c24; }
+.satisfaction-box .percentage { font-size: 16px; font-weight: bold; }
+.satisfaction-box.satisfied .percentage { color: #28a745; }
+.satisfaction-box.unsatisfied .percentage { color: #dc3545; }
+.satisfaction-box .count { font-size: 10px; color: #666; margin-top: 2px; }
+
+/* Slide Export Container - New Layout */
 #slideExportContainer {
     position: fixed;
     top: -9999px;
@@ -432,94 +221,111 @@ body {
     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
     z-index: 99999;
     display: flex;
-    flex-direction: row;
-    gap: 20px;
+    flex-direction: column;
     padding: 20px;
     box-sizing: border-box;
+    gap: 20px;
 }
 
-#slideExportContainer .map-wrapper {
-    flex: 1.6;
-    height: 100%;
-    order: 2;
-    border-radius: 15px;
+#slideExportContainer .top-section {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    flex: 1;
+    height: 65%;
 }
 
 #slideExportContainer .stats-section {
-    flex: 1;
+    flex: 0 0 35%;
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
     order: 1;
-    min-width: 500px;
+}
+
+#slideExportContainer .map-wrapper {
+    flex: 0 0 65%;
+    height: 100%;
+    order: 2;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+#slideExportContainer .bottom-section {
+    height: 30%;
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
 }
 
 #slideExportContainer .card {
     padding: 15px;
     border-radius: 15px;
+    flex: 1;
 }
 
 #slideExportContainer .card-title {
-    font-size: 24px;
+    font-size: 22px;
     margin-bottom: 12px;
 }
 
 #slideExportContainer .stat-item {
-    padding: 12px;
-    font-size: 18px;
+    padding: 10px;
+    font-size: 16px;
 }
 
 #slideExportContainer .stat-value {
-    font-size: 26px;
-}
-
-#slideExportContainer .municipality-simple-label {
-    font-size: 20px;
-    padding: 14px 18px;
-    min-width: 200px;
-}
-
-#slideExportContainer .municipality-simple-label .muni-name {
     font-size: 22px;
 }
 
-#slideExportContainer .municipality-simple-label .muni-count {
-    font-size: 26px;
+#slideExportContainer .compare-section {
+    margin-top: 10px;
+    height: calc(100% - 50px);
 }
 
-/* Responsive */
+#slideExportContainer .quarter-card {
+    padding: 15px;
+}
+
+#slideExportContainer .quarter-title {
+    font-size: 20px;
+}
+
+#slideExportContainer .quarter-value {
+    font-size: 32px;
+}
+
+#slideExportContainer .satisfaction-boxes {
+    margin-top: 8px;
+}
+
+.drag-hint {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    z-index: 100001;
+    display: none;
+}
+
 @media (max-width: 1400px) { 
-    .main-container {
-        flex-direction: column;
-        height: auto;
-    }
-    .map-wrapper {
-        flex: none;
-        height: 60vh;
-        min-height: 400px;
-        order: 1;
-    }
-    .stats-section {
-        flex: none;
-        min-width: auto;
-        order: 2;
-    }
-    .compare-section {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    .main-container { flex-direction: column; height: auto; }
+    .map-wrapper { flex: none; height: 60vh; min-height: 400px; order: 1; }
+    .stats-section { flex: none; min-width: auto; order: 2; }
+    .compare-section { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) { 
-    .main-container {
-        flex-direction: column;
-    }
-    .map-wrapper {
-        height: 50vh;
-        order: 1;
-    }
-    .stats-section {
-        order: 2;
-    }
-    .compare-section {
-        grid-template-columns: 1fr;
-    }
+    .main-container { flex-direction: column; }
+    .map-wrapper { height: 50vh; order: 1; }
+    .stats-section { order: 2; }
+    .compare-section { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -546,13 +352,12 @@ body {
     <input id="searchBox" placeholder="🔍 بحث عن بلدية..." oninput="applyCurrentFilter()">
     <button onclick="fitAll()">🌍 إظهار الكل</button>
     <button class="btn-export" onclick="exportSlide()">📸 تصدير سلايد</button>
-    <button class="btn-compare" onclick="showQuarterComparison()">📊 مقارنة الأرباع</button>
+    <button onclick="showQuarterComparison()">📊 مقارنة الأرباع</button>
     <button onclick="exportExcel()">📊 Excel</button>
     <button onclick="clearAllData()" style="background: #ff4757 !important;">🗑️ مسح</button>
 </div>
 
 <div class="main-container" id="captureArea">
-    <!-- البطاقات على اليسار -->
     <div class="stats-section" id="statsSection">
         <div class="card">
             <div class="card-title">📊 توزيع البلديات <span class="quarter-badge" id="currentQuarterBadge">الكل</span></div>
@@ -562,7 +367,6 @@ body {
                 </div>
             </div>
         </div>
-
         <div class="card">
             <div class="card-title">📈 إحصائيات عامة</div>
             <div class="stat-item"><span>إجمالي البلاغات</span><span class="stat-value" id="totalReports">0</span></div>
@@ -572,8 +376,6 @@ body {
             <div class="stat-item"><span>الأعلى بلاغات</span><span class="stat-value" id="topMunicipality" style="font-size:14px;">-</span></div>
         </div>
     </div>
-
-    <!-- الخريطة على اليمين -->
     <div class="map-wrapper" id="mapSection">
         <div id="map"></div>
         <div class="custom-zoom">
@@ -583,7 +385,6 @@ body {
     </div>
 </div>
 
-<!-- قسم مقارنة الأرباع -->
 <div id="compareSection">
     <div class="card">
         <div class="card-title">📊 مقارنة الأداء الربع سنوي</div>
@@ -591,156 +392,80 @@ body {
     </div>
 </div>
 
-<!-- حاوية التصدير المخفية (1920x1080) -->
-<div id="slideExportContainer" style="display: none;">
-    <!-- سيتم نسخ المحتوى هنا بواسطة JavaScript -->
-</div>
+<div id="slideExportContainer" style="display: none;"></div>
+<div class="drag-hint" id="dragHint">💡 اسحب أسماء البلديات لتجنب التداخل</div>
 
 <script>
-// تسجيل البلجن
 Chart.register(ChartDataLabels);
 
-// المتغيرات العامة
-let map = null;
-let polygonLayer = null;
-let rawData = [];
-let visibleMunicipalities = [];
-let chart = null;
-let allMunicipalities = new Set();
-let isCompareVisible = false;
-let exportMap = null;
-let exportLayer = null;
+let map = null, polygonLayer = null, rawData = [], visibleMunicipalities = [], chart = null, allMunicipalities = new Set(), isCompareVisible = false;
+let draggedLabel = null, dragOffset = { x: 0, y: 0 };
 
-// ألوان البلديات
-const municipalityColors = [
-    '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', 
-    '#1abc9c', '#e67e22', '#34495e', '#16a085', '#c0392b',
-    '#2980b9', '#8e44ad', '#27ae60', '#f1c40f', '#e91e63'
-];
+const municipalityColors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e', '#16a085', '#c0392b', '#2980b9', '#8e44ad', '#27ae60', '#f1c40f', '#e91e63'];
 
-// أسماء الأشهر العربية والإنجليزية
 const monthNames = {
-    arabic: ['يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو', 
-             'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
-    english: ['january', 'february', 'march', 'april', 'may', 'june',
-              'july', 'august', 'september', 'october', 'november', 'december']
+    arabic: ['يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+    english: ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
 };
 
-// استخراج الربع من التاريخ
 const getQuarterFromDate = (dateStr) => {
     if (!dateStr || dateStr === 'غير معروف' || dateStr === '') return null;
-
     dateStr = String(dateStr).toLowerCase().trim();
     let month = null;
-
     for (let i = 0; i < monthNames.arabic.length; i++) {
-        if (dateStr.includes(monthNames.arabic[i].toLowerCase())) {
-            month = i + 1;
-            break;
-        }
+        if (dateStr.includes(monthNames.arabic[i].toLowerCase())) { month = i + 1; break; }
     }
-
     if (!month) {
         for (let i = 0; i < monthNames.english.length; i++) {
-            if (dateStr.includes(monthNames.english[i])) {
-                month = i + 1;
-                break;
-            }
+            if (dateStr.includes(monthNames.english[i])) { month = i + 1; break; }
         }
     }
-
     if (!month && dateStr.includes('/')) {
         const parts = dateStr.split('/');
         if (parts.length >= 2) {
-            let m1 = parseInt(parts[0]);
-            let m2 = parseInt(parts[1]);
-            if (m1 > 12 && m2 <= 12) {
-                month = m2;
-            } else {
-                month = m1;
-            }
+            let m1 = parseInt(parts[0]), m2 = parseInt(parts[1]);
+            month = (m1 > 12 && m2 <= 12) ? m2 : m1;
         }
     }
-
     if (!month && dateStr.includes('-')) {
         const parts = dateStr.split('-');
         if (parts.length >= 3) {
-            let m1 = parseInt(parts[0]);
-            let m2 = parseInt(parts[1]);
-            if (m1 > 31) {
-                month = m2;
-            } else if (m2 > 12) {
-                month = m1;
-            } else {
-                month = m1;
-            }
+            let m1 = parseInt(parts[0]), m2 = parseInt(parts[1]);
+            month = (m1 > 31) ? m2 : (m2 > 12 ? m1 : m1);
         } else if (parts.length === 2) {
             month = parseInt(parts[0]);
         }
     }
-
-    if (!month && dateStr.match(/(?:^|[^\\d])([1-9]|1[0-2])(?:[^\\d]|$)/)) {
-        const monthMatch = dateStr.match(/(?:^|[^\\d])([1-9]|1[0-2])(?:[^\\d]|$)/);
-        month = parseInt(monthMatch[1]);
+    if (!month && dateStr.match(/(?:^|[^\d])([1-9]|1[0-2])(?:[^\d]|$)/)) {
+        month = parseInt(dateStr.match(/(?:^|[^\d])([1-9]|1[0-2])(?:[^\d]|$)/)[1]);
     }
-
-    if (!month || isNaN(month) || month < 1 || month > 12) {
-        console.log('⚠️ لم يتم التعرف على الشهر:', dateStr);
-        return null;
-    }
-
-    if (month >= 1 && month <= 3) return 'Q1';
-    if (month >= 4 && month <= 6) return 'Q2';
-    if (month >= 7 && month <= 9) return 'Q3';
-    if (month >= 10 && month <= 12) return 'Q4';
-
-    return null;
+    if (!month || isNaN(month) || month < 1 || month > 12) return null;
+    if (month <= 3) return 'Q1';
+    if (month <= 6) return 'Q2';
+    if (month <= 9) return 'Q3';
+    return 'Q4';
 };
 
-// تهيئة الخريطة
 function initMap() {
     const mapElement = document.getElementById('map');
-    if (!mapElement) {
-        console.error('عنصر الخريطة غير موجود!');
-        return;
-    }
-
-    map = L.map('map', {
-        zoomControl: false,
-        attributionControl: false,
-        preferCanvas: true
-    }).setView([24.7136, 46.6753], 6);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
-
+    if (!mapElement) return;
+    map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true }).setView([24.7136, 46.6753], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
     polygonLayer = L.layerGroup().addTo(map);
-    console.log('✅ تم تهيئة الخريطة بنجاح');
 }
 
-// تحميل Excel
 function loadExcel() {
     const file = document.getElementById("file").files[0];
     if (!file) { alert('الرجاء اختيار ملف'); return; }
-
     const reader = new FileReader();
     reader.onload = e => {
         const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-
-        console.log('📅 عينة من التواريخ في الملف:');
-        for (let i = 1; i < Math.min(6, rows.length); i++) {
-            console.log(`   صف ${i}:`, rows[i][4], '-> الربع:', getQuarterFromDate(rows[i][4]));
-        }
-
         processRows(rows);
     };
     reader.readAsArrayBuffer(file);
 }
 
-// معالجة البيانات
 function processRows(rows) {
     rawData = [];
     allMunicipalities.clear();
@@ -750,67 +475,33 @@ function processRows(rows) {
     for (let i = 1; i < rows.length; i++) {
         let r = rows[i];
         if (!r || r.length < 3) continue;
-
-        let lng = parseFloat(r[0]);
-        let lat = parseFloat(r[1]);
+        let lng = parseFloat(r[0]), lat = parseFloat(r[1]);
         let name = String(r[2] || "غير معروف").trim();
         let muni = String(r[3] || "غير محدد").trim();
         let date = r[4];
-        let category = String(r[5] || "غير محدد").trim();
         let satisfaction = String(r[6] || "").trim();
-
         if (isNaN(lat) || isNaN(lng)) continue;
-
         if (typeof date === 'number') {
             const excelEpoch = new Date(1899, 11, 30);
-            const dateObj = new Date(excelEpoch.getTime() + date * 24 * 60 * 60 * 1000);
-            date = dateObj.getMonth() + 1;
+            date = new Date(excelEpoch.getTime() + date * 24 * 60 * 60 * 1000).getMonth() + 1;
         }
-
         allMunicipalities.add(muni);
         const quarter = getQuarterFromDate(date);
         const key = name + "||" + muni;
-
         if (!districtMap[key]) {
-            districtMap[key] = {
-                name: name,
-                municipality: muni,
-                lat: lat,
-                lng: lng,
-                totalCount: 0,
-                quarters: { Q1: 0, Q2: 0, Q3: 0, Q4: 0 },
-                categories: new Set(),
-                satisfaction: { satisfied: 0, unsatisfied: 0 }
-            };
+            districtMap[key] = { name: name, municipality: muni, lat: lat, lng: lng, totalCount: 0, quarters: { Q1: 0, Q2: 0, Q3: 0, Q4: 0 }, satisfaction: { satisfied: 0, unsatisfied: 0 } };
         }
-
         districtMap[key].totalCount++;
-        if (quarter) {
-            districtMap[key].quarters[quarter]++;
-            quarterCounts[quarter]++;
-        } else {
-            quarterCounts.unknown++;
-        }
-        districtMap[key].categories.add(category);
-        
-        if (satisfaction.includes('راضي') && !satisfaction.includes('غير')) {
-            districtMap[key].satisfaction.satisfied++;
-        } else if (satisfaction.includes('غير')) {
-            districtMap[key].satisfaction.unsatisfied++;
-        }
+        if (quarter) { districtMap[key].quarters[quarter]++; quarterCounts[quarter]++; }
+        else { quarterCounts.unknown++; }
+        if (satisfaction.includes('راضي') && !satisfaction.includes('غير')) districtMap[key].satisfaction.satisfied++;
+        else if (satisfaction.includes('غير')) districtMap[key].satisfaction.unsatisfied++;
     }
 
     const muniMap = {};
     Object.values(districtMap).forEach(d => {
         if (!muniMap[d.municipality]) {
-            muniMap[d.municipality] = {
-                name: d.municipality,
-                districts: [],
-                totalCount: 0,
-                quarters: { Q1: 0, Q2: 0, Q3: 0, Q4: 0 },
-                points: [],
-                satisfaction: { Q1: {satisfied: 0, unsatisfied: 0}, Q2: {satisfied: 0, unsatisfied: 0}, Q3: {satisfied: 0, unsatisfied: 0}, Q4: {satisfied: 0, unsatisfied: 0} }
-            };
+            muniMap[d.municipality] = { name: d.municipality, districts: [], totalCount: 0, quarters: { Q1: 0, Q2: 0, Q3: 0, Q4: 0 }, points: [], satisfaction: { Q1: {satisfied: 0, unsatisfied: 0}, Q2: {satisfied: 0, unsatisfied: 0}, Q3: {satisfied: 0, unsatisfied: 0}, Q4: {satisfied: 0, unsatisfied: 0} } };
         }
         muniMap[d.municipality].districts.push(d);
         muniMap[d.municipality].totalCount += d.totalCount;
@@ -819,23 +510,10 @@ function processRows(rows) {
         muniMap[d.municipality].quarters.Q3 += d.quarters.Q3;
         muniMap[d.municipality].quarters.Q4 += d.quarters.Q4;
         muniMap[d.municipality].points.push([d.lng, d.lat]);
-        
-        if (d.quarters.Q1 > 0) {
-            muniMap[d.municipality].satisfaction.Q1.satisfied += d.satisfaction.satisfied;
-            muniMap[d.municipality].satisfaction.Q1.unsatisfied += d.satisfaction.unsatisfied;
-        }
-        if (d.quarters.Q2 > 0) {
-            muniMap[d.municipality].satisfaction.Q2.satisfied += d.satisfaction.satisfied;
-            muniMap[d.municipality].satisfaction.Q2.unsatisfied += d.satisfaction.unsatisfied;
-        }
-        if (d.quarters.Q3 > 0) {
-            muniMap[d.municipality].satisfaction.Q3.satisfied += d.satisfaction.satisfied;
-            muniMap[d.municipality].satisfaction.Q3.unsatisfied += d.satisfaction.unsatisfied;
-        }
-        if (d.quarters.Q4 > 0) {
-            muniMap[d.municipality].satisfaction.Q4.satisfied += d.satisfaction.satisfied;
-            muniMap[d.municipality].satisfaction.Q4.unsatisfied += d.satisfaction.unsatisfied;
-        }
+        if (d.quarters.Q1 > 0) { muniMap[d.municipality].satisfaction.Q1.satisfied += d.satisfaction.satisfied; muniMap[d.municipality].satisfaction.Q1.unsatisfied += d.satisfaction.unsatisfied; }
+        if (d.quarters.Q2 > 0) { muniMap[d.municipality].satisfaction.Q2.satisfied += d.satisfaction.satisfied; muniMap[d.municipality].satisfaction.Q2.unsatisfied += d.satisfaction.unsatisfied; }
+        if (d.quarters.Q3 > 0) { muniMap[d.municipality].satisfaction.Q3.satisfied += d.satisfaction.satisfied; muniMap[d.municipality].satisfaction.Q3.unsatisfied += d.satisfaction.unsatisfied; }
+        if (d.quarters.Q4 > 0) { muniMap[d.municipality].satisfaction.Q4.satisfied += d.satisfaction.satisfied; muniMap[d.municipality].satisfaction.Q4.unsatisfied += d.satisfaction.unsatisfied; }
     });
 
     Object.values(muniMap).forEach(m => {
@@ -845,381 +523,221 @@ function processRows(rows) {
     });
 
     rawData = Object.values(muniMap).sort((a, b) => b.totalCount - a.totalCount);
-
     fillSelect("municipalityFilter", allMunicipalities);
-
     document.getElementById("totalReports").textContent = rawData.reduce((s, d) => s + d.totalCount, 0).toLocaleString();
     document.getElementById("totalMunicipalities").textContent = rawData.length.toLocaleString();
     document.getElementById("totalDistricts").textContent = Object.keys(districtMap).length.toLocaleString();
     document.getElementById("avgReports").textContent = Math.round(rawData.reduce((s, d) => s + d.totalCount, 0) / rawData.length).toLocaleString();
     document.getElementById("topMunicipality").textContent = rawData[0]?.name || "-";
-
-    console.log('📊 توزيع الأرباع:', quarterCounts);
-    showNotification(`✅ تم تحميل ${rawData.length} بلدية | Q1: ${quarterCounts.Q1}, Q2: ${quarterCounts.Q2}, Q3: ${quarterCounts.Q3}, Q4: ${quarterCounts.Q4}`);
-
-    if (quarterCounts.unknown > 0) {
-        console.warn(`⚠️ ${quarterCounts.unknown} بلاغ بدون ربع محدد`);
-    }
-
+    showNotification(`✅ تم تحميل ${rawData.length} بلدية`);
     applyCurrentFilter();
 }
 
-// ملء القائمة المنسدلة
 function fillSelect(id, set) {
     let el = document.getElementById(id);
     el.innerHTML = '<option value="all">' + (id === 'municipalityFilter' ? '🏛️ كل البلديات' : '📅 كل الأشهر') + '</option>';
-    [...set].sort().forEach(v => {
-        el.innerHTML += `<option value="${v}">${v}</option>`;
-    });
+    [...set].sort().forEach(v => { el.innerHTML += `<option value="${v}">${v}</option>`; });
 }
 
-// تطبيق الفلتر
 function applyCurrentFilter() {
     const quarter = document.getElementById("quarterFilter").value;
     const muni = document.getElementById("municipalityFilter").value;
     const top = document.getElementById("filterSelect").value;
     const search = document.getElementById("searchBox").value.toLowerCase();
-
     const quarterNames = { 'all': 'الكل', 'Q1': 'الربع الأول', 'Q2': 'الربع الثاني', 'Q3': 'الربع الثالث', 'Q4': 'الربع الرابع' };
     document.getElementById("currentQuarterBadge").textContent = quarterNames[quarter] || quarter;
-
-    let filtered = rawData.filter(d =>
-        (muni === "all" || d.name === muni) &&
-        d.name.toLowerCase().includes(search)
-    );
-
+    let filtered = rawData.filter(d => (muni === "all" || d.name === muni) && d.name.toLowerCase().includes(search));
     if (quarter !== "all") {
         filtered.sort((a, b) => b.quarters[quarter] - a.quarters[quarter]);
         filtered = filtered.filter(d => d.quarters[quarter] > 0);
     }
-
     visibleMunicipalities = filtered.slice(0, top === "all" ? Infinity : parseInt(top));
-
     drawMap(muni !== "all");
     drawChart();
     buildExport();
-    
-    if (isCompareVisible) {
-        updateQuarterComparison();
-    }
+    if (isCompareVisible) updateQuarterComparison();
 }
 
-// إنشاء مضلع من النقاط (Convex Hull)
 function createPolygonFromPoints(points, color) {
     if (points.length < 3) {
         const center = points.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]], [0, 0]);
-        center[0] /= points.length;
-        center[1] /= points.length;
+        center[0] /= points.length; center[1] /= points.length;
         const radius = 0.01;
         const circlePoints = [];
         for (let i = 0; i < 36; i++) {
             const angle = (i * 10) * Math.PI / 180;
-            circlePoints.push([
-                center[0] + radius * Math.cos(angle),
-                center[1] + radius * Math.sin(angle)
-            ]);
+            circlePoints.push([center[0] + radius * Math.cos(angle), center[1] + radius * Math.sin(angle)]);
         }
-        return L.polygon(circlePoints.map(p => [p[1], p[0]]), {
-            color: color,
-            fillColor: color,
-            fillOpacity: 0.3,
-            weight: 3
-        });
+        return L.polygon(circlePoints.map(p => [p[1], p[0]]), { color: color, fillColor: color, fillOpacity: 0.3, weight: 3 });
     }
-
     try {
         const pointsCollection = turf.points(points);
         const hull = turf.convex(pointsCollection);
-
         if (hull) {
             const coords = hull.geometry.coordinates[0].map(c => [c[1], c[0]]);
-            return L.polygon(coords, {
-                color: color,
-                fillColor: color,
-                fillOpacity: 0.3,
-                weight: 3,
-                className: 'municipality-polygon'
-            });
+            return L.polygon(coords, { color: color, fillColor: color, fillOpacity: 0.3, weight: 3 });
         }
-    } catch (e) {
-        console.warn('خطأ في إنشاء المضلع:', e);
-    }
+    } catch (e) {}
+    const lats = points.map(p => p[1]), lngs = points.map(p => p[0]);
+    const bounds = [[Math.min(...lats) - 0.01, Math.min(...lngs) - 0.01], [Math.max(...lats) + 0.01, Math.max(...lngs) + 0.01]];
+    return L.rectangle(bounds, { color: color, fillColor: color, fillOpacity: 0.3, weight: 3 });
+}
 
-    const lats = points.map(p => p[1]);
-    const lngs = points.map(p => p[0]);
-    const bounds = [
-        [Math.min(...lats) - 0.01, Math.min(...lngs) - 0.01],
-        [Math.max(...lats) + 0.01, Math.max(...lngs) + 0.01]
-    ];
-    return L.rectangle(bounds, {
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.3,
-        weight: 3
+function makeLabelDraggable(labelElement) {
+    let isDragging = false;
+    let startX, startY, initialLeft, initialTop;
+
+    labelElement.addEventListener('mousedown', function(e) {
+        isDragging = true;
+        labelElement.classList.add('dragging');
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = labelElement.getBoundingClientRect();
+        const parentRect = labelElement.offsetParent.getBoundingClientRect();
+        initialLeft = labelElement.offsetLeft;
+        initialTop = labelElement.offsetTop;
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        labelElement.style.left = (initialLeft + dx) + 'px';
+        labelElement.style.top = (initialTop + dy) + 'px';
+        labelElement.style.position = 'absolute';
+    });
+
+    document.addEventListener('mouseup', function() {
+        if (isDragging) {
+            isDragging = false;
+            labelElement.classList.remove('dragging');
+        }
+    });
+
+    // Touch support for mobile
+    labelElement.addEventListener('touchstart', function(e) {
+        isDragging = true;
+        labelElement.classList.add('dragging');
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        initialLeft = labelElement.offsetLeft;
+        initialTop = labelElement.offsetTop;
+    });
+
+    document.addEventListener('touchmove', function(e) {
+        if (!isDragging) return;
+        const touch = e.touches[0];
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+        labelElement.style.left = (initialLeft + dx) + 'px';
+        labelElement.style.top = (initialTop + dy) + 'px';
+        labelElement.style.position = 'absolute';
+    });
+
+    document.addEventListener('touchend', function() {
+        if (isDragging) {
+            isDragging = false;
+            labelElement.classList.remove('dragging');
+        }
     });
 }
 
-// رسم الخريطة
-function drawMap(showTable = false) {
+function drawMap(showTable) {
     if (!polygonLayer) return;
-
     polygonLayer.clearLayers();
-
     if (visibleMunicipalities.length === 0) return;
-
     const quarter = document.getElementById("quarterFilter").value;
+    
+    // Show drag hint
+    document.getElementById('dragHint').style.display = 'block';
+    setTimeout(() => {
+        document.getElementById('dragHint').style.display = 'none';
+    }, 5000);
 
     visibleMunicipalities.forEach(muni => {
         const count = quarter === "all" ? muni.totalCount : muni.quarters[quarter];
-
         const polygon = createPolygonFromPoints(muni.points, muni.color);
         polygon.addTo(polygonLayer);
-
-        const lats = muni.points.map(p => p[1]);
-        const lngs = muni.points.map(p => p[0]);
+        const lats = muni.points.map(p => p[1]), lngs = muni.points.map(p => p[0]);
         const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
         const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
-
-        if (showTable) {
-            let sortedDistricts = [...muni.districts];
-            if (quarter !== "all") {
-                sortedDistricts.sort((a, b) => b.quarters[quarter] - a.quarters[quarter]);
+        const labelHtml = `<div class="municipality-simple-label" id="label-${muni.name.replace(/\s/g, '-')}"><div class="muni-name">${muni.name}</div><div class="muni-count">${count.toLocaleString()} بلاغ</div></div>`;
+        const marker = L.marker([centerLat, centerLng], { 
+            icon: L.divIcon({ 
+                className: 'municipality-simple-label-icon', 
+                html: labelHtml, 
+                iconSize: [140, 60], 
+                iconAnchor: [70, 30] 
+            }),
+            draggable: true
+        }).addTo(polygonLayer);
+        
+        // Make draggable after a short delay to ensure DOM is ready
+        setTimeout(() => {
+            const labelEl = document.getElementById(`label-${muni.name.replace(/\s/g, '-')}`);
+            if (labelEl) {
+                makeLabelDraggable(labelEl);
             }
-            const top4 = sortedDistricts.slice(0, 4);
-
-            let tableHtml = `
-                <table class="muni-table">
-                    <tr>
-                        <th>الحي</th>
-                        <th>البلاغات</th>
-                    </tr>
-            `;
-
-            top4.forEach((d, i) => {
-                const dCount = quarter === "all" ? d.totalCount : d.quarters[quarter];
-                tableHtml += `
-                    <tr>
-                        <td><span class="rank">${i + 1}</span>${d.name}</td>
-                        <td>${dCount}</td>
-                    </tr>
-                `;
-            });
-            tableHtml += '</table>';
-
-            const quarterLabel = quarter !== "all" ? `<div style="font-size:11px;color:#666;margin-bottom:5px;">${quarter}</div>` : '';
-            const labelHtml = `
-                <div class="municipality-label">
-                    <h4>${muni.name}</h4>
-                    ${quarterLabel}
-                    <div style="font-size:18px;color:${muni.color};margin-bottom:8px;font-weight:bold;">
-                        ${count.toLocaleString()} بلاغ
-                    </div>
-                    ${tableHtml}
-                </div>
-            `;
-
-            const label = L.marker([centerLat, centerLng], {
-                icon: L.divIcon({
-                    className: 'municipality-label-icon',
-                    html: labelHtml,
-                    iconSize: [200, 150],
-                    iconAnchor: [100, 75]
-                })
-            }).addTo(polygonLayer);
-        } else {
-            const labelHtml = `
-                <div class="municipality-simple-label">
-                    <div class="muni-name">${muni.name}</div>
-                    <div class="muni-count">${count.toLocaleString()} بلاغ</div>
-                </div>
-            `;
-
-            const label = L.marker([centerLat, centerLng], {
-                icon: L.divIcon({
-                    className: 'municipality-simple-label-icon',
-                    html: labelHtml,
-                    iconSize: [140, 60],
-                    iconAnchor: [70, 30]
-                })
-            }).addTo(polygonLayer);
-        }
-
-        const popupContent = `
-            <div style="min-width:250px;">
-                <div style="background:${muni.color};color:white;padding:10px;border-radius:8px 8px 0 0;margin:-10px -10px 10px -10px;font-weight:bold;">
-                    ${muni.name}
-                </div>
-                <div style="font-size:16px;margin-bottom:10px;text-align:center;">
-                    <strong>${count.toLocaleString()}</strong> بلاغ
-                </div>
-                <div style="margin-bottom:5px;"><strong>Q1:</strong> ${muni.quarters.Q1}</div>
-                <div style="margin-bottom:5px;"><strong>Q2:</strong> ${muni.quarters.Q2}</div>
-                <div style="margin-bottom:5px;"><strong>Q3:</strong> ${muni.quarters.Q3}</div>
-                <div><strong>Q4:</strong> ${muni.quarters.Q4}</div>
-            </div>
-        `;
-
-        polygon.bindPopup(popupContent);
+        }, 100);
     });
-
+    
     if (visibleMunicipalities.length > 0 && map) {
         const allPoints = visibleMunicipalities.flatMap(m => m.points.map(p => [p[1], p[0]]));
-        if (allPoints.length > 0) {
-            map.fitBounds(allPoints, { padding: [100, 100], maxZoom: 12 });
-        }
+        if (allPoints.length > 0) map.fitBounds(allPoints, { padding: [100, 100], maxZoom: 12 });
     }
 }
 
-// رسم المخطط (حسب البلديات)
 function drawChart() {
     if (chart) chart.destroy();
-
     const ctx = document.getElementById("chart").getContext("2d");
     const quarter = document.getElementById("quarterFilter").value;
-
     const labels = visibleMunicipalities.map(m => m.name);
     const data = visibleMunicipalities.map(m => quarter === "all" ? m.totalCount : m.quarters[quarter]);
     const colors = visibleMunicipalities.map(m => m.color);
-
     const canvasHeight = Math.max(400, labels.length * 50);
     document.getElementById("chart").height = canvasHeight;
     document.getElementById("chartWrapper").style.height = canvasHeight + 'px';
-
     chart = new Chart(ctx, {
         type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: colors,
-                borderRadius: 8,
-                borderSkipped: false,
-                barThickness: 30
-            }]
-        },
+        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderRadius: 8, borderSkipped: false, barThickness: 30 }] },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            indexAxis: 'y',
-            plugins: {
-                legend: { display: false },
-                datalabels: {
-                    anchor: 'end',
-                    align: 'right',
-                    color: '#333',
-                    font: { weight: 'bold', size: 12 },
-                    formatter: (value) => value.toLocaleString(),
-                    offset: 5
-                }
-            },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: { callback: function(value) { return value.toLocaleString(); } }
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: { font: { size: 12, weight: '600' }, autoSkip: false }
-                }
-            },
-            onClick: (e, elements) => {
-                if (elements.length > 0 && map) {
-                    const muni = visibleMunicipalities[elements[0].index];
-                    const lats = muni.points.map(p => p[1]);
-                    const lngs = muni.points.map(p => p[0]);
-                    const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
-                    const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
-                    map.flyTo([centerLat, centerLng], 13, { duration: 1.5 });
-                }
-            }
+            responsive: true, maintainAspectRatio: false, animation: false, indexAxis: 'y',
+            plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'right', color: '#333', font: { weight: 'bold', size: 12 }, formatter: (value) => value.toLocaleString(), offset: 5 } },
+            scales: { x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { callback: function(value) { return value.toLocaleString(); } } }, y: { grid: { display: false }, ticks: { font: { size: 12, weight: '600' }, autoSkip: false } } }
         }
     });
 }
 
-// تحديث مقارنة الأرباع
 function updateQuarterComparison() {
     const container = document.getElementById("quarterComparison");
-    
     const totals = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
-    const satisfactionTotals = {
-        Q1: { satisfied: 0, unsatisfied: 0 },
-        Q2: { satisfied: 0, unsatisfied: 0 },
-        Q3: { satisfied: 0, unsatisfied: 0 },
-        Q4: { satisfied: 0, unsatisfied: 0 }
-    };
-
+    const satisfactionTotals = { Q1: { satisfied: 0, unsatisfied: 0 }, Q2: { satisfied: 0, unsatisfied: 0 }, Q3: { satisfied: 0, unsatisfied: 0 }, Q4: { satisfied: 0, unsatisfied: 0 } };
     rawData.forEach(m => {
-        totals.Q1 += m.quarters.Q1;
-        totals.Q2 += m.quarters.Q2;
-        totals.Q3 += m.quarters.Q3;
-        totals.Q4 += m.quarters.Q4;
-        
-        satisfactionTotals.Q1.satisfied += m.satisfaction.Q1.satisfied;
-        satisfactionTotals.Q1.unsatisfied += m.satisfaction.Q1.unsatisfied;
-        satisfactionTotals.Q2.satisfied += m.satisfaction.Q2.satisfied;
-        satisfactionTotals.Q2.unsatisfied += m.satisfaction.Q2.unsatisfied;
-        satisfactionTotals.Q3.satisfied += m.satisfaction.Q3.satisfied;
-        satisfactionTotals.Q3.unsatisfied += m.satisfaction.Q3.unsatisfied;
-        satisfactionTotals.Q4.satisfied += m.satisfaction.Q4.satisfied;
-        satisfactionTotals.Q4.unsatisfied += m.satisfaction.Q4.unsatisfied;
+        totals.Q1 += m.quarters.Q1; totals.Q2 += m.quarters.Q2; totals.Q3 += m.quarters.Q3; totals.Q4 += m.quarters.Q4;
+        satisfactionTotals.Q1.satisfied += m.satisfaction.Q1.satisfied; satisfactionTotals.Q1.unsatisfied += m.satisfaction.Q1.unsatisfied;
+        satisfactionTotals.Q2.satisfied += m.satisfaction.Q2.satisfied; satisfactionTotals.Q2.unsatisfied += m.satisfaction.Q2.unsatisfied;
+        satisfactionTotals.Q3.satisfied += m.satisfaction.Q3.satisfied; satisfactionTotals.Q3.unsatisfied += m.satisfaction.Q3.unsatisfied;
+        satisfactionTotals.Q4.satisfied += m.satisfaction.Q4.satisfied; satisfactionTotals.Q4.unsatisfied += m.satisfaction.Q4.unsatisfied;
     });
-
-    const quarters = [
-        { key: 'Q1', name: 'الربع الأول', color: '#e74c3c' },
-        { key: 'Q2', name: 'الربع الثاني', color: '#f39c12' },
-        { key: 'Q3', name: 'الربع الثالث', color: '#27ae60' },
-        { key: 'Q4', name: 'الربع الرابع', color: '#3498db' }
-    ];
-
+    const quarters = [{ key: 'Q1', name: 'الربع الأول', color: '#e74c3c' }, { key: 'Q2', name: 'الربع الثاني', color: '#f39c12' }, { key: 'Q3', name: 'الربع الثالث', color: '#27ae60' }, { key: 'Q4', name: 'الربع الرابع', color: '#3498db' }];
     const maxTotal = Math.max(...Object.values(totals), 1);
     const months = ['يناير-مارس', 'إبريل-يونيو', 'يوليو-سبتمبر', 'أكتوبر-ديسمبر'];
-
     container.innerHTML = quarters.map((q, i) => {
         const total = totals[q.key];
         const prevTotal = i > 0 ? totals[quarters[i - 1].key] : total;
         const trend = total > prevTotal ? 'up' : total < prevTotal ? 'down' : 'same';
-        
         const sat = satisfactionTotals[q.key];
         const totalSat = sat.satisfied + sat.unsatisfied;
         const satisfiedPercent = totalSat > 0 ? Math.round((sat.satisfied / totalSat) * 100) : 0;
         const unsatisfiedPercent = totalSat > 0 ? Math.round((sat.unsatisfied / totalSat) * 100) : 0;
-
-        return `
-            <div class="quarter-card ${q.key.toLowerCase()}">
-                <div class="quarter-title">${q.name}</div>
-                <div class="quarter-months">${months[i]}</div>
-                <div class="quarter-value" style="color:${q.color};">${total.toLocaleString()}</div>
-                <div style="margin:10px 0;background:#eee;height:8px;border-radius:4px;overflow:hidden;">
-                    <div style="width:${(total / maxTotal * 100)}%;height:100%;background:${q.color};"></div>
-                </div>
-                <span class="quarter-trend ${trend === 'up' ? 'trend-up' : 'trend-down'}">
-                    ${trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} 
-                    ${trend === 'up' ? 'ارتفاع' : trend === 'down' ? 'انخفاض' : 'ثبات'}
-                </span>
-                
-                <div class="satisfaction-boxes">
-                    <div class="satisfaction-box satisfied">
-                        <div class="label">راضي</div>
-                        <div class="percentage">${satisfiedPercent}%</div>
-                        <div class="count">(${sat.satisfied})</div>
-                    </div>
-                    <div class="satisfaction-box unsatisfied">
-                        <div class="label">غير راضي</div>
-                        <div class="percentage">${unsatisfiedPercent}%</div>
-                        <div class="count">(${sat.unsatisfied})</div>
-                    </div>
-                </div>
-            </div>
-        `;
+        return `<div class="quarter-card ${q.key.toLowerCase()}"><div class="quarter-title">${q.name}</div><div class="quarter-months">${months[i]}</div><div class="quarter-value" style="color:${q.color};">${total.toLocaleString()}</div><div style="margin:10px 0;background:#eee;height:8px;border-radius:4px;overflow:hidden;"><div style="width:${(total / maxTotal * 100)}%;height:100%;background:${q.color};"></div></div><span class="quarter-trend ${trend === 'up' ? 'trend-up' : 'trend-down'}">${trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} ${trend === 'up' ? 'ارتفاع' : trend === 'down' ? 'انخفاض' : 'ثبات'}</span><div class="satisfaction-boxes"><div class="satisfaction-box satisfied"><div class="label">راضي</div><div class="percentage">${satisfiedPercent}%</div><div class="count">(${sat.satisfied})</div></div><div class="satisfaction-box unsatisfied"><div class="label">غير راضي</div><div class="percentage">${unsatisfiedPercent}%</div><div class="count">(${sat.unsatisfied})</div></div></div></div>`;
     }).join('');
 }
 
-// إظهار/إخفاء مقارنة الأرباع
 function showQuarterComparison() {
     const section = document.getElementById("compareSection");
-    
     if (!isCompareVisible) {
         section.style.display = "block";
         isCompareVisible = true;
@@ -1231,21 +749,15 @@ function showQuarterComparison() {
     }
 }
 
-// تصدير Excel
 let exportRows = [];
 function buildExport() {
     const quarter = document.getElementById("quarterFilter").value;
     exportRows = [["البلدية", "إجمالي البلاغات", "Q1", "Q2", "Q3", "Q4", "عدد الأحياء", "أعلى 4 أحياء"]];
     visibleMunicipalities.forEach(m => {
         let sortedDistricts = [...m.districts];
-        if (quarter !== "all") {
-            sortedDistricts.sort((a, b) => b.quarters[quarter] - a.quarters[quarter]);
-        }
+        if (quarter !== "all") sortedDistricts.sort((a, b) => b.quarters[quarter] - a.quarters[quarter]);
         const top4 = sortedDistricts.slice(0, 4);
-        const top4Names = top4.map((d, i) => {
-            const count = quarter === "all" ? d.totalCount : d.quarters[quarter];
-            return `${i+1}. ${d.name} (${count})`;
-        }).join(" | ");
+        const top4Names = top4.map((d, i) => { const count = quarter === "all" ? d.totalCount : d.quarters[quarter]; return `${i+1}. ${d.name} (${count})`; }).join(" | ");
         exportRows.push([m.name, m.totalCount, m.quarters.Q1, m.quarters.Q2, m.quarters.Q3, m.quarters.Q4, m.districts.length, top4Names]);
     });
 }
@@ -1258,158 +770,158 @@ function exportExcel() {
     XLSX.writeFile(wb, "تحليل_البلديات_الربع_سنوي.xlsx");
 }
 
-// تصدير السلايد (1920x1080) - إنشاء حاوية منفصلة
 async function exportSlide() {
-    showNotification('⏳ جاري إعداد السلايد...');
-    
+    showNotification('⏳ جاري تصدير السلايد...');
     try {
         const exportContainer = document.getElementById('slideExportContainer');
-        
-        // إفراغ الحاوية
         exportContainer.innerHTML = '';
         exportContainer.style.display = 'flex';
+
+        // Create layout structure
+        const topSection = document.createElement('div');
+        topSection.className = 'top-section';
         
-        // نسخ البطاقات (اليسار)
+        const bottomSection = document.createElement('div');
+        bottomSection.className = 'bottom-section';
+
+        // Stats section (left side)
         const statsClone = document.getElementById('statsSection').cloneNode(true);
         statsClone.id = 'exportStatsSection';
-        exportContainer.appendChild(statsClone);
-        
-        // إنشاء خريطة جديدة للتصدير (اليمين)
+        topSection.appendChild(statsClone);
+
+        // Map section (right side)
         const mapWrapper = document.createElement('div');
         mapWrapper.className = 'map-wrapper';
-        mapWrapper.id = 'exportMapWrapper';
-        
         const mapDiv = document.createElement('div');
         mapDiv.id = 'exportMap';
         mapDiv.style.width = '100%';
         mapDiv.style.height = '100%';
-        
         mapWrapper.appendChild(mapDiv);
-        exportContainer.appendChild(mapWrapper);
-        
-        // إنشاء خريطة Leaflet جديدة
-        exportMap = L.map('exportMap', {
-            zoomControl: false,
-            attributionControl: false,
-            preferCanvas: true
-        });
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19
-        }).addTo(exportMap);
-        
-        exportLayer = L.layerGroup().addTo(exportMap);
-        
-        // رسم المضلعات على الخريطة الجديدة
+        topSection.appendChild(mapWrapper);
+
+        // Quarter comparison (bottom)
+        const quarterSection = document.createElement('div');
+        quarterSection.innerHTML = `
+            <div class="card-title">📊 مقارنة الأداء الربع سنوي</div>
+            <div class="compare-section" id="exportQuarterComparison"></div>
+        `;
+        bottomSection.appendChild(quarterSection);
+
+        exportContainer.appendChild(topSection);
+        exportContainer.appendChild(bottomSection);
+
+        // Initialize export map
+        const exportMap = L.map('exportMap', { zoomControl: false, attributionControl: false, preferCanvas: true });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(exportMap);
+        const exportLayer = L.layerGroup().addTo(exportMap);
+
         const quarter = document.getElementById("quarterFilter").value;
         
+        // Draw polygons and labels on export map
         visibleMunicipalities.forEach(muni => {
             const count = quarter === "all" ? muni.totalCount : muni.quarters[quarter];
             
-            // إنشاء المضلع
+            // Draw polygon
             if (muni.points.length >= 3) {
                 try {
                     const pointsCollection = turf.points(muni.points);
                     const hull = turf.convex(pointsCollection);
                     if (hull) {
                         const coords = hull.geometry.coordinates[0].map(c => [c[1], c[0]]);
-                        L.polygon(coords, {
-                            color: muni.color,
-                            fillColor: muni.color,
-                            fillOpacity: 0.3,
-                            weight: 3
-                        }).addTo(exportLayer);
+                        L.polygon(coords, { color: muni.color, fillColor: muni.color, fillOpacity: 0.3, weight: 3 }).addTo(exportLayer);
                     }
-                } catch (e) {
-                    // fallback
-                }
+                } catch (e) {}
             }
             
-            // إضافة الـ label
-            const lats = muni.points.map(p => p[1]);
-            const lngs = muni.points.map(p => p[0]);
+            // Draw label
+            const lats = muni.points.map(p => p[1]), lngs = muni.points.map(p => p[0]);
             const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
             const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
-            
-            const labelHtml = `
-                <div style="background:rgba(255,255,255,0.95);border:3px solid ${muni.color};border-radius:12px;padding:14px 18px;font-size:20px;font-weight:bold;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,0.3);min-width:200px;direction:rtl;">
-                    <div style="color:${muni.color};font-size:22px;margin-bottom:6px;border-bottom:2px solid ${muni.color};padding-bottom:6px;">${muni.name}</div>
-                    <div style="font-size:26px;color:#e74c3c;font-weight:bold;">${count.toLocaleString()} بلاغ</div>
-                </div>
-            `;
-            
-            L.marker([centerLat, centerLng], {
-                icon: L.divIcon({
-                    className: 'export-label',
-                    html: labelHtml,
-                    iconSize: [220, 90],
-                    iconAnchor: [110, 45]
-                })
-            }).addTo(exportLayer);
+            const labelHtml = `<div style="background:rgba(255,255,255,0.95);border:3px solid ${muni.color};border-radius:12px;padding:14px 18px;font-size:20px;font-weight:bold;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,0.3);min-width:200px;direction:rtl;"><div style="color:${muni.color};font-size:22px;margin-bottom:6px;border-bottom:2px solid ${muni.color};padding-bottom:6px;">${muni.name}</div><div style="font-size:26px;color:#e74c3c;font-weight:bold;">${count.toLocaleString()} بلاغ</div></div>`;
+            L.marker([centerLat, centerLng], { icon: L.divIcon({ className: 'export-label', html: labelHtml, iconSize: [220, 90], iconAnchor: [110, 45] }) }).addTo(exportLayer);
         });
-        
-        // ضبط إطار الخريطة
+
+        // Fit bounds
         if (visibleMunicipalities.length > 0) {
             const allPoints = visibleMunicipalities.flatMap(m => m.points.map(p => [p[1], p[0]]));
             exportMap.fitBounds(allPoints, { padding: [80, 80], maxZoom: 12 });
         }
-        
-        // انتظار تحميل الخريطة
+
+        // Update quarter comparison for export
+        const exportQuarterContainer = document.getElementById('exportQuarterComparison');
+        const totals = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+        const satisfactionTotals = { Q1: { satisfied: 0, unsatisfied: 0 }, Q2: { satisfied: 0, unsatisfied: 0 }, Q3: { satisfied: 0, unsatisfied: 0 }, Q4: { satisfied: 0, unsatisfied: 0 } };
+        rawData.forEach(m => {
+            totals.Q1 += m.quarters.Q1; totals.Q2 += m.quarters.Q2; totals.Q3 += m.quarters.Q3; totals.Q4 += m.quarters.Q4;
+            satisfactionTotals.Q1.satisfied += m.satisfaction.Q1.satisfied; satisfactionTotals.Q1.unsatisfied += m.satisfaction.Q1.unsatisfied;
+            satisfactionTotals.Q2.satisfied += m.satisfaction.Q2.satisfied; satisfactionTotals.Q2.unsatisfied += m.satisfaction.Q2.unsatisfied;
+            satisfactionTotals.Q3.satisfied += m.satisfaction.Q3.satisfied; satisfactionTotals.Q3.unsatisfied += m.satisfaction.Q3.unsatisfied;
+            satisfactionTotals.Q4.satisfied += m.satisfaction.Q4.satisfied; satisfactionTotals.Q4.unsatisfied += m.satisfaction.Q4.unsatisfied;
+        });
+        const quarters = [{ key: 'Q1', name: 'الربع الأول', color: '#e74c3c' }, { key: 'Q2', name: 'الربع الثاني', color: '#f39c12' }, { key: 'Q3', name: 'الربع الثالث', color: '#27ae60' }, { key: 'Q4', name: 'الربع الرابع', color: '#3498db' }];
+        const maxTotal = Math.max(...Object.values(totals), 1);
+        const months = ['يناير-مارس', 'إبريل-يونيو', 'يوليو-سبتمبر', 'أكتوبر-ديسمبر'];
+        exportQuarterContainer.innerHTML = quarters.map((q, i) => {
+            const total = totals[q.key];
+            const prevTotal = i > 0 ? totals[quarters[i - 1].key] : total;
+            const trend = total > prevTotal ? 'up' : total < prevTotal ? 'down' : 'same';
+            const sat = satisfactionTotals[q.key];
+            const totalSat = sat.satisfied + sat.unsatisfied;
+            const satisfiedPercent = totalSat > 0 ? Math.round((sat.satisfied / totalSat) * 100) : 0;
+            const unsatisfiedPercent = totalSat > 0 ? Math.round((sat.unsatisfied / totalSat) * 100) : 0;
+            return `<div class="quarter-card ${q.key.toLowerCase()}" style="padding: 20px;"><div class="quarter-title" style="font-size: 24px;">${q.name}</div><div class="quarter-months" style="font-size: 14px;">${months[i]}</div><div class="quarter-value" style="color:${q.color}; font-size: 36px;">${total.toLocaleString()}</div><div style="margin:15px 0;background:#eee;height:10px;border-radius:5px;overflow:hidden;"><div style="width:${(total / maxTotal * 100)}%;height:100%;background:${q.color};"></div></div><div class="satisfaction-boxes" style="margin-top: 15px;"><div class="satisfaction-box satisfied" style="padding: 10px;"><div class="label" style="font-size: 12px;">راضي</div><div class="percentage" style="font-size: 20px;">${satisfiedPercent}%</div><div class="count">(${sat.satisfied})</div></div><div class="satisfaction-box unsatisfied" style="padding: 10px;"><div class="label" style="font-size: 12px;">غير راضي</div><div class="percentage" style="font-size: 20px;">${unsatisfiedPercent}%</div><div class="count">(${sat.unsatisfied})</div></div></div></div>`;
+        }).join('');
+
+        // Wait for map to render
         await new Promise(r => setTimeout(r, 3000));
-        
         showNotification('⏳ جاري تصدير الصورة...');
-        
-        // التقاط الصورة
-        const canvas = await html2canvas(exportContainer, {
-            scale: 1,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: '#1e3c72',
-            width: 1920,
-            height: 1080,
-            logging: false
+
+        // Capture the container
+        const canvas = await html2canvas(exportContainer, { 
+            scale: 1, 
+            useCORS: true, 
+            allowTaint: true, 
+            backgroundColor: '#1e3c72', 
+            width: 1920, 
+            height: 1080, 
+            logging: false 
         });
         
-        // إخفاء الحاوية
         exportContainer.style.display = 'none';
-        
-        // إضافة عنوان
+
+        // Create final canvas with header
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
-        
         finalCanvas.width = 1920;
         finalCanvas.height = 1080;
-        
-        // خلفية متدرجة
+
+        // Background gradient
         const gradient = ctx.createLinearGradient(0, 0, 0, 1080);
         gradient.addColorStop(0, '#1e3c72');
         gradient.addColorStop(1, '#2a5298');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, 1920, 1080);
         
-        // رسم الصورة
+        // Draw captured content
         ctx.drawImage(canvas, 0, 0, 1920, 1080);
-        
-        // إضافة عنوان
+
+        // Header
         ctx.fillStyle = 'rgba(255,255,255,0.95)';
         ctx.fillRect(20, 20, 1880, 90);
-        
         ctx.fillStyle = '#1e3c72';
         ctx.font = 'bold 45px "Segoe UI",Tahoma';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
         ctx.fillText('📊 تقرير تحليل البلديات', 1860, 55);
-        
         ctx.font = '26px "Segoe UI",Tahoma';
         ctx.fillStyle = '#666';
         ctx.fillText(`${document.getElementById("currentQuarterBadge").textContent} | ${new Date().toLocaleDateString('ar-SA')}`, 1860, 95);
-        
-        // حفظ الملف
+
+        // Save
         finalCanvas.toBlob(blob => {
             saveAs(blob, `سلايد_البلديات_${new Date().toLocaleDateString('ar-SA')}.png`);
             showNotification('✅ تم تصدير السلايد! (1920×1080)');
         });
-        
     } catch (err) {
         console.error(err);
         document.getElementById('slideExportContainer').style.display = 'none';
@@ -1420,14 +932,10 @@ async function exportSlide() {
 function fitAll() {
     if (visibleMunicipalities.length === 0 || !map) return;
     const allPoints = visibleMunicipalities.flatMap(m => m.points.map(p => [p[1], p[0]]));
-    if (allPoints.length > 0) {
-        map.fitBounds(allPoints, { padding: [100, 100] });
-    }
+    if (allPoints.length > 0) map.fitBounds(allPoints, { padding: [100, 100] });
 }
 
-function clearAllData() {
-    if (confirm('هل أنت متأكد؟')) location.reload();
-}
+function clearAllData() { if (confirm('هل أنت متأكد؟')) location.reload(); }
 
 function showNotification(message) {
     const notif = document.createElement('div');
@@ -1437,25 +945,7 @@ function showNotification(message) {
     setTimeout(() => { notif.style.opacity = '0'; setTimeout(() => notif.remove(), 300); }, 3000);
 }
 
-// تهيئة عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 جاري تهيئة الخريطة...');
-    initMap();
-});
+document.addEventListener('DOMContentLoaded', function() { initMap(); });
 </script>
 </body>
-</html>'''
-
-# Save the file
-output_path = '/mnt/kimi/output/municipality_dashboard_final.html'
-with open(output_path, 'w', encoding='utf-8') as f:
-    f.write(html_content)
-
-print(f"✅ تم حفظ الملف النهائي في: {output_path}")
-print(f"📄 حجم الملف: {len(html_content)} حرف")
-print("\n🎯 الحل النهائي:")
-print("   • حاوية تصدير مخفية بحجم ثابت 1920×1080")
-print("   • الخريطة على اليمين (أكبر)")
-print("   • البطاقات على اليسار (أصغر)")
-print("   • تخطيط أفقي دائماً بغض النظر عن حجم الشاشة")
-print("   • انتظار 3 ثوانٍ لتحميل الخريطة قبل التصدير")
+</html>
