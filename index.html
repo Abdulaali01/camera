@@ -272,33 +272,6 @@ body {
 .satisfaction-box.unsatisfied .percentage { color: #dc3545; }
 .satisfaction-box .count { font-size: 10px; color: #666; margin-top: 2px; }
 
-/* Editable satisfaction inputs */
-.satisfaction-box input.percentage-input {
-    width: 40px;
-    border: 2px solid transparent;
-    background: rgba(255,255,255,0.6);
-    font-size: 16px;
-    font-weight: bold;
-    text-align: center;
-    color: inherit;
-    padding: 2px 4px;
-    margin: 0;
-    border-radius: 4px;
-    font-family: inherit;
-}
-.satisfaction-box input.percentage-input:focus {
-    outline: none;
-    background: white;
-    border-color: #1e3c72;
-}
-.satisfaction-box.satisfied input.percentage-input { color: #28a745; }
-.satisfaction-box.unsatisfied input.percentage-input { color: #dc3545; }
-
-#slideExportContainer .satisfaction-box input.percentage-input {
-    font-size: 18px;
-    width: 50px;
-}
-
 /* Slide Export Container */
 #slideExportContainer {
     position: fixed;
@@ -467,8 +440,7 @@ body {
     <button class="btn-export" onclick="exportSlide()">📸 تصدير سلايد</button>
     <button onclick="showQuarterComparison()">📊 مقارنة الأرباع</button>
     <button onclick="exportExcel()">📊 Excel</button>
-    <button onclick="resetSatisfactionValues()" style="background: #2ecc71 !important;">🔄 إعادة ضبط النسب</button>
-<button onclick="clearAllData()" style="background: #ff4757 !important;">🗑️ مسح</button>
+    <button onclick="clearAllData()" style="background: #ff4757 !important;">🗑️ مسح</button>
 </div>
 
 <div class="main-container" id="captureArea">
@@ -583,63 +555,6 @@ const getQuarterFromDate = (dateStr) => {
     if (month <= 9) return 'Q3';
     return 'Q4';
 };
-
-// Store manual satisfaction values - null means use calculated values
-let manualSatisfactionValues = { 
-    Q1: { satisfied: null, unsatisfied: null }, 
-    Q2: { satisfied: null, unsatisfied: null }, 
-    Q3: { satisfied: null, unsatisfied: null }, 
-    Q4: { satisfied: null, unsatisfied: null } 
-};
-
-function updateSatisfactionCount(quarter, type) {
-    const input = document.getElementById(`sat-${quarter}-${type}`);
-    let value = parseInt(input.value) || 0;
-    if (value < 0) value = 0;
-    if (value > 100) value = 100;
-    input.value = value;
-    manualSatisfactionValues[quarter][type] = value;
-
-    // Update the other percentage automatically to maintain 100%
-    const otherType = type === 'satisfied' ? 'unsatisfied' : 'satisfied';
-    const otherInput = document.getElementById(`sat-${quarter}-${otherType}`);
-    const otherValue = 100 - value;
-    otherInput.value = otherValue;
-    manualSatisfactionValues[quarter][otherType] = otherValue;
-}
-
-function validatePercentage(quarter) {
-    const satInput = document.getElementById(`sat-${quarter}-satisfied`);
-    const unsatInput = document.getElementById(`sat-${quarter}-unsatisfied`);
-    let sat = parseInt(satInput.value) || 0;
-    let unsat = parseInt(unsatInput.value) || 0;
-
-    // Ensure they sum to 100
-    const total = sat + unsat;
-    if (total !== 100) {
-        // Adjust the one that wasn't just edited
-        if (document.activeElement === satInput) {
-            unsat = 100 - sat;
-            unsatInput.value = unsat;
-        } else {
-            sat = 100 - unsat;
-            satInput.value = sat;
-        }
-    }
-    manualSatisfactionValues[quarter].satisfied = sat;
-    manualSatisfactionValues[quarter].unsatisfied = unsat;
-}
-
-function resetSatisfactionValues() {
-    manualSatisfactionValues = { 
-        Q1: { satisfied: null, unsatisfied: null }, 
-        Q2: { satisfied: null, unsatisfied: null }, 
-        Q3: { satisfied: null, unsatisfied: null }, 
-        Q4: { satisfied: null, unsatisfied: null } 
-    };
-    updateQuarterComparison();
-    showNotification('✅ تم إعادة ضبط النسب للقيم المحسوبة');
-}
 
 function initMap() {
     const mapElement = document.getElementById('map');
@@ -961,17 +876,9 @@ function updateQuarterComparison() {
         const trend = total > prevTotal ? 'up' : total < prevTotal ? 'down' : 'same';
         const sat = satisfactionTotals[q.key];
         const totalSat = sat.satisfied + sat.unsatisfied;
-        // Use manual values if they exist, otherwise calculate from data
-        let satisfiedPercent, unsatisfiedPercent;
-        if (manualSatisfactionValues[q.key].satisfied !== null) {
-            satisfiedPercent = manualSatisfactionValues[q.key].satisfied;
-            unsatisfiedPercent = manualSatisfactionValues[q.key].unsatisfied;
-        } else {
-            satisfiedPercent = totalSat > 0 ? Math.round((sat.satisfied / totalSat) * 100) : 0;
-            unsatisfiedPercent = totalSat > 0 ? Math.round((sat.unsatisfied / totalSat) * 100) : 0;
-        }
-
-        return `<div class="quarter-card ${q.key.toLowerCase()}"><div class="quarter-title">${q.name}</div><div class="quarter-months">${months[i]}</div><div class="quarter-value" style="color:${q.color};">${total.toLocaleString()}</div><div style="margin:10px 0;background:#eee;height:8px;border-radius:4px;overflow:hidden;"><div style="width:${(total / maxTotal * 100)}%;height:100%;background:${q.color};"></div></div><span class="quarter-trend ${trend === 'up' ? 'trend-up' : 'trend-down'}">${trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} ${trend === 'up' ? 'ارتفاع' : trend === 'down' ? 'انخفاض' : 'ثبات'}</span><div class="satisfaction-boxes"><div class="satisfaction-box satisfied"><div class="label">راضي</div><div class="percentage"><input type="number" class="percentage-input" id="sat-${q.key}-satisfied" value="${satisfiedPercent}" min="0" max="100" onchange="updateSatisfactionCount('${q.key}', 'satisfied')" onblur="validatePercentage('${q.key}')">%</div><div class="count" id="sat-${q.key}-satisfied-count">(${sat.satisfied})</div></div><div class="satisfaction-box unsatisfied"><div class="label">غير راضي</div><div class="percentage"><input type="number" class="percentage-input" id="sat-${q.key}-unsatisfied" value="${unsatisfiedPercent}" min="0" max="100" onchange="updateSatisfactionCount('${q.key}', 'unsatisfied')" onblur="validatePercentage('${q.key}')">%</div><div class="count" id="sat-${q.key}-unsatisfied-count">(${sat.unsatisfied})</div></div></div></div>`;
+        const satisfiedPercent = totalSat > 0 ? Math.round((sat.satisfied / totalSat) * 100) : 0;
+        const unsatisfiedPercent = totalSat > 0 ? Math.round((sat.unsatisfied / totalSat) * 100) : 0;
+        return `<div class="quarter-card ${q.key.toLowerCase()}"><div class="quarter-title">${q.name}</div><div class="quarter-months">${months[i]}</div><div class="quarter-value" style="color:${q.color};">${total.toLocaleString()}</div><div style="margin:10px 0;background:#eee;height:8px;border-radius:4px;overflow:hidden;"><div style="width:${(total / maxTotal * 100)}%;height:100%;background:${q.color};"></div></div><span class="quarter-trend ${trend === 'up' ? 'trend-up' : 'trend-down'}">${trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} ${trend === 'up' ? 'ارتفاع' : trend === 'down' ? 'انخفاض' : 'ثبات'}</span><div class="satisfaction-boxes"><div class="satisfaction-box satisfied"><div class="label">راضي</div><div class="percentage">${satisfiedPercent}%</div><div class="count">(${sat.satisfied})</div></div><div class="satisfaction-box unsatisfied"><div class="label">غير راضي</div><div class="percentage">${unsatisfiedPercent}%</div><div class="count">(${sat.unsatisfied})</div></div></div></div>`;
     }).join('');
 }
 
@@ -1272,16 +1179,8 @@ async function exportSlide() {
             const trend = total > prevTotal ? 'up' : total < prevTotal ? 'down' : 'same';
             const sat = satisfactionTotals[q.key];
             const totalSat = sat.satisfied + sat.unsatisfied;
-            // Use manual values if they exist, otherwise calculate from data
-            let satisfiedPercent, unsatisfiedPercent;
-            if (manualSatisfactionValues[q.key].satisfied !== null) {
-                satisfiedPercent = manualSatisfactionValues[q.key].satisfied;
-                unsatisfiedPercent = manualSatisfactionValues[q.key].unsatisfied;
-            } else {
-                satisfiedPercent = totalSat > 0 ? Math.round((sat.satisfied / totalSat) * 100) : 0;
-                unsatisfiedPercent = totalSat > 0 ? Math.round((sat.unsatisfied / totalSat) * 100) : 0;
-            }
-
+            const satisfiedPercent = totalSat > 0 ? Math.round((sat.satisfied / totalSat) * 100) : 0;
+            const unsatisfiedPercent = totalSat > 0 ? Math.round((sat.unsatisfied / totalSat) * 100) : 0;
             return `<div class="quarter-card ${q.key.toLowerCase()}" style="padding: 20px;"><div class="quarter-title" style="font-size: 18px;">${q.name}</div><div class="quarter-months" style="font-size: 12px;">${months[i]}</div><div class="quarter-value" style="color:${q.color}; font-size: 32px;">${total.toLocaleString()}</div><div style="margin:12px 0;background:#eee;height:10px;border-radius:5px;overflow:hidden;"><div style="width:${(total / maxTotal * 100)}%;height:100%;background:${q.color};"></div></div><div class="satisfaction-boxes" style="margin-top: 10px; gap: 10px;"><div class="satisfaction-box satisfied" style="padding: 10px;"><div class="label" style="font-size: 11px;">راضي</div><div class="percentage" style="font-size: 18px;">${satisfiedPercent}%</div></div><div class="satisfaction-box unsatisfied" style="padding: 10px;"><div class="label" style="font-size: 11px;">غير راضي</div><div class="percentage" style="font-size: 18px;">${unsatisfiedPercent}%</div></div></div></div>`;
         }).join('');
 
