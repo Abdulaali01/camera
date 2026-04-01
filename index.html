@@ -320,49 +320,13 @@ body {
 }
 
 #slideExportContainer .card-title {
-    font-size: 24px !important;
-    font-weight: 800 !important;
-    color: #1e3c72;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 4px solid #1e3c72;
-}
-
-#slideExportContainer .stat-item {
-    font-size: 18px !important;
-    font-weight: 700 !important;
-    padding: 12px;
-}
-
-#slideExportContainer .stat-value {
-    font-size: 22px !important;
+    font-size: 26px !important;
     font-weight: 800 !important;
 }
 
-#slideExportContainer .quarter-title {
-    font-size: 22px !important;
-    font-weight: 800 !important;
-}
-
-#slideExportContainer .quarter-value {
-    font-size: 36px !important;
-    font-weight: 900 !important;
-}
-
-#slideExportContainer .municipality-label {
-    transform: scale(1.5) !important;
-    font-weight: 800 !important;
-    box-shadow: 0 6px 25px rgba(0,0,0,0.4) !important;
-}
-
-#slideExportContainer .muni-name {
-    font-size: 18px !important;
-    font-weight: 800 !important;
-}
-
-#slideExportContainer .muni-count {
+#slideExportContainer .municipality-item {
     font-size: 20px !important;
-    font-weight: 900 !important;
+    font-weight: 800 !important;
 }
 
 #slideExportContainer .top-section {
@@ -375,7 +339,7 @@ body {
 }
 
 #slideExportContainer .combined-card {
-    flex: 0 0 30%;
+    flex: 0 0 35%;
     height: 100%;
     background: white;
     border-radius: 15px;
@@ -411,7 +375,7 @@ body {
 }
 
 #slideExportContainer .map-wrapper {
-    flex: 0 0 70%;
+    flex: 0 0 65%;
     height: 100%;
     order: 2;
     border-radius: 15px;
@@ -1074,49 +1038,41 @@ async function exportSlide() {
 
         const combinedCard = document.createElement('div');
         combinedCard.className = 'combined-card';
+        combinedCard.style.cssText = 'flex: 0 0 35%; padding: 15px; overflow: hidden;';
         
-        // Add municipality labels section at the top of combined card (RIGHT PANEL)
+        // Municipality labels section (top)
         const labelsSection = document.createElement('div');
         labelsSection.className = 'municipality-labels-section';
-        labelsSection.style.cssText = 'max-height: 250px; overflow-y: auto; padding: 15px; background: #f8f9fa; border-radius: 12px; margin-bottom: 15px; border: 3px solid #e0e0e0;';
+        labelsSection.style.cssText = 'max-height: 45%; overflow-y: auto; padding: 15px; background: #f8f9fa; border-radius: 12px; margin-bottom: 15px; border: 3px solid #1e3c72;';
         
         const quarter = document.getElementById("quarterFilter").value;
-        const muniLabelsHtml = visibleMunicipalities.map(muni => {
+        const muniLabelsHtml = visibleMunicipalities.map((muni, index) => {
             const count = quarter === "all" ? muni.totalCount : muni.quarters[quarter];
             return `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin: 6px 0; background: white; border-radius: 10px; border-right: 5px solid ${muni.color}; box-shadow: 0 3px 10px rgba(0,0,0,0.15);">
-                    <span style="font-size: 18px; font-weight: 800; color: #1e3c72;">${muni.name}</span>
+                <div class="municipality-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; margin: 6px 0; background: white; border-radius: 10px; border-right: 5px solid ${muni.color}; box-shadow: 0 3px 10px rgba(0,0,0,0.15);">
+                    <span style="font-size: 18px; font-weight: 800; color: #1e3c72;">${index + 1}. ${muni.name}</span>
                     <span style="font-size: 20px; font-weight: 900; color: #e74c3c;">${count.toLocaleString()} بلاغ</span>
                 </div>
             `;
         }).join('');
         
         labelsSection.innerHTML = `
-            <div class="card-title" style="font-size: 20px; margin-bottom: 12px; text-align: center;">🏛️ البلديات</div>
+            <div class="card-title" style="font-size: 22px; margin-bottom: 12px; text-align: center;">🏛️ البلديات</div>
             ${muniLabelsHtml}
         `;
         combinedCard.appendChild(labelsSection);
         
+        // Chart section (bottom) - NO STATS
         const chartSection = document.createElement('div');
         chartSection.className = 'chart-section';
+        chartSection.style.cssText = 'flex: 1; min-height: 0;';
         chartSection.innerHTML = `
-            <div class="card-title">📊 توزيع البلديات <span class="quarter-badge">${document.getElementById("currentQuarterBadge").textContent}</span></div>
-            <div class="chart-container">
+            <div class="card-title" style="font-size: 20px;">📊 توزيع البلديات <span class="quarter-badge">${document.getElementById("currentQuarterBadge").textContent}</span></div>
+            <div class="chart-container" style="height: calc(100% - 50px);">
                 <canvas id="exportChart"></canvas>
             </div>
         `;
         combinedCard.appendChild(chartSection);
-        
-        const statsSection = document.createElement('div');
-        statsSection.className = 'stats-section-small';
-        statsSection.innerHTML = `
-            <div class="card-title">📈 إحصائيات</div>
-            <div class="stat-item"><span>إجمالي البلاغات</span><span class="stat-value">${document.getElementById("totalReports").textContent}</span></div>
-            <div class="stat-item"><span>البلديات</span><span class="stat-value">${document.getElementById("totalMunicipalities").textContent}</span></div>
-            <div class="stat-item"><span>الأحياء</span><span class="stat-value">${document.getElementById("totalDistricts").textContent}</span></div>
-            <div class="stat-item"><span>المتوسط</span><span class="stat-value">${document.getElementById("avgReports").textContent}</span></div>
-        `;
-        combinedCard.appendChild(statsSection);
         
         topSection.appendChild(combinedCard);
 
@@ -1128,7 +1084,7 @@ async function exportSlide() {
         mapDiv.style.height = '100%';
         mapWrapper.appendChild(mapDiv);
         
-        // District table removed - only showing municipality name and count in right panel
+        // District table removed - labels shown in right panel only
         const muniFilter = document.getElementById("municipalityFilter").value;
         // Labels now shown in right panel only, not on map
         
@@ -1239,7 +1195,7 @@ async function exportSlide() {
         // Wait for map to render then add labels at stored positions
         await new Promise(r => setTimeout(r, 2000));
         
-        // Labels removed from map - now shown in right panel only
+        // Labels removed from map - shown in right panel only
         // Map section shows polygons only
 
         const exportQuarterContainer = document.getElementById('exportQuarterComparison');
