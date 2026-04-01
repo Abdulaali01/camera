@@ -67,74 +67,14 @@ body {
     overflow: hidden; 
     box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
     position: relative; 
-    flex: 1.8;
+    flex: 1.2;
     height: 100%;
     min-height: 500px;
     order: 2;
 }
 #map { height: 100%; width: 100%; z-index: 1; }
 
-/* District Table Card - Full display no scroll */
-.district-table-card {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 380px;
-    background: rgba(255,255,255,0.98);
-    border-radius: 15px;
-    padding: 15px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    z-index: 1000;
-    display: none;
-    border: 3px solid #1e3c72;
-    max-height: none;
-}
-.district-table-card.visible {
-    display: block;
-}
-.district-table-card .card-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: #1e3c72;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #1e3c72;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.district-table-card .close-btn {
-    background: #e74c3c;
-    color: white;
-    border: none;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 12px;
-}
-.district-table-card table {
-    width: 100%;
-    font-size: 12px;
-    border-collapse: collapse;
-}
-.district-table-card th {
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-    color: white;
-    padding: 6px 8px;
-    text-align: right;
-    font-size: 11px;
-}
-.district-table-card td {
-    padding: 4px 8px;
-    border-bottom: 1px solid #eee;
-    font-size: 11px;
-}
-.district-table-card tr:nth-child(even) {
-    background: #f8f9fa;
-}
-
-/* Draggable Labels */
+/* Draggable Labels - فقط في المتصفح */
 .municipality-label {
     background: rgba(255,255,255,0.95);
     border: 2px solid #1e3c72;
@@ -324,11 +264,6 @@ body {
     font-weight: 800 !important;
 }
 
-#slideExportContainer .municipality-item {
-    font-size: 20px !important;
-    font-weight: 800 !important;
-}
-
 #slideExportContainer .top-section {
     display: flex;
     flex-direction: row;
@@ -338,25 +273,17 @@ body {
     position: relative;
 }
 
-#slideExportContainer .combined-card {
-    flex: 0 0 35%;
+#slideExportContainer .chart-section {
+    flex: 0 0 45%;
     height: 100%;
     background: white;
     border-radius: 15px;
     padding: 15px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    order: 1;
     box-shadow: 0 5px 20px rgba(0,0,0,0.1);
     border: 2px solid #e0e0e0;
-}
-
-#slideExportContainer .chart-section {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
+    order: 1;
 }
 
 #slideExportContainer .chart-container {
@@ -365,17 +292,8 @@ body {
     min-height: 0;
 }
 
-#slideExportContainer .stats-section-small {
-    flex: 0 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding-top: 10px;
-    border-top: 2px solid #e0e0e0;
-}
-
 #slideExportContainer .map-wrapper {
-    flex: 0 0 65%;
+    flex: 0 0 55%;
     height: 100%;
     order: 2;
     border-radius: 15px;
@@ -383,31 +301,6 @@ body {
     box-shadow: 0 5px 20px rgba(0,0,0,0.1);
     border: 2px solid #e0e0e0;
     position: relative;
-}
-
-/* District table for export - full display */
-#slideExportContainer .district-table-card {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 400px;
-    background: rgba(255,255,255,0.98);
-    border-radius: 15px;
-    padding: 15px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    z-index: 1000;
-    border: 3px solid #1e3c72;
-    display: block;
-    max-height: none;
-}
-
-#slideExportContainer .district-table-card table {
-    font-size: 13px;
-}
-
-#slideExportContainer .district-table-card th,
-#slideExportContainer .district-table-card td {
-    padding: 5px 8px;
 }
 
 #slideExportContainer .bottom-section {
@@ -445,14 +338,12 @@ body {
     .map-wrapper { flex: none; height: 60vh; min-height: 400px; order: 1; }
     .stats-section { flex: none; min-width: auto; order: 2; }
     .compare-section { grid-template-columns: repeat(2, 1fr); }
-    .district-table-card { width: 350px; right: 10px; top: 10px; }
 }
 @media (max-width: 768px) { 
     .main-container { flex-direction: column; }
     .map-wrapper { height: 50vh; order: 1; }
     .stats-section { order: 2; }
     .compare-section { grid-template-columns: 1fr; }
-    .district-table-card { position: relative; width: 100%; right: 0; top: 0; margin-top: 10px; }
 }
 </style>
 </head>
@@ -482,7 +373,7 @@ body {
     <button onclick="showQuarterComparison()">📊 مقارنة الأرباع</button>
     <button onclick="exportExcel()">📊 Excel</button>
     <button onclick="resetSatisfactionValues()" style="background: #2ecc71 !important;">🔄 إعادة ضبط النسب</button>
-<button onclick="clearAllData()" style="background: #ff4757 !important;">🗑️ مسح</button>
+    <button onclick="clearAllData()" style="background: #ff4757 !important;">🗑️ مسح</button>
 </div>
 
 <div class="main-container" id="captureArea">
@@ -495,30 +386,11 @@ body {
                 </div>
             </div>
         </div>
-        </div>
+    </div>
     <div class="map-wrapper" id="mapSection">
         <div id="map"></div>
-        <!-- Container for draggable labels -->
+        <!-- Container for draggable labels - فقط في المتصفح -->
         <div id="labelsContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000;"></div>
-        <!-- District Table Card -->
-        <div class="district-table-card" id="districtTableCard">
-            <div class="card-title">
-                <span>📋 أحياء: <span id="selectedMuniName">-</span></span>
-                <button class="close-btn" onclick="closeDistrictTable()">×</button>
-            </div>
-            <div id="districtTableContent">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>الحي</th>
-                            <th>البلاغات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="districtTableBody"></tbody>
-                </table>
-            </div>
-        </div>
         <div class="custom-zoom">
             <button class="zoom-btn" onclick="map.zoomIn()">+</button>
             <button class="zoom-btn" onclick="map.zoomOut()">−</button>
@@ -539,7 +411,6 @@ body {
 Chart.register(ChartDataLabels);
 
 let map = null, polygonLayer = null, rawData = [], visibleMunicipalities = [], chart = null, allMunicipalities = new Set(), isCompareVisible = false;
-let currentFilteredMunicipality = null;
 let labelPositions = {}; // Store label positions: { muniName: {x, y} }
 let isDragging = false;
 let draggedLabel = null;
@@ -725,11 +596,6 @@ function processRows(rows) {
 
     rawData = Object.values(muniMap).sort((a, b) => b.totalCount - a.totalCount);
     fillSelect("municipalityFilter", allMunicipalities);
-    document.getElementById("totalReports").textContent = rawData.reduce((s, d) => s + d.totalCount, 0).toLocaleString();
-    document.getElementById("totalMunicipalities").textContent = rawData.length.toLocaleString();
-    document.getElementById("totalDistricts").textContent = Object.keys(districtMap).length.toLocaleString();
-    document.getElementById("avgReports").textContent = Math.round(rawData.reduce((s, d) => s + d.totalCount, 0) / rawData.length).toLocaleString();
-    document.getElementById("topMunicipality").textContent = rawData[0]?.name || "-";
     showNotification(`✅ تم تحميل ${rawData.length} بلدية`);
     applyCurrentFilter();
 }
@@ -738,52 +604,6 @@ function fillSelect(id, set) {
     let el = document.getElementById(id);
     el.innerHTML = '<option value="all">' + (id === 'municipalityFilter' ? '🏛️ كل البلديات' : '📅 كل الأشهر') + '</option>';
     [...set].sort().forEach(v => { el.innerHTML += `<option value="${v}">${v}</option>`; });
-}
-
-function showDistrictTable(municipality) {
-    const card = document.getElementById('districtTableCard');
-    const tbody = document.getElementById('districtTableBody');
-    const title = document.getElementById('selectedMuniName');
-    
-    if (!municipality || municipality === 'all') {
-        closeDistrictTable();
-        return;
-    }
-    
-    currentFilteredMunicipality = municipality;
-    const muniData = rawData.find(m => m.name === municipality);
-    if (!muniData) return;
-    
-    title.textContent = municipality;
-    tbody.innerHTML = '';
-    
-    const quarter = document.getElementById("quarterFilter").value;
-    let districts = [...muniData.districts];
-    
-    if (quarter !== "all") {
-        districts.sort((a, b) => b.quarters[quarter] - a.quarters[quarter]);
-    } else {
-        districts.sort((a, b) => b.totalCount - a.totalCount);
-    }
-    
-    // Show ALL districts (not just top 10)
-    districts.forEach((d, i) => {
-        const count = quarter === "all" ? d.totalCount : d.quarters[quarter];
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${i + 1}</td>
-            <td>${d.name}</td>
-            <td style="font-weight: bold; color: #e74c3c;">${count.toLocaleString()}</td>
-        `;
-        tbody.appendChild(row);
-    });
-    
-    card.classList.add('visible');
-}
-
-function closeDistrictTable() {
-    document.getElementById('districtTableCard').classList.remove('visible');
-    currentFilteredMunicipality = null;
 }
 
 function createDraggableLabel(muni, count, container, mapContainer) {
@@ -865,9 +685,7 @@ function applyCurrentFilter() {
     }
     visibleMunicipalities = filtered.slice(0, top === "all" ? Infinity : parseInt(top));
     
-    showDistrictTable(muni !== "all" ? muni : null);
-    
-    drawMap(muni !== "all");
+    drawMap();
     drawChart();
     buildExport();
     if (isCompareVisible) updateQuarterComparison();
@@ -898,7 +716,7 @@ function createPolygonFromPoints(points, color) {
     return L.rectangle(bounds, { color: color, fillColor: color, fillOpacity: 0.3, weight: 3 });
 }
 
-function drawMap(showTable) {
+function drawMap() {
     if (!polygonLayer) return;
     polygonLayer.clearLayers();
     
@@ -916,7 +734,7 @@ function drawMap(showTable) {
         const polygon = createPolygonFromPoints(muni.points, muni.color);
         polygon.addTo(polygonLayer);
         
-        // Create draggable label
+        // Create draggable label - فقط في المتصفح
         createDraggableLabel(muni, count, labelsContainer, document.getElementById('map'));
     });
     
@@ -1028,46 +846,18 @@ async function exportSlide() {
         const bottomSection = document.createElement('div');
         bottomSection.className = 'bottom-section';
 
-        const combinedCard = document.createElement('div');
-        combinedCard.className = 'combined-card';
-        combinedCard.style.cssText = 'flex: 0 0 35%; padding: 15px; overflow: hidden;';
-        
-        // Municipality labels section (top)
-        const labelsSection = document.createElement('div');
-        labelsSection.className = 'municipality-labels-section';
-        labelsSection.style.cssText = 'max-height: 45%; overflow-y: auto; padding: 15px; background: #f8f9fa; border-radius: 12px; margin-bottom: 15px; border: 3px solid #1e3c72;';
-        
-        const quarter = document.getElementById("quarterFilter").value;
-        const muniLabelsHtml = visibleMunicipalities.map((muni, index) => {
-            const count = quarter === "all" ? muni.totalCount : muni.quarters[quarter];
-            return `
-                <div class="municipality-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; margin: 6px 0; background: white; border-radius: 10px; border-right: 5px solid ${muni.color}; box-shadow: 0 3px 10px rgba(0,0,0,0.15);">
-                    <span style="font-size: 18px; font-weight: 800; color: #1e3c72;">${index + 1}. ${muni.name}</span>
-                    <span style="font-size: 20px; font-weight: 900; color: #e74c3c;">${count.toLocaleString()} بلاغ</span>
-                </div>
-            `;
-        }).join('');
-        
-        labelsSection.innerHTML = `
-            <div class="card-title" style="font-size: 22px; margin-bottom: 12px; text-align: center;">🏛️ البلديات</div>
-            ${muniLabelsHtml}
-        `;
-        combinedCard.appendChild(labelsSection);
-        
-        // Chart section (bottom) - NO STATS
+        // Chart section (left side - 45%)
         const chartSection = document.createElement('div');
         chartSection.className = 'chart-section';
-        chartSection.style.cssText = 'flex: 1; min-height: 0;';
         chartSection.innerHTML = `
-            <div class="card-title" style="font-size: 20px;">📊 توزيع البلديات <span class="quarter-badge">${document.getElementById("currentQuarterBadge").textContent}</span></div>
-            <div class="chart-container" style="height: calc(100% - 50px);">
+            <div class="card-title" style="font-size: 24px;">📊 توزيع البلديات <span class="quarter-badge">${document.getElementById("currentQuarterBadge").textContent}</span></div>
+            <div class="chart-container" style="height: calc(100% - 60px);">
                 <canvas id="exportChart"></canvas>
             </div>
         `;
-        combinedCard.appendChild(chartSection);
-        
-        topSection.appendChild(combinedCard);
+        topSection.appendChild(chartSection);
 
+        // Map section (right side - 55%)
         const mapWrapper = document.createElement('div');
         mapWrapper.className = 'map-wrapper';
         const mapDiv = document.createElement('div');
@@ -1076,15 +866,12 @@ async function exportSlide() {
         mapDiv.style.height = '100%';
         mapWrapper.appendChild(mapDiv);
         
-        // District table removed - labels shown in right panel only
-        const muniFilter = document.getElementById("municipalityFilter").value;
-        // Labels now shown in right panel only, not on map
-        
         topSection.appendChild(mapWrapper);
 
+        // Quarter comparison section (bottom - 35%)
         const quarterSection = document.createElement('div');
         quarterSection.innerHTML = `
-            <div class="card-title">📊 مقارنة الأداء الربع سنوي</div>
+            <div class="card-title" style="font-size: 24px;">📊 مقارنة الأداء الربع سنوي</div>
             <div class="compare-section" id="exportQuarterComparison"></div>
         `;
         bottomSection.appendChild(quarterSection);
@@ -1092,8 +879,9 @@ async function exportSlide() {
         exportContainer.appendChild(topSection);
         exportContainer.appendChild(bottomSection);
 
+        // Create chart
         const exportCtx = document.getElementById("exportChart").getContext("2d");
-        // quarter already declared above
+        const quarter = document.getElementById("quarterFilter").value;
         const labels = visibleMunicipalities.map(m => m.name);
         const data = visibleMunicipalities.map(m => quarter === "all" ? m.totalCount : m.quarters[quarter]);
         const colors = visibleMunicipalities.map(m => m.color);
@@ -1107,7 +895,7 @@ async function exportSlide() {
                     backgroundColor: colors, 
                     borderRadius: 8, 
                     borderSkipped: false, 
-                    barThickness: 22 
+                    barThickness: 25 
                 }] 
             },
             options: {
@@ -1121,9 +909,9 @@ async function exportSlide() {
                         anchor: 'end', 
                         align: 'right', 
                         color: '#1e3c72', 
-                        font: { weight: 'bold', size: 14 }, 
+                        font: { weight: 'bold', size: 16 }, 
                         formatter: (value) => value.toLocaleString(), 
-                        offset: 5 
+                        offset: 8 
                     } 
                 },
                 scales: { 
@@ -1131,14 +919,14 @@ async function exportSlide() {
                         beginAtZero: true, 
                         grid: { color: 'rgba(0,0,0,0.08)' }, 
                         ticks: { 
-                            font: { size: 12, weight: 'bold' },
+                            font: { size: 14, weight: 'bold' },
                             callback: function(value) { return value.toLocaleString(); } 
                         } 
                     }, 
                     y: { 
                         grid: { display: false }, 
                         ticks: { 
-                            font: { size: 13, weight: 'bold' }, 
+                            font: { size: 15, weight: 'bold' }, 
                             autoSkip: false 
                         } 
                     } 
@@ -1146,6 +934,7 @@ async function exportSlide() {
             }
         });
 
+        // Create map - فقط المضلعات بدون قائمة البلديات
         const exportMap = L.map('exportMap', { 
             zoomControl: false, 
             attributionControl: false, 
@@ -1159,7 +948,7 @@ async function exportSlide() {
         
         const exportLayer = L.layerGroup().addTo(exportMap);
 
-        // Draw polygons
+        // Draw polygons فقط - لا توجد قائمة بلديات في التصدير
         visibleMunicipalities.forEach(muni => {
             if (muni.points.length >= 3) {
                 try {
@@ -1178,18 +967,16 @@ async function exportSlide() {
             }
         });
 
-        // Fit bounds first
+        // Fit bounds
         if (visibleMunicipalities.length > 0) {
             const allPoints = visibleMunicipalities.flatMap(m => m.points.map(p => [p[1], p[0]]));
             exportMap.fitBounds(allPoints, { padding: [50, 50], maxZoom: 14 });
         }
 
-        // Wait for map to render then add labels at stored positions
+        // Wait for map to render
         await new Promise(r => setTimeout(r, 2000));
-        
-        // Labels removed from map - shown in right panel only
-        // Map section shows polygons only
 
+        // Create quarter comparison for export
         const exportQuarterContainer = document.getElementById('exportQuarterComparison');
         const totals = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
         const satisfactionTotals = { Q1: { satisfied: 0, unsatisfied: 0 }, Q2: { satisfied: 0, unsatisfied: 0 }, Q3: { satisfied: 0, unsatisfied: 0 }, Q4: { satisfied: 0, unsatisfied: 0 } };
@@ -1248,6 +1035,7 @@ async function exportSlide() {
         
         ctx.drawImage(canvas, 0, 0, 1920, 1080);
 
+        // Add header
         ctx.fillStyle = '#1e3c72';
         ctx.fillRect(0, 0, 1920, 120);
         ctx.fillStyle = '#ffffff';
