@@ -17,7 +17,7 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { 
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
     min-height: 100vh; 
 }
@@ -212,7 +212,7 @@ body {
     overflow: hidden;
 }
 .card-title { 
-    font-size: 18px; font-weight: 700; color: #333; 
+    font-size: 20px; font-weight: 800; color: #1a1a1a; text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     margin-bottom: 15px; padding-bottom: 10px; 
     border-bottom: 3px solid #1e3c72; 
     display: flex; align-items: center; gap: 8px; 
@@ -220,11 +220,11 @@ body {
 }
 .stat-item { 
     display: flex; justify-content: space-between; align-items: center; 
-    padding: 10px; margin-bottom: 6px; 
+    padding: 12px; margin-bottom: 8px; font-weight: 700;
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
     border-radius: 8px; font-size: 13px; 
 }
-.stat-value { font-weight: 700; color: #1e3c72; font-size: 18px; }
+.stat-value { font-weight: 900; color: #1e3c72; font-size: 22px; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
 .quarter-badge { 
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
     color: white; padding: 4px 12px; border-radius: 20px; 
@@ -495,15 +495,7 @@ body {
                 </div>
             </div>
         </div>
-        <div class="card">
-            <div class="card-title">📈 إحصائيات عامة</div>
-            <div class="stat-item"><span>إجمالي البلاغات</span><span class="stat-value" id="totalReports">0</span></div>
-            <div class="stat-item"><span>عدد البلديات</span><span class="stat-value" id="totalMunicipalities">0</span></div>
-            <div class="stat-item"><span>عدد الأحياء</span><span class="stat-value" id="totalDistricts">0</span></div>
-            <div class="stat-item"><span>متوسط البلاغات/بلدية</span><span class="stat-value" id="avgReports">0</span></div>
-            <div class="stat-item"><span>الأعلى بلاغات</span><span class="stat-value" id="topMunicipality" style="font-size:14px;">-</span></div>
         </div>
-    </div>
     <div class="map-wrapper" id="mapSection">
         <div id="map"></div>
         <!-- Container for draggable labels -->
