@@ -74,7 +74,7 @@ body {
 }
 #map { height: 100%; width: 100%; z-index: 1; }
 
-/* Draggable Labels - فقط في المتصفح */
+/* Draggable Labels */
 .municipality-label {
     background: rgba(255,255,255,0.95);
     border: 2px solid #1e3c72;
@@ -389,7 +389,6 @@ body {
     </div>
     <div class="map-wrapper" id="mapSection">
         <div id="map"></div>
-        <!-- Container for draggable labels - فقط في المتصفح -->
         <div id="labelsContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000;"></div>
         <div class="custom-zoom">
             <button class="zoom-btn" onclick="map.zoomIn()">+</button>
@@ -411,7 +410,7 @@ body {
 Chart.register(ChartDataLabels);
 
 let map = null, polygonLayer = null, rawData = [], visibleMunicipalities = [], chart = null, allMunicipalities = new Set(), isCompareVisible = false;
-let labelPositions = {}; // Store label positions: { muniName: {x, y} }
+let labelPositions = {};
 let isDragging = false;
 let draggedLabel = null;
 let dragOffset = { x: 0, y: 0 };
@@ -461,7 +460,6 @@ const getQuarterFromDate = (dateStr) => {
     return 'Q4';
 };
 
-// Store manual satisfaction values - null means use calculated values
 let manualSatisfactionValues = { 
     Q1: { satisfied: null, unsatisfied: null }, 
     Q2: { satisfied: null, unsatisfied: null }, 
@@ -477,7 +475,6 @@ function updateSatisfactionCount(quarter, type) {
     input.value = value;
     manualSatisfactionValues[quarter][type] = value;
 
-    // Update the other percentage automatically to maintain 100%
     const otherType = type === 'satisfied' ? 'unsatisfied' : 'satisfied';
     const otherInput = document.getElementById(`sat-${quarter}-${otherType}`);
     const otherValue = 100 - value;
@@ -491,10 +488,8 @@ function validatePercentage(quarter) {
     let sat = parseInt(satInput.value) || 0;
     let unsat = parseInt(unsatInput.value) || 0;
 
-    // Ensure they sum to 100
     const total = sat + unsat;
     if (total !== 100) {
-        // Adjust the one that wasn't just edited
         if (document.activeElement === satInput) {
             unsat = 100 - sat;
             unsatInput.value = unsat;
@@ -609,19 +604,17 @@ function fillSelect(id, set) {
 function createDraggableLabel(muni, count, container, mapContainer) {
     const labelId = `label-${muni.name.replace(/\s/g, '-')}`;
     
-    // Check if we have stored position
     let left = 0, top = 0;
     if (labelPositions[muni.name]) {
         left = labelPositions[muni.name].x;
         top = labelPositions[muni.name].y;
     } else {
-        // Calculate initial position from map coordinates
         const lats = muni.points.map(p => p[1]), lngs = muni.points.map(p => p[0]);
         const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
         const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
         const point = map.latLngToContainerPoint([centerLat, centerLng]);
-        left = point.x - 70; // Center the label (140px width / 2)
-        top = point.y - 30;  // Center the label (60px height / 2)
+        left = point.x - 70;
+        top = point.y - 30;
     }
     
     const label = document.createElement('div');
@@ -633,7 +626,6 @@ function createDraggableLabel(muni, count, container, mapContainer) {
     label.style.pointerEvents = 'auto';
     label.style.borderColor = muni.color;
     
-    // Make draggable
     label.addEventListener('mousedown', function(e) {
         isDragging = true;
         draggedLabel = label;
@@ -648,7 +640,6 @@ function createDraggableLabel(muni, count, container, mapContainer) {
     return label;
 }
 
-// Global mouse events for dragging
 document.addEventListener('mousemove', function(e) {
     if (!isDragging || !draggedLabel) return;
     const newX = e.clientX - dragOffset.x;
@@ -659,7 +650,6 @@ document.addEventListener('mousemove', function(e) {
 
 document.addEventListener('mouseup', function() {
     if (isDragging && draggedLabel) {
-        // Store the position
         const muniName = draggedLabel.querySelector('.muni-name').textContent;
         labelPositions[muniName] = {
             x: draggedLabel.offsetLeft,
@@ -720,7 +710,6 @@ function drawMap() {
     if (!polygonLayer) return;
     polygonLayer.clearLayers();
     
-    // Clear old labels
     const labelsContainer = document.getElementById('labelsContainer');
     labelsContainer.innerHTML = '';
     
@@ -730,11 +719,9 @@ function drawMap() {
     visibleMunicipalities.forEach(muni => {
         const count = quarter === "all" ? muni.totalCount : muni.quarters[quarter];
         
-        // Draw polygon
         const polygon = createPolygonFromPoints(muni.points, muni.color);
         polygon.addTo(polygonLayer);
         
-        // Create draggable label - فقط في المتصفح
         createDraggableLabel(muni, count, labelsContainer, document.getElementById('map'));
     });
     
@@ -785,7 +772,6 @@ function updateQuarterComparison() {
         const trend = total > prevTotal ? 'up' : total < prevTotal ? 'down' : 'same';
         const sat = satisfactionTotals[q.key];
         const totalSat = sat.satisfied + sat.unsatisfied;
-        // Use manual values if they exist, otherwise calculate from data
         let satisfiedPercent, unsatisfiedPercent;
         if (manualSatisfactionValues[q.key].satisfied !== null) {
             satisfiedPercent = manualSatisfactionValues[q.key].satisfied;
@@ -846,7 +832,6 @@ async function exportSlide() {
         const bottomSection = document.createElement('div');
         bottomSection.className = 'bottom-section';
 
-        // Chart section (left side - 45%)
         const chartSection = document.createElement('div');
         chartSection.className = 'chart-section';
         chartSection.innerHTML = `
@@ -857,7 +842,6 @@ async function exportSlide() {
         `;
         topSection.appendChild(chartSection);
 
-        // Map section (right side - 55%)
         const mapWrapper = document.createElement('div');
         mapWrapper.className = 'map-wrapper';
         const mapDiv = document.createElement('div');
@@ -868,7 +852,6 @@ async function exportSlide() {
         
         topSection.appendChild(mapWrapper);
 
-        // Quarter comparison section (bottom - 35%)
         const quarterSection = document.createElement('div');
         quarterSection.innerHTML = `
             <div class="card-title" style="font-size: 24px;">📊 مقارنة الأداء الربع سنوي</div>
@@ -879,7 +862,6 @@ async function exportSlide() {
         exportContainer.appendChild(topSection);
         exportContainer.appendChild(bottomSection);
 
-        // Create chart
         const exportCtx = document.getElementById("exportChart").getContext("2d");
         const quarter = document.getElementById("quarterFilter").value;
         const labels = visibleMunicipalities.map(m => m.name);
@@ -934,7 +916,6 @@ async function exportSlide() {
             }
         });
 
-        // Create map - فقط المضلعات بدون قائمة البلديات
         const exportMap = L.map('exportMap', { 
             zoomControl: false, 
             attributionControl: false, 
@@ -948,7 +929,6 @@ async function exportSlide() {
         
         const exportLayer = L.layerGroup().addTo(exportMap);
 
-        // Draw polygons فقط - لا توجد قائمة بلديات في التصدير
         visibleMunicipalities.forEach(muni => {
             if (muni.points.length >= 3) {
                 try {
@@ -967,16 +947,13 @@ async function exportSlide() {
             }
         });
 
-        // Fit bounds
         if (visibleMunicipalities.length > 0) {
             const allPoints = visibleMunicipalities.flatMap(m => m.points.map(p => [p[1], p[0]]));
             exportMap.fitBounds(allPoints, { padding: [50, 50], maxZoom: 14 });
         }
 
-        // Wait for map to render
         await new Promise(r => setTimeout(r, 2000));
 
-        // Create quarter comparison for export
         const exportQuarterContainer = document.getElementById('exportQuarterComparison');
         const totals = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
         const satisfactionTotals = { Q1: { satisfied: 0, unsatisfied: 0 }, Q2: { satisfied: 0, unsatisfied: 0 }, Q3: { satisfied: 0, unsatisfied: 0 }, Q4: { satisfied: 0, unsatisfied: 0 } };
@@ -996,7 +973,6 @@ async function exportSlide() {
             const trend = total > prevTotal ? 'up' : total < prevTotal ? 'down' : 'same';
             const sat = satisfactionTotals[q.key];
             const totalSat = sat.satisfied + sat.unsatisfied;
-            // Use manual values if they exist, otherwise calculate from data
             let satisfiedPercent, unsatisfiedPercent;
             if (manualSatisfactionValues[q.key].satisfied !== null) {
                 satisfiedPercent = manualSatisfactionValues[q.key].satisfied;
@@ -1025,29 +1001,8 @@ async function exportSlide() {
         
         exportContainer.style.display = 'none';
 
-        const finalCanvas = document.createElement('canvas');
-        const ctx = finalCanvas.getContext('2d');
-        finalCanvas.width = 1920;
-        finalCanvas.height = 1080;
-
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, 1920, 1080);
-        
-        ctx.drawImage(canvas, 0, 0, 1920, 1080);
-
-        // Add header
-        ctx.fillStyle = '#1e3c72';
-        ctx.fillRect(0, 0, 1920, 120);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 56px "Segoe UI",Tahoma';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('📊 تقرير تحليل البلديات', 1860, 60);
-        ctx.font = 'bold 28px "Segoe UI",Tahoma';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(`${document.getElementById("currentQuarterBadge").textContent} | ${new Date().toLocaleDateString('ar-SA')}`, 1860, 95);
-
-        finalCanvas.toBlob(blob => {
+        // تم حذف إنشاء finalCanvas والشريط الأزرق - نستخدم canvas مباشرة
+        canvas.toBlob(blob => {
             saveAs(blob, `سلايد_البلديات_${new Date().toLocaleDateString('ar-SA')}.png`);
             showNotification('✅ تم تصدير السلايد! (1920×1080)');
         });
@@ -1066,7 +1021,7 @@ function fitAll() {
 
 function clearAllData() { 
     if (confirm('هل أنت متأكد؟')) {
-        labelPositions = {}; // Clear stored positions
+        labelPositions = {};
         location.reload(); 
     }
 }
