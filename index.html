@@ -2,1039 +2,2637 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>تحليل الأحياء - نظام ربع سنوي</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تحليل التقييمات الأسبوعي</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { 
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
-    min-height: 100vh; 
-}
+  :root{
+    --ink:#1b1f23;
+    --paper:#faf9f7;
+    --line:#dcd7cf;
+    --accent:#2f6f5e;
+    --accent-soft:#e6efec;
+    --bad:#a3432f;
+    --bad-soft:#f5e8e4;
+    --muted:#7a746a;
+    --neutral:#8a8478;
+    --neutral-soft:#efece5;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Segoe UI", Tahoma, Arial, sans-serif;
+    padding:20px;
+    line-height:1.6;
+  }
+  .wrap{max-width:980px;margin:0 auto;}
+  h1{
+    font-size:22px;
+    margin:0 0 4px;
+    letter-spacing:0.3px;
+  }
+  .sub{color:var(--muted);font-size:13.5px;margin-bottom:20px;}
 
-.top-bar { 
-    position: fixed; 
-    top: 0; left: 0; right: 0; 
-    background: rgba(255,255,255,0.98); 
-    padding: 10px 20px; 
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
-    z-index: 100000; 
-    display: flex; 
-    gap: 8px; 
-    flex-wrap: wrap; 
-    align-items: center; 
-}
-.top-bar input, .top-bar select, .top-bar button { 
-    padding: 8px 14px; 
-    border-radius: 10px; 
-    border: 2px solid #e0e0e0; 
-    font-size: 13px; 
-}
-.top-bar button { 
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
-    color: white; 
-    border: none; 
-    cursor: pointer; 
-    font-weight: 600; 
-}
-.btn-export { 
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important; 
-}
+  .card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px;
+    margin-bottom:18px;
+  }
 
-.main-container { 
-    margin-top: 70px; 
-    padding: 15px; 
-    display: flex; 
-    flex-direction: row;
-    gap: 15px; 
-    height: calc(100vh - 90px);
-    min-height: 600px;
-}
+  .drop{
+    border:2px dashed var(--line);
+    border-radius:10px;
+    padding:28px 16px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s, background .15s;
+  }
+  .drop:hover, .drop.drag{
+    border-color:var(--accent);
+    background:var(--accent-soft);
+  }
+  .drop input{display:none;}
+  .drop .icon{font-size:28px;margin-bottom:6px;}
+  .drop .txt{font-size:14.5px;font-weight:600;}
+  .drop .txt2{font-size:12.5px;color:var(--muted);margin-top:4px;}
 
-.map-wrapper { 
-    background: white; 
-    border-radius: 20px; 
-    overflow: hidden; 
-    box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
-    position: relative; 
-    flex: 1.2;
-    height: 100%;
-    min-height: 500px;
-    order: 2;
-}
-#map { height: 100%; width: 100%; z-index: 1; }
+  .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;}
+  .field{flex:1;min-width:180px;}
+  .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px;}
+  select, input[type="date"], input[type="text"]{
+    width:100%;
+    padding:9px 10px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:#fff;
+    font-size:14px;
+    color:var(--ink);
+    font-family:inherit;
+  }
+  .btn.secondary{background:#8a8478;}
+  .btn + .btn{margin-right:8px;}
+  .btn{
+    display:inline-block;
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    font-size:14.5px;
+    font-weight:600;
+    cursor:pointer;
+    margin-top:14px;
+  }
+  .btn:disabled{background:#c8c3b8;cursor:not-allowed;}
 
-/* Draggable Labels */
-.municipality-label {
-    background: rgba(255,255,255,0.95);
-    border: 2px solid #1e3c72;
-    border-radius: 10px;
-    padding: 8px 12px;
-    font-size: 14px;
-    font-weight: bold;
-    text-align: center;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    min-width: 140px;
-    direction: rtl;
-    cursor: move !important;
-    user-select: none;
-    position: absolute;
-    z-index: 10000;
-}
-.municipality-label:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-}
-.municipality-label.dragging {
-    opacity: 0.8;
-    z-index: 10001;
-}
-.municipality-label .muni-name {
-    color: #1e3c72;
-    font-size: 14px;
-    margin-bottom: 3px;
-    border-bottom: 2px solid #1e3c72;
-    padding-bottom: 3px;
-}
-.municipality-label .muni-count {
-    font-size: 16px;
-    color: #e74c3c;
-    font-weight: bold;
-}
+  .status{font-size:13px;color:var(--muted);margin-top:10px;}
+  .status.err{color:var(--bad);}
 
-.custom-zoom { 
-    position: absolute; 
-    bottom: 30px; right: 30px; 
-    background: white; 
-    border-radius: 12px; 
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3); 
-    display: flex; 
-    flex-direction: column; 
-    overflow: hidden; 
-    z-index: 1000; 
-    border: 2px solid #1e3c72; 
-}
-.zoom-btn { 
-    width: 48px; height: 48px; 
-    border: none; background: white; 
-    font-size: 24px; cursor: pointer; 
-    color: #1e3c72; font-weight: bold; 
-}
+  h2{font-size:16.5px;margin:0 0 12px;}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .kpi{
+    flex:1;min-width:130px;
+    background:var(--accent-soft);
+    border-radius:8px;
+    padding:12px 14px;
+  }
+  .kpi.bad{background:var(--bad-soft);}
+  .kpi.neutral{background:var(--neutral-soft);}
+  .kpi .n{font-size:20px;font-weight:700;}
+  .kpi .l{font-size:12px;color:var(--muted);margin-top:2px;}
 
-.stats-section { 
-    display: flex;
-    flex-direction: column;
-    gap: 15px; 
-    flex: 1;
-    height: 100%;
-    min-width: 350px;
-    order: 1;
-}
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  th,td{
+    padding:9px 8px;
+    text-align:center;
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  th{
+    background:#f2efe9;
+    font-weight:600;
+    font-size:12.5px;
+  }
+  tr.total td{
+    font-weight:700;
+    background:#f7f5f0;
+    border-top:2px solid var(--line);
+  }
+  .wrap-table{overflow-x:auto;}
 
-.card { 
-    background: white; 
-    border-radius: 20px; 
-    padding: 20px; 
-    box-shadow: 0 10px 40px rgba(0,0,0,0.15); 
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-.card-title { 
-    font-size: 20px; font-weight: 800; color: #1a1a1a; text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    margin-bottom: 15px; padding-bottom: 10px; 
-    border-bottom: 3px solid #1e3c72; 
-    display: flex; align-items: center; gap: 8px; 
-    flex-shrink: 0;
-}
-.stat-item { 
-    display: flex; justify-content: space-between; align-items: center; 
-    padding: 12px; margin-bottom: 8px; font-weight: 700;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
-    border-radius: 8px; font-size: 13px; 
-}
-.stat-value { font-weight: 900; color: #1e3c72; font-size: 22px; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
-.quarter-badge { 
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
-    color: white; padding: 4px 12px; border-radius: 20px; 
-    font-size: 12px; font-weight: bold; 
-}
+  .hidden{display:none;}
 
-.chart-scroll-container { 
-    position: relative; flex: 1;
-    overflow-y: auto; overflow-x: hidden; 
-    border-radius: 10px; background: #f8f9fa; padding: 10px; 
-}
-.chart-canvas-wrapper { position: relative; height: max-content; min-height: 100%; }
+  .cal-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:6px;
+  }
+  .cal-head{
+    font-size:12px;
+    color:var(--muted);
+    text-align:center;
+    font-weight:600;
+    padding:4px 0 8px;
+  }
+  .cal-day{
+    min-height:70px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    gap:3px;
+    padding:6px 3px;
+    border-radius:8px;
+    background:var(--neutral-soft);
+    color:var(--ink);
+  }
+  .cal-day.empty{
+    background:transparent;
+  }
+  .cal-day.today{
+    background:var(--accent);
+    color:#fff;
+    font-weight:700;
+    box-shadow:0 0 0 2px var(--accent-soft);
+  }
+  .cal-daynum{
+    font-size:13px;
+    font-weight:600;
+  }
+  .cal-total{
+    font-size:10.5px;
+    color:var(--muted);
+  }
+  .cal-day.today .cal-total{
+    color:#fff;
+    opacity:0.9;
+  }
+  .cal-bar{
+    width:100%;
+    height:6px;
+    border-radius:3px;
+    background:rgba(0,0,0,0.08);
+    overflow:hidden;
+    display:flex;
+  }
+  .cal-bar .seg-sat{background:var(--accent);}
+  .cal-bar .seg-unsat{background:var(--bad);}
+  .cal-counts{
+    display:flex;
+    gap:5px;
+    font-size:9.5px;
+    line-height:1;
+  }
+  .cal-counts .n-sat{color:var(--accent);font-weight:600;}
+  .cal-counts .n-unsat{color:var(--bad);font-weight:600;}
+  .cal-day.today .cal-counts .n-sat,
+  .cal-day.today .cal-counts .n-unsat{color:#fff;}
+  .cal-legend{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:14px;
+    font-size:12px;
+    color:var(--muted);
+    margin-top:12px;
+  }
+  .cal-legend .item{display:flex;align-items:center;gap:5px;}
+  .cal-legend .dot{
+    width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block;
+  }
+  .cal-legend .dot.unsat{background:var(--bad);}
 
-#compareSection {
-    display: none;
-    margin-top: 20px;
-    padding: 0 20px 20px 20px;
-}
+  .cal-day.has-data{cursor:pointer;}
+  .cal-day.has-data:hover{filter:brightness(0.97);}
 
-.compare-section { 
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; 
-}
-.quarter-card { 
-    background: white; border-radius: 15px; padding: 20px; 
-    text-align: center; box-shadow: 0 5px 20px rgba(0,0,0,0.1); 
-    border-top: 4px solid;
-}
-.quarter-card.q1 { border-top-color: #e74c3c; } 
-.quarter-card.q2 { border-top-color: #f39c12; } 
-.quarter-card.q3 { border-top-color: #27ae60; } 
-.quarter-card.q4 { border-top-color: #3498db; }
-.quarter-title { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 5px; }
-.quarter-months { font-size: 11px; color: #666; margin-bottom: 10px; }
-.quarter-value { font-size: 28px; font-weight: bold; color: #1e3c72; margin: 8px 0; }
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(27,31,35,0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+    z-index:1000;
+  }
+  .modal-overlay.hidden{display:none;}
+  .modal-box{
+    background:#fff;
+    border-radius:12px;
+    width:100%;
+    max-width:640px;
+    max-height:88vh;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .modal-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .modal-head h2{margin:0;}
+  .modal-close{
+    background:none;
+    border:none;
+    font-size:18px;
+    cursor:pointer;
+    color:var(--muted);
+    padding:4px 8px;
+  }
+  .modal-body{
+    padding:12px 16px;
+    overflow-y:auto;
+    flex:1;
+  }
+  .modal-foot{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:12px 16px;
+    border-top:1px solid var(--line);
+  }
+  .modal-selcount{font-size:12.5px;color:var(--muted);}
 
-.satisfaction-boxes { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
-.satisfaction-box { flex: 1; padding: 8px 5px; border-radius: 8px; text-align: center; font-size: 11px; }
-.satisfaction-box.satisfied { background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); border: 2px solid #28a745; }
-.satisfaction-box.unsatisfied { background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); border: 2px solid #dc3545; }
-.satisfaction-box .label { font-weight: bold; margin-bottom: 3px; font-size: 10px; }
-.satisfaction-box.satisfied .label { color: #155724; }
-.satisfaction-box.unsatisfied .label { color: #721c24; }
-.satisfaction-box .percentage { font-size: 16px; font-weight: bold; }
-.satisfaction-box.satisfied .percentage { color: #28a745; }
-.satisfaction-box.unsatisfied .percentage { color: #dc3545; }
-.satisfaction-box .count { font-size: 10px; color: #666; margin-top: 2px; }
+  .report-card{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    margin-bottom:10px;
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+  }
+  .report-card .chk-wrap{padding-top:2px;}
+  .report-card input[type="checkbox"]{width:18px;height:18px;}
+  .report-card .info{flex:1;min-width:0;}
+  .report-card .r-name{font-weight:700;font-size:14px;}
+  .report-card .r-phone{font-size:12.5px;color:var(--muted);margin-top:2px;direction:ltr;text-align:right;}
+  .report-card .r-desc{font-size:13px;margin-top:6px;white-space:pre-wrap;}
+  .report-card .r-meta{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .report-card .r-status{
+    font-size:11.5px;
+    padding:2px 8px;
+    border-radius:20px;
+    background:var(--neutral-soft);
+    color:var(--muted);
+  }
+  .report-card .r-status.closed{background:var(--accent-soft);color:var(--accent);}
+  .report-card .r-repeat{
+    font-size:11.5px;
+    color:var(--bad);
+    background:var(--bad-soft);
+    padding:2px 8px;
+    border-radius:20px;
+    cursor:pointer;
+    border:none;
+  }
+  .report-history{
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px dashed var(--line);
+    font-size:12px;
+    color:var(--muted);
+  }
+  .report-history .h-item{margin-bottom:6px;}
+  .report-history .h-item b{color:var(--ink);}
 
-/* Editable satisfaction inputs */
-.satisfaction-box input.percentage-input {
-    width: 40px;
-    border: 2px solid transparent;
-    background: rgba(255,255,255,0.6);
-    font-size: 16px;
-    font-weight: bold;
-    text-align: center;
-    color: inherit;
-    padding: 2px 4px;
-    margin: 0;
-    border-radius: 4px;
-    font-family: inherit;
-}
-.satisfaction-box input.percentage-input:focus {
-    outline: none;
-    background: white;
-    border-color: #1e3c72;
-}
-.satisfaction-box.satisfied input.percentage-input { color: #28a745; }
-.satisfaction-box.unsatisfied input.percentage-input { color: #dc3545; }
+  .day-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .stat-badge{font-size:12px;padding:4px 10px;border-radius:20px;background:var(--neutral-soft);color:var(--muted);font-weight:600;}
+  .stat-badge.sat{background:var(--accent-soft);color:var(--accent);}
+  .stat-badge.unsat{background:var(--bad-soft);color:var(--bad);}
 
-#slideExportContainer .satisfaction-box input.percentage-input {
-    font-size: 18px;
-    width: 50px;
-}
+  .day-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .day-table th, .day-table td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:center;white-space:normal;}
+  .day-table th{background:#f2efe9;font-size:11.5px;font-weight:600;}
+  .day-table td.desc-cell{text-align:right;max-width:150px;}
+  .day-table td.ltr{direction:ltr;}
+  .view-btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11.5px;cursor:pointer;white-space:nowrap;}
+  .hist-row td{background:#faf9f6;text-align:right;padding:10px;}
+  .hist-count{font-weight:700;color:var(--ink);margin-bottom:6px;}
 
-/* Slide Export Container */
-#slideExportContainer {
-    position: fixed;
-    top: -9999px;
-    left: -9999px;
-    width: 1920px;
-    height: 1080px;
-    background: #ffffff;
-    z-index: 99999;
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    box-sizing: border-box;
-    gap: 20px;
-}
+  .print-bar{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .btn.print-btn{background:#4a4038;margin-top:0;}
 
-#slideExportContainer * {
-    font-weight: 700 !important;
-}
+  .day-table tr.sent-blue td{background:#dbeafe !important;}
+  .day-table tr.sent-orange td{background:#fff7ed !important;}
+  .day-table tr.urgent-row td{background:#fdecea !important;}
+  .cal-day.urgent{box-shadow:0 0 0 2px var(--bad);}
+  .cal-day.dim{opacity:0.22;}
+  .cal-urgent-badge{
+    font-size:9.5px;
+    font-weight:700;
+    color:#fff;
+    background:var(--bad);
+    border-radius:10px;
+    padding:0 6px;
+    margin-top:2px;
+  }
+  .cal-day.today .cal-urgent-badge{background:#fff;color:var(--bad);}
+  @keyframes flashHighlight{
+    0%,100%{ box-shadow:0 0 0 2px var(--accent-soft); background:var(--neutral-soft); }
+    50%{ box-shadow:0 0 0 4px #f59e0b; background:#fef3c7; }
+  }
+  .cal-day.flash-highlight{ animation: flashHighlight 0.7s ease-in-out 5; }
+  @keyframes rowFlash{
+    0%,100%{ background:transparent; }
+    50%{ background:#fef3c7; }
+  }
+  .day-table tr.row-flash td{ animation: rowFlash 0.7s ease-in-out 4; }
+  .day-table tr.row-target td{ border-top:2px solid #2563eb; border-bottom:2px solid #2563eb; }
+  .day-table tr.row-target td:first-child{ border-right:2px solid #2563eb; }
+  .day-table tr.row-target td:last-child{ border-left:2px solid #2563eb; }
+  .mini-btn{border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px;color:#fff;}
+  .mini-btn.copy{background:#10b981;}
+  .mini-btn.del{background:#a3432f;}
+  .mini-btn.wa{background:#25D366;}
+  .file-cell input[type="file"]{max-width:130px;font-size:11px;}
 
-#slideExportContainer .card-title {
-    font-size: 26px !important;
-    font-weight: 800 !important;
-}
+  .month-checkbox-list{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    max-height:220px;
+    overflow-y:auto;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 8px;
+    background:#fff;
+  }
+  .month-checkbox-list label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13.5px;
+    padding:6px 2px;
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+  }
+  .month-checkbox-list label:last-child{border-bottom:none;}
+  .month-checkbox-list input[type="checkbox"]{width:17px;height:17px;flex-shrink:0;}
+  .month-chip-bar{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .month-chip{
+    font-size:12px;
+    background:var(--accent-soft);
+    color:var(--accent);
+    padding:3px 10px;
+    border-radius:20px;
+    font-weight:600;
+  }
 
-#slideExportContainer .top-section {
-    display: flex;
-    flex-direction: row;
-    gap: 20px;
-    flex: 1;
-    height: 65%;
-    position: relative;
-}
+  .cal-multi-wrap{display:flex;gap:18px;flex-wrap:wrap;}
+  .month-block{
+    flex:1 1 300px;
+    min-width:280px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px;
+  }
+  .month-block-title{
+    font-size:14.5px;
+    font-weight:700;
+    margin:0 0 10px;
+    color:var(--accent);
+  }
 
-#slideExportContainer .chart-section {
-    flex: 0 0 45%;
-    height: 100%;
-    background: white;
-    border-radius: 15px;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-    border: 2px solid #e0e0e0;
-    order: 1;
-}
+  #quarterMultiWrap{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(215px, 1fr));
+    gap:16px;
+    align-items:start;
+  }
+  .quarter-block{
+    min-width:0;
+    padding:0 0 6px;
+  }
+  .quarter-block-title{
+    display:inline-block;
+    font-size:15px;
+    font-weight:700;
+    margin:0 0 12px;
+    padding:4px 16px;
+    border-radius:20px;
+    color:#fff;
+    background:var(--q-color, var(--accent));
+  }
+  /* Green gradient palette cycling per quarter, lightest to deepest */
+  .quarter-block.qtone-0{ --q-color:#7fbfa4; }
+  .quarter-block.qtone-1{ --q-color:#4fa483; }
+  .quarter-block.qtone-2{ --q-color:#2f6f5e; }
+  .quarter-block.qtone-3{ --q-color:#1a4d3e; }
 
-#slideExportContainer .chart-container {
-    flex: 1;
-    position: relative;
-    min-height: 0;
-}
+  /* Compact donut badge: right half = نسبة الرضا, left half = نسبة المشاركة.
+     Sits as a small row right under the title (NOT overlapping the
+     calendars), so it never blocks or covers any day cell. */
+  .quarter-donut-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:0 0 12px;
+  }
+  .quarter-donut{
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    flex-shrink:0;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .quarter-donut-legend{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    font-size:12px;
+  }
+  .qdl-item{display:flex;align-items:center;gap:6px;}
+  .qdl-item b{font-weight:800;}
+  .qdl-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .qdl-item.sat b{color:var(--accent);}
+  .qdl-item.sat .qdl-dot{background:var(--accent);}
+  .qdl-item.part b{color:#c9971f;}
+  .qdl-item.part .qdl-dot{background:#c9971f;}
 
-#slideExportContainer .map-wrapper {
-    flex: 0 0 55%;
-    height: 100%;
-    order: 2;
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-    border: 2px solid #e0e0e0;
-    position: relative;
-}
+  .quarter-block .cal-multi-wrap{
+    flex-direction:column;
+    gap:8px;
+    max-width:100%;
+  }
+  .quarter-block .month-block{
+    flex:none;
+    width:100%;
+    min-width:0;
+    padding:8px;
+  }
+  .quarter-block .month-block-title{
+    font-size:12px;
+    margin:0 0 6px;
+  }
+  .quarter-block .cal-grid{gap:3px;}
+  .quarter-block .cal-day{min-height:36px;padding:2px 1px;gap:1px;}
+  .quarter-block .cal-daynum{font-size:10px;}
+  .quarter-block .cal-total{font-size:8px;}
+  .quarter-block .cal-bar{height:4px;}
+  .quarter-block .cal-counts{font-size:7px;gap:3px;}
+  .quarter-block .cal-head{font-size:9px;padding:2px 0 4px;}
 
-#slideExportContainer .bottom-section {
-    height: 35%;
-    background: white;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-    border: 2px solid #e0e0e0;
-}
+  @media print{
+    @page{size:landscape;margin:8mm;}
+    .no-print{display:none !important;}
+    body{padding:0;background:#fff;}
+    .wrap{max-width:100%;}
+    .card{
+      border:1px solid #999;
+      box-shadow:none;
+      margin-bottom:8px;
+      padding:10px 12px;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+      page-break-inside:avoid;
+    }
+    h2{font-size:13px;margin:0 0 6px;}
+    .wrap-table{overflow-x:visible !important;}
+    table{font-size:9.5px;width:100%;table-layout:fixed;}
+    th,td{white-space:normal;padding:3px 2px;word-break:break-word;line-height:1.2;}
 
-#slideExportContainer .compare-section {
-    margin-top: 10px;
-    height: calc(100% - 50px);
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-}
+    .cal-multi-wrap{gap:8px;}
+    .month-block{border:1px solid #999;padding:6px;page-break-inside:avoid;}
+    .month-block-title{font-size:11px;margin:0 0 4px;}
+    .quarter-block{padding:5px 6px 8px;page-break-inside:avoid;margin-bottom:8px;border-right-width:3px;}
+    .quarter-block-title{font-size:10px;margin:0 0 5px;padding:2px 10px;}
+    .cal-grid{gap:3px;}
+    .cal-head{font-size:9px;padding:2px 0 4px;}
+    .cal-day{
+      min-height:34px;
+      padding:3px 2px;
+      gap:1px;
+      border-radius:4px;
+    }
+    .cal-daynum{font-size:9px;}
+    .cal-total{font-size:7px;}
+    .cal-bar{height:3px;}
+    .cal-counts{font-size:6.5px;gap:3px;}
+    .cal-legend{font-size:8px;margin-top:5px;gap:8px;}
+    .cal-legend .dot{width:6px;height:6px;}
+  }
 
-#slideExportContainer .quarter-card {
-    padding: 20px;
-    border-radius: 12px;
-}
+  /* ---- Print-only vertical periods summary + print layout ---- */
+  .print-only-block{display:none;}
 
-#slideExportContainer .quarter-title {
-    font-size: 20px;
-}
+  .pp-card{
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 10px;
+    margin-bottom:8px;
+  }
+  .pp-card-title{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:2px;}
+  .pp-card-range{font-size:11px;color:var(--muted);margin-bottom:6px;}
+  .pp-card-table{width:100%;border-collapse:collapse;font-size:11.5px;}
+  .pp-card-table td{padding:2px 3px;border-bottom:1px dotted var(--line);}
+  .pp-card-table td:first-child{color:var(--muted);text-align:right;}
+  .pp-card-table td:last-child{font-weight:700;text-align:left;direction:ltr;}
+  .pp-card.pp-total{background:var(--neutral-soft);}
+  .pp-card.pp-total .pp-card-title{color:#4a4038;}
 
-#slideExportContainer .quarter-value {
-    font-size: 32px;
-}
+  .calendars-print-col{display:contents;}
 
-@media (max-width: 1400px) { 
-    .main-container { flex-direction: column; height: auto; }
-    .map-wrapper { flex: none; height: 60vh; min-height: 400px; order: 1; }
-    .stats-section { flex: none; min-width: auto; order: 2; }
-    .compare-section { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 768px) { 
-    .main-container { flex-direction: column; }
-    .map-wrapper { height: 50vh; order: 1; }
-    .stats-section { order: 2; }
-    .compare-section { grid-template-columns: 1fr; }
-}
+  @media print{
+    .print-only-block{display:block;}
+    #periodsTableWrap{display:none;}
+    #colPicker, #periodPicker{display:none !important;}
+
+    .wrap{display:flex;flex-direction:row;align-items:flex-start;gap:8px;}
+    #results{flex:0 0 175px;max-width:175px;}
+    #results .card{margin-bottom:0;padding:8px 9px;}
+
+    .pp-card{padding:5px 6px;margin-bottom:5px;border-radius:5px;page-break-inside:avoid;}
+    .pp-card-title{font-size:9.5px;margin-bottom:1px;}
+    .pp-card-range{font-size:7.5px;margin-bottom:3px;}
+    .pp-card-table{font-size:8px;}
+    .pp-card-table td{padding:1px 2px;}
+
+    .calendars-print-col{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;gap:6px;}
+
+    #calMultiWrap{display:flex;flex-wrap:wrap;gap:6px;}
+    #calMultiWrap .month-block{flex:1 1 31%;max-width:32%;min-width:0;}
+
+    #quarterMultiWrap{display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:8px;}
+    .quarter-block{min-width:0;}
+    .quarter-block .cal-multi-wrap{flex-direction:column;gap:3px;max-width:100%;}
+    .quarter-block .month-block{width:100%;padding:2px;}
+    .quarter-block .month-block-title{font-size:7px;margin:0 0 1px;}
+    .quarter-block-title{font-size:9px;margin:0 0 3px;padding:1px 8px;}
+    .quarter-block .cal-grid{gap:1.5px;}
+    .quarter-block .cal-head{font-size:5.5px;padding:1px 0 2px;}
+    .quarter-block .cal-day{min-height:14px;padding:0 1px;gap:0;}
+    .quarter-block .cal-daynum{font-size:6px;}
+    .quarter-block .cal-total{font-size:4.5px;}
+    .quarter-block .cal-counts{font-size:4px;gap:1px;}
+    .quarter-block .cal-bar{height:1.5px;}
+    .quarter-donut-row{gap:5px;margin:0 0 5px;}
+    .quarter-donut{width:26px;height:26px;}
+    .quarter-donut-legend{font-size:6.5px;gap:1px;}
+    .qdl-dot{width:5px;height:5px;}
+  }
 </style>
 </head>
-
 <body>
+<div class="wrap">
+  <h1 class="no-print">تحليل التقييمات الأسبوعي</h1>
+  <div class="sub no-print">ارفق ملف Excel أو CSV يحتوي على عمود تاريخ الإنشاء (وعمود التقييم اختياريًا: راضي / غير راضي / لا يوجد)</div>
 
-<div class="top-bar">
-    <input type="file" id="file" accept=".xlsx,.xls">
-    <button onclick="loadExcel()">📁 رفع ملف Excel</button>
-    <select id="quarterFilter" onchange="applyCurrentFilter()">
-        <option value="all">📅 كل الأرباع</option>
-        <option value="Q1">الربع الأول</option>
-        <option value="Q2">الربع الثاني</option>
-        <option value="Q3">الربع الثالث</option>
-        <option value="Q4">الربع الرابع</option>
-    </select>
-    <select id="municipalityFilter" onchange="applyCurrentFilter()"><option value="all">🏛️ كل البلديات</option></select>
-    <select id="filterSelect" onchange="applyCurrentFilter()">
-        <option value="all">📊 كل البلديات</option>
-        <option value="5">🔥 أعلى 5</option>
-        <option value="10">🔥 أعلى 10</option>
-        <option value="20">🔥 أعلى 20</option>
-    </select>
-    <input id="searchBox" placeholder="🔍 بحث عن بلدية..." oninput="applyCurrentFilter()">
-    <button onclick="fitAll()">🌍 إظهار الكل</button>
-    <button class="btn-export" onclick="exportSlide()">📸 تصدير سلايد</button>
-    <button onclick="showQuarterComparison()">📊 مقارنة الأرباع</button>
-    <button onclick="exportExcel()">📊 Excel</button>
-    <button onclick="resetSatisfactionValues()" style="background: #2ecc71 !important;">🔄 إعادة ضبط النسب</button>
-    <button onclick="clearAllData()" style="background: #ff4757 !important;">🗑️ مسح</button>
-</div>
+  <div class="card no-print">
+    <label class="drop" id="dropZone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+      <div class="icon">📎</div>
+      <div class="txt">اضغط هنا لإرفاق الملف أو اسحبه</div>
+      <div class="txt2">يدعم xlsx, xls, csv</div>
+    </label>
 
-<div class="main-container" id="captureArea">
-    <div class="stats-section" id="statsSection">
-        <div class="card">
-            <div class="card-title">📊 توزيع البلديات <span class="quarter-badge" id="currentQuarterBadge">الكل</span></div>
-            <div class="chart-scroll-container">
-                <div class="chart-canvas-wrapper" id="chartWrapper">
-                    <canvas id="chart"></canvas>
-                </div>
-            </div>
+    <div id="colPicker" class="hidden">
+      <div class="row">
+        <div class="field">
+          <label>عمود التاريخ (أساس الفلترة)</label>
+          <select id="dateCol"></select>
         </div>
-    </div>
-    <div class="map-wrapper" id="mapSection">
-        <div id="map"></div>
-        <div id="labelsContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000;"></div>
-        <div class="custom-zoom">
-            <button class="zoom-btn" onclick="map.zoomIn()">+</button>
-            <button class="zoom-btn" onclick="map.zoomOut()">−</button>
+        <div class="field">
+          <label>عمود التقييم (اختياري)</label>
+          <select id="ratingCol"></select>
         </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>عمود اسم المبلغ (اختياري)</label>
+          <select id="nameCol"></select>
+        </div>
+        <div class="field">
+          <label>عمود رقم الجوال (اختياري)</label>
+          <select id="phoneCol"></select>
+        </div>
+        <div class="field">
+          <label>عمود الوصف (اختياري)</label>
+          <select id="descCol"></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>عمود حالة البلاغ (اختياري)</label>
+          <select id="statusCol"></select>
+        </div>
+        <div class="field">
+          <label>عمود رقم البلاغ (اختياري)</label>
+          <select id="reportNoCol"></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>عمود البلدية (اختياري)</label>
+          <select id="muniCol"></select>
+        </div>
+        <div class="field">
+          <label>عمود الحي (اختياري)</label>
+          <select id="districtCol"></select>
+        </div>
+        <div class="field">
+          <label>عمود الشارع (اختياري)</label>
+          <select id="streetCol"></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>عمود موقع البلاغ / الرابط (اختياري)</label>
+          <select id="linkCol"></select>
+        </div>
+        <div class="field">
+          <label>عمود الوقت المعياري للمعالجة (اختياري)</label>
+          <select id="limitCol"></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>عمود مصدر البلاغ (اختياري)</label>
+          <select id="sourceCol"></select>
+        </div>
+        <div class="field">
+          <label>عمود حالة البلاغ في النظام (اختياري)</label>
+          <select id="systemStatusCol"></select>
+        </div>
+      </div>
+      <div class="status" style="margin-top:6px;">حساب <b>نسبة الرضا/عدم الرضا فقط</b> (باقي الأعداد ما تتأثر): يُشترط أن تكون "حالة البلاغ" = مغلق، وأن لا تكون "مصدر البلاغ" أو "حالة البلاغ في النظام" فاضية أو من ضمن القيم المستثناة (حسب فلتر لوحة البلدية).</div>
+      <button class="btn" id="loadDataBtn">تحميل البيانات</button>
     </div>
-</div>
 
-<div id="compareSection">
+    <div id="periodPicker" class="hidden">
+      <div class="row">
+        <div class="field">
+          <label>من تاريخ ووقت</label>
+          <input type="datetime-local" id="fromDate">
+        </div>
+        <div class="field">
+          <label>إلى تاريخ ووقت</label>
+          <input type="datetime-local" id="toDate">
+        </div>
+        <div class="field">
+          <label>اسم الفترة (اختياري)</label>
+          <input type="text" id="periodLabel" placeholder="مثال: الأسبوع الأول">
+        </div>
+      </div>
+      <button class="btn" id="addPeriodBtn">إضافة الفترة للجدول</button>
+      <button class="btn" id="autoWeeklyBtn" style="background:#3d6b8a;">تقسيم أسبوعي تلقائي (من - إلى)</button>
+      <button class="btn" id="autoQuarterlyBtn" style="background:#6a4f9c;">تقسيم ربع سنوي تلقائي (من - إلى)</button>
+      <button class="btn" id="resetPeriodsBtn" style="background:#8a8478;">تصفير الجدول</button>
+
+      <div class="row" style="margin-top:18px;border-top:1px dashed var(--line);padding-top:14px;">
+        <div class="field">
+          <label>فلترة شهرية: اختر شهرًا واحدًا أو أكثر لعرض تقويمها (كل شهر بجانب الآخر)</label>
+          <div id="monthCheckboxList" class="month-checkbox-list">
+            <label style="color:var(--muted);">لا توجد بيانات محمّلة بعد</label>
+          </div>
+          <div class="month-chip-bar" id="monthChipBar"></div>
+          <div id="monthInfo" style="font-size:12.5px;color:var(--muted);margin-top:6px;"></div>
+        </div>
+      </div>
+      <button class="btn" id="monthlyWeeksBtn" style="background:#b5762f;">إضافة أسابيع الأشهر المحددة</button>
+
+      <div class="row" style="margin-top:18px;border-top:1px dashed var(--line);padding-top:14px;">
+        <div class="field">
+          <label>فلترة ربع سنوية: اختر ربعًا واحدًا أو أكثر لعرض تقويم أشهره مجمّعة مع بعض (تظهر حتى لو لم تكتمل بياناتها)</label>
+          <div id="quarterCheckboxList" class="month-checkbox-list">
+            <label style="color:var(--muted);">لا توجد بيانات محمّلة بعد</label>
+          </div>
+          <div class="month-chip-bar" id="quarterChipBar"></div>
+        </div>
+      </div>
+      <button class="btn" id="showQuarterCalendarBtn" style="background:#a35d2f;">🗓️ عرض تقويم الأرباع المحددة</button>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <div id="results" class="hidden">
+
+    <div class="card no-print">
+      <h2>الملخص العام</h2>
+      <div class="kpis">
+        <div class="kpi"><div class="n" id="kTotal">0</div><div class="l">إجمالي البلاغات</div></div>
+        <div class="kpi"><div class="n" id="kSatCount">0</div><div class="l">راضي</div></div>
+        <div class="kpi bad"><div class="n" id="kUnsatCount">0</div><div class="l">غير راضي</div></div>
+        <div class="kpi neutral"><div class="n" id="kNoneCount">0</div><div class="l">لا يوجد</div></div>
+        <div class="kpi neutral" id="kOtherWrap" style="display:none;"><div class="n" id="kOtherCount">0</div><div class="l">قيم غير معروفة (تحقق من عمود التقييم)</div></div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="n" id="kSatPct">0%</div><div class="l">نسبة الرضا (من مجموع راضي+غير راضي)</div></div>
+        <div class="kpi bad"><div class="n" id="kUnsatPct">0%</div><div class="l">نسبة عدم الرضا (من مجموع راضي+غير راضي)</div></div>
+      </div>
+    </div>
+
     <div class="card">
-        <div class="card-title">📊 مقارنة الأداء الربع سنوي</div>
-        <div class="compare-section" id="quarterComparison"></div>
+      <div class="print-bar no-print">
+        <button class="btn" id="exportMsgsBtn" style="background:#c9971f;margin-left:8px;">💾 تصدير سجل المرسلات</button>
+        <button class="btn print-btn" id="printBtn">🖨️ طباعة الجدول والتقويم</button>
+      </div>
+      <h2>الفترات المضافة</h2>
+      <div class="wrap-table" id="periodsTableWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>الفترة</th>
+            <th>من - إلى</th>
+            <th>عدد البلاغات</th>
+            <th>راضي</th>
+            <th>غير راضي</th>
+            <th>لا يوجد</th>
+            <th>عدد المشاركين</th>
+            <th>نسبة الرضا</th>
+            <th>نسبة عدم الرضا</th>
+            <th>نسبة المشاركة</th>
+            <th>نسبة عدم المشاركة</th>
+          </tr>
+        </thead>
+        <tbody id="weeklyBody"></tbody>
+        <tfoot id="weeklyFoot"></tfoot>
+      </table>
+      </div>
+      <div id="printPeriodsCards" class="print-only-block"></div>
     </div>
-</div>
 
-<div id="slideExportContainer" style="display: none;"></div>
+  </div>
+
+  <div id="calendarsPrintCol" class="calendars-print-col">
+  <div id="monthCalendarCard" class="card hidden">
+    <div class="row" style="align-items:center;margin-top:0;margin-bottom:10px;">
+      <h2 id="monthCalendarTitle" style="margin:0;">تقويم الأشهر المحددة</h2>
+      <button id="urgentFilterBtn" class="btn no-print" style="background:#a3432f;margin-top:0;">⏰ عرض الأيام المتبقي لبلاغاتها أقل من 48 ساعة فقط</button>
+    </div>
+    <div class="row no-print" style="margin-top:0;margin-bottom:14px;">
+      <div class="field" style="flex:2;min-width:220px;">
+        <input type="text" id="reportSearchInput" placeholder="ابحث برقم البلاغ أو رقم الجوال...">
+      </div>
+      <button class="btn" id="reportSearchBtn" style="background:#3d6b8a;margin-top:0;white-space:nowrap;">🔍 بحث عن بلاغ</button>
+    </div>
+    <div class="cal-multi-wrap" id="calMultiWrap"></div>
+    <div class="cal-legend">
+      <div class="item"><span class="dot"></span> اليوم الحالي</div>
+      <div class="item"><span class="dot" style="background:var(--accent);"></span> راضي</div>
+      <div class="item"><span class="dot unsat"></span> غير راضي</div>
+      <div class="item"><span class="dot" style="background:var(--bad);"></span> ⏰ متبقي أقل من 48 ساعة (أو متأخر)</div>
+    </div>
+  </div>
+
+  <div id="quarterCalendarCard" class="card hidden">
+    <div class="row" style="align-items:center;margin-top:0;margin-bottom:10px;">
+      <h2 id="quarterCalendarTitle" style="margin:0;">تقويم الأرباع المحددة</h2>
+    </div>
+    <div id="quarterMultiWrap"></div>
+    <div class="cal-legend">
+      <div class="item"><span class="dot"></span> اليوم الحالي</div>
+      <div class="item"><span class="dot" style="background:var(--accent);"></span> راضي</div>
+      <div class="item"><span class="dot unsat"></span> غير راضي</div>
+    </div>
+  </div>
+  </div>
+
+  <div id="dayModalOverlay" class="modal-overlay hidden no-print">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2 id="dayModalTitle">بلاغات اليوم</h2>
+        <button id="dayModalClose" class="modal-close" title="إغلاق">✕</button>
+      </div>
+      <div id="dayModalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="dupModalOverlay" class="modal-overlay hidden no-print">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2>📋 البلاغات المكررة لنفس رقم الجوال</h2>
+        <button id="dupModalClose" class="modal-close" title="إغلاق">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="dupInfo" style="font-size:12.5px;color:var(--muted);margin-bottom:10px;"></div>
+        <div class="wrap-table">
+          <table class="day-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>رقم البلاغ</th>
+                <th></th>
+                <th>البلدية</th>
+                <th>حالة النظام</th>
+                <th>رقم الجوال</th>
+              </tr>
+            </thead>
+            <tbody id="dupTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-foot" style="flex-wrap:wrap;">
+        <button id="dupBlueGroup" class="btn" style="background:#f59e0b;">إرسال الملاحظات</button>
+        <button id="dupSendAll" class="btn" style="background:#25D366;">مراسلة المستفيد</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="blueGroupModalOverlay" class="modal-overlay hidden no-print">
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-head">
+        <h2>إرسال الملاحظات</h2>
+        <button id="blueGroupClose" class="modal-close" title="إغلاق">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="blueGroupTo" placeholder="أدخل رقم الإرسال" style="width:100%;padding:9px 10px;margin:5px 0;border-radius:8px;border:1px solid var(--line);">
+        <textarea id="blueGroupNote" rows="3" placeholder="ملاحظة اختيارية" style="width:100%;padding:9px 10px;margin:5px 0;border-radius:8px;border:1px solid var(--line);font-family:inherit;"></textarea>
+      </div>
+      <div class="modal-foot">
+        <span></span>
+        <button id="blueGroupSend" class="btn">إرسال</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="valuePickerOverlay" class="modal-overlay hidden no-print">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2 id="valuePickerTitle">قيم العمود</h2>
+        <button id="valuePickerClose" class="modal-close" title="إغلاق">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="valuePickerSearch" placeholder="بحث ضمن القيم..." style="width:100%;padding:9px 10px;margin-bottom:10px;border-radius:8px;border:1px solid var(--line);">
+        <div id="valuePickerBody"></div>
+      </div>
+      <div class="modal-foot" style="flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;">
+          <button id="valuePickerSelectAll" class="mini-btn copy" type="button">تحديد الكل</button>
+          <button id="valuePickerDeselectAll" class="mini-btn del" type="button">إلغاء التحديد</button>
+          <button id="valuePickerClear" class="mini-btn" style="background:#8a8478;" type="button">إزالة الفلتر</button>
+        </div>
+        <button id="valuePickerApply" class="btn" style="margin-top:0;">تطبيق</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-Chart.register(ChartDataLabels);
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const statusEl = document.getElementById('status');
+const colPicker = document.getElementById('colPicker');
+const dateColSel = document.getElementById('dateCol');
+const ratingColSel = document.getElementById('ratingCol');
+const nameColSel = document.getElementById('nameCol');
+const phoneColSel = document.getElementById('phoneCol');
+const descColSel = document.getElementById('descCol');
+const statusColSel = document.getElementById('statusCol');
+const reportNoColSel = document.getElementById('reportNoCol');
+const muniColSel = document.getElementById('muniCol');
+const districtColSel = document.getElementById('districtCol');
+const streetColSel = document.getElementById('streetCol');
+const linkColSel = document.getElementById('linkCol');
+const limitColSel = document.getElementById('limitCol');
+const sourceColSel = document.getElementById('sourceCol');
+const systemStatusColSel = document.getElementById('systemStatusCol');
+const loadDataBtn = document.getElementById('loadDataBtn');
+const periodPicker = document.getElementById('periodPicker');
+const fromDateInp = document.getElementById('fromDate');
+const toDateInp = document.getElementById('toDate');
+const periodLabelInp = document.getElementById('periodLabel');
+const addPeriodBtn = document.getElementById('addPeriodBtn');
+const autoWeeklyBtn = document.getElementById('autoWeeklyBtn');
+const autoQuarterlyBtn = document.getElementById('autoQuarterlyBtn');
+const resetPeriodsBtn = document.getElementById('resetPeriodsBtn');
+const resultsEl = document.getElementById('results');
+const monthCheckboxList = document.getElementById('monthCheckboxList');
+const monthChipBar = document.getElementById('monthChipBar');
+const monthlyWeeksBtn = document.getElementById('monthlyWeeksBtn');
+const monthInfoEl = document.getElementById('monthInfo');
+const monthCalendarCard = document.getElementById('monthCalendarCard');
+const monthCalendarTitle = document.getElementById('monthCalendarTitle');
+const calMultiWrap = document.getElementById('calMultiWrap');
+const quarterCheckboxList = document.getElementById('quarterCheckboxList');
+const quarterChipBar = document.getElementById('quarterChipBar');
+const showQuarterCalendarBtn = document.getElementById('showQuarterCalendarBtn');
+const quarterCalendarCard = document.getElementById('quarterCalendarCard');
+const quarterCalendarTitle = document.getElementById('quarterCalendarTitle');
+const quarterMultiWrap = document.getElementById('quarterMultiWrap');
+const printBtn = document.getElementById('printBtn');
+const dayModalOverlay = document.getElementById('dayModalOverlay');
+const dayModalTitle = document.getElementById('dayModalTitle');
+const dayModalBody = document.getElementById('dayModalBody');
+const dayModalClose = document.getElementById('dayModalClose');
 
-let map = null, polygonLayer = null, rawData = [], visibleMunicipalities = [], chart = null, allMunicipalities = new Set(), isCompareVisible = false;
-let labelPositions = {};
-let isDragging = false;
-let draggedLabel = null;
-let dragOffset = { x: 0, y: 0 };
+let rows = [];
+let headers = [];
+let parsedData = []; // {date, rating}
+let periods = []; // {label, from, to, total, sat, unsat, none, satEligible, unsatEligible}
+let hasSourceCol = false;
+let hasSystemStatusCol = false;
+let hasStatusCol = false;
 
-const municipalityColors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e', '#16a085', '#c0392b', '#2980b9', '#8e44ad', '#27ae60', '#f1c40f', '#e91e63'];
+// Exact "حالة البلاغ في النظام" / "مصدر البلاغ" values that are excluded
+// (unchecked) in the reference dashboard filter — rows matching these are
+// left out of the satisfaction/dissatisfaction percentage only.
+const EXCLUDED_SYSTEM_STATUS = [
+  '(API) مغلق من قبل الجهة الخارجية',
+  'تم الحل - كطلب خدمة بلدى مكرر',
+  'تم الحل - لإنشاء طلب خدمة بلدية',
+  'قيد المعالجة - تقييم مقدم البلاغ',
+  'مرفوض',
+  'مغلق - جهة خارجية'
+];
+const EXCLUDED_SOURCE = [
+  'الحصر الميداني',
+  'تطبيق راصد',
+  'میدان',
+  'ميدان',
+  'Urbi'
+];
 
-const monthNames = {
-    arabic: ['يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
-    english: ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
-};
-
-const getQuarterFromDate = (dateStr) => {
-    if (!dateStr || dateStr === 'غير معروف' || dateStr === '') return null;
-    dateStr = String(dateStr).toLowerCase().trim();
-    let month = null;
-    for (let i = 0; i < monthNames.arabic.length; i++) {
-        if (dateStr.includes(monthNames.arabic[i].toLowerCase())) { month = i + 1; break; }
-    }
-    if (!month) {
-        for (let i = 0; i < monthNames.english.length; i++) {
-            if (dateStr.includes(monthNames.english[i])) { month = i + 1; break; }
-        }
-    }
-    if (!month && dateStr.includes('/')) {
-        const parts = dateStr.split('/');
-        if (parts.length >= 2) {
-            let m1 = parseInt(parts[0]), m2 = parseInt(parts[1]);
-            month = (m1 > 12 && m2 <= 12) ? m2 : m1;
-        }
-    }
-    if (!month && dateStr.includes('-')) {
-        const parts = dateStr.split('-');
-        if (parts.length >= 3) {
-            let m1 = parseInt(parts[0]), m2 = parseInt(parts[1]);
-            month = (m1 > 31) ? m2 : (m2 > 12 ? m1 : m1);
-        } else if (parts.length === 2) {
-            month = parseInt(parts[0]);
-        }
-    }
-    if (!month && dateStr.match(/(?:^|[^\d])([1-9]|1[0-2])(?:[^\d]|$)/)) {
-        month = parseInt(dateStr.match(/(?:^|[^\d])([1-9]|1[0-2])(?:[^\d]|$)/)[1]);
-    }
-    if (!month || isNaN(month) || month < 1 || month > 12) return null;
-    if (month <= 3) return 'Q1';
-    if (month <= 6) return 'Q2';
-    if (month <= 9) return 'Q3';
-    return 'Q4';
-};
-
-let manualSatisfactionValues = { 
-    Q1: { satisfied: null, unsatisfied: null }, 
-    Q2: { satisfied: null, unsatisfied: null }, 
-    Q3: { satisfied: null, unsatisfied: null }, 
-    Q4: { satisfied: null, unsatisfied: null } 
-};
-
-function updateSatisfactionCount(quarter, type) {
-    const input = document.getElementById(`sat-${quarter}-${type}`);
-    let value = parseInt(input.value) || 0;
-    if (value < 0) value = 0;
-    if (value > 100) value = 100;
-    input.value = value;
-    manualSatisfactionValues[quarter][type] = value;
-
-    const otherType = type === 'satisfied' ? 'unsatisfied' : 'satisfied';
-    const otherInput = document.getElementById(`sat-${quarter}-${otherType}`);
-    const otherValue = 100 - value;
-    otherInput.value = otherValue;
-    manualSatisfactionValues[quarter][otherType] = otherValue;
+// A row only counts toward the satisfaction/dissatisfaction PERCENTAGE if:
+// - "حالة البلاغ" (when mapped) equals exactly "مغلق" (closed), AND
+// - "مصدر البلاغ" / "حالة البلاغ في النظام" (when mapped) aren't empty and
+//   aren't one of the excluded values above.
+// This does NOT affect any other count (total, لا يوجد, participation) —
+// only the راضي/غير راضي percentage math.
+function isSatEligible(item){
+  if(hasStatusCol && item.status.trim() !== 'مغلق') return false;
+  if(hasSourceCol){
+    if(!item.source) return false;
+    if(EXCLUDED_SOURCE.includes(item.source.trim())) return false;
+  }
+  if(hasSystemStatusCol){
+    if(!item.systemStatus) return false;
+    if(EXCLUDED_SYSTEM_STATUS.includes(item.systemStatus.trim())) return false;
+  }
+  return true;
 }
 
-function validatePercentage(quarter) {
-    const satInput = document.getElementById(`sat-${quarter}-satisfied`);
-    const unsatInput = document.getElementById(`sat-${quarter}-unsatisfied`);
-    let sat = parseInt(satInput.value) || 0;
-    let unsat = parseInt(unsatInput.value) || 0;
+const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const ARABIC_QUARTER_NAMES = ['الربع الأول','الربع الثاني','الربع الثالث','الربع الرابع'];
 
-    const total = sat + unsat;
-    if (total !== 100) {
-        if (document.activeElement === satInput) {
-            unsat = 100 - sat;
-            unsatInput.value = unsat;
-        } else {
-            sat = 100 - unsat;
-            satInput.value = sat;
-        }
-    }
-    manualSatisfactionValues[quarter].satisfied = sat;
-    manualSatisfactionValues[quarter].unsatisfied = unsat;
-}
-
-function resetSatisfactionValues() {
-    manualSatisfactionValues = { 
-        Q1: { satisfied: null, unsatisfied: null }, 
-        Q2: { satisfied: null, unsatisfied: null }, 
-        Q3: { satisfied: null, unsatisfied: null }, 
-        Q4: { satisfied: null, unsatisfied: null } 
-    };
-    updateQuarterComparison();
-    showNotification('✅ تم إعادة ضبط النسب للقيم المحسوبة');
-}
-
-function initMap() {
-    const mapElement = document.getElementById('map');
-    if (!mapElement) return;
-    map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true }).setView([24.7136, 46.6753], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-    polygonLayer = L.layerGroup().addTo(map);
-}
-
-function loadExcel() {
-    const file = document.getElementById("file").files[0];
-    if (!file) { alert('الرجاء اختيار ملف'); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-        processRows(rows);
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-function processRows(rows) {
-    rawData = [];
-    allMunicipalities.clear();
-    const districtMap = {};
-    let quarterCounts = { Q1: 0, Q2: 0, Q3: 0, Q4: 0, unknown: 0 };
-
-    for (let i = 1; i < rows.length; i++) {
-        let r = rows[i];
-        if (!r || r.length < 3) continue;
-        let lng = parseFloat(r[0]), lat = parseFloat(r[1]);
-        let name = String(r[2] || "غير معروف").trim();
-        let muni = String(r[3] || "غير محدد").trim();
-        let date = r[4];
-        let satisfaction = String(r[6] || "").trim();
-        if (isNaN(lat) || isNaN(lng)) continue;
-        if (typeof date === 'number') {
-            const excelEpoch = new Date(1899, 11, 30);
-            date = new Date(excelEpoch.getTime() + date * 24 * 60 * 60 * 1000).getMonth() + 1;
-        }
-        allMunicipalities.add(muni);
-        const quarter = getQuarterFromDate(date);
-        const key = name + "||" + muni;
-        if (!districtMap[key]) {
-            districtMap[key] = { name: name, municipality: muni, lat: lat, lng: lng, totalCount: 0, quarters: { Q1: 0, Q2: 0, Q3: 0, Q4: 0 }, satisfaction: { satisfied: 0, unsatisfied: 0 } };
-        }
-        districtMap[key].totalCount++;
-        if (quarter) { districtMap[key].quarters[quarter]++; quarterCounts[quarter]++; }
-        else { quarterCounts.unknown++; }
-        if (satisfaction.includes('راضي') && !satisfaction.includes('غير')) districtMap[key].satisfaction.satisfied++;
-        else if (satisfaction.includes('غير')) districtMap[key].satisfaction.unsatisfied++;
-    }
-
-    const muniMap = {};
-    Object.values(districtMap).forEach(d => {
-        if (!muniMap[d.municipality]) {
-            muniMap[d.municipality] = { name: d.municipality, districts: [], totalCount: 0, quarters: { Q1: 0, Q2: 0, Q3: 0, Q4: 0 }, points: [], satisfaction: { Q1: {satisfied: 0, unsatisfied: 0}, Q2: {satisfied: 0, unsatisfied: 0}, Q3: {satisfied: 0, unsatisfied: 0}, Q4: {satisfied: 0, unsatisfied: 0} } };
-        }
-        muniMap[d.municipality].districts.push(d);
-        muniMap[d.municipality].totalCount += d.totalCount;
-        muniMap[d.municipality].quarters.Q1 += d.quarters.Q1;
-        muniMap[d.municipality].quarters.Q2 += d.quarters.Q2;
-        muniMap[d.municipality].quarters.Q3 += d.quarters.Q3;
-        muniMap[d.municipality].quarters.Q4 += d.quarters.Q4;
-        muniMap[d.municipality].points.push([d.lng, d.lat]);
-        if (d.quarters.Q1 > 0) { muniMap[d.municipality].satisfaction.Q1.satisfied += d.satisfaction.satisfied; muniMap[d.municipality].satisfaction.Q1.unsatisfied += d.satisfaction.unsatisfied; }
-        if (d.quarters.Q2 > 0) { muniMap[d.municipality].satisfaction.Q2.satisfied += d.satisfaction.satisfied; muniMap[d.municipality].satisfaction.Q2.unsatisfied += d.satisfaction.unsatisfied; }
-        if (d.quarters.Q3 > 0) { muniMap[d.municipality].satisfaction.Q3.satisfied += d.satisfaction.satisfied; muniMap[d.municipality].satisfaction.Q3.unsatisfied += d.satisfaction.unsatisfied; }
-        if (d.quarters.Q4 > 0) { muniMap[d.municipality].satisfaction.Q4.satisfied += d.satisfaction.satisfied; muniMap[d.municipality].satisfaction.Q4.unsatisfied += d.satisfaction.unsatisfied; }
-    });
-
-    Object.values(muniMap).forEach(m => {
-        m.districts.sort((a, b) => b.totalCount - a.totalCount);
-        m.topDistricts = m.districts.slice(0, 4);
-        m.color = municipalityColors[Object.keys(muniMap).indexOf(m.name) % municipalityColors.length];
-    });
-
-    rawData = Object.values(muniMap).sort((a, b) => b.totalCount - a.totalCount);
-    fillSelect("municipalityFilter", allMunicipalities);
-    showNotification(`✅ تم تحميل ${rawData.length} بلدية`);
-    applyCurrentFilter();
-}
-
-function fillSelect(id, set) {
-    let el = document.getElementById(id);
-    el.innerHTML = '<option value="all">' + (id === 'municipalityFilter' ? '🏛️ كل البلديات' : '📅 كل الأشهر') + '</option>';
-    [...set].sort().forEach(v => { el.innerHTML += `<option value="${v}">${v}</option>`; });
-}
-
-function createDraggableLabel(muni, count, container, mapContainer) {
-    const labelId = `label-${muni.name.replace(/\s/g, '-')}`;
-    
-    let left = 0, top = 0;
-    if (labelPositions[muni.name]) {
-        left = labelPositions[muni.name].x;
-        top = labelPositions[muni.name].y;
-    } else {
-        const lats = muni.points.map(p => p[1]), lngs = muni.points.map(p => p[0]);
-        const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
-        const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
-        const point = map.latLngToContainerPoint([centerLat, centerLng]);
-        left = point.x - 70;
-        top = point.y - 30;
-    }
-    
-    const label = document.createElement('div');
-    label.className = 'municipality-label';
-    label.id = labelId;
-    label.innerHTML = `<div class="muni-name">${muni.name}</div><div class="muni-count">${count.toLocaleString()} بلاغ</div>`;
-    label.style.left = left + 'px';
-    label.style.top = top + 'px';
-    label.style.pointerEvents = 'auto';
-    label.style.borderColor = muni.color;
-    
-    label.addEventListener('mousedown', function(e) {
-        isDragging = true;
-        draggedLabel = label;
-        draggedLabel.classList.add('dragging');
-        dragOffset.x = e.clientX - label.offsetLeft;
-        dragOffset.y = e.clientY - label.offsetTop;
-        e.preventDefault();
-        e.stopPropagation();
-    });
-    
-    container.appendChild(label);
-    return label;
-}
-
-document.addEventListener('mousemove', function(e) {
-    if (!isDragging || !draggedLabel) return;
-    const newX = e.clientX - dragOffset.x;
-    const newY = e.clientY - dragOffset.y;
-    draggedLabel.style.left = newX + 'px';
-    draggedLabel.style.top = newY + 'px';
+dropZone.addEventListener('dragover', e=>{e.preventDefault(); dropZone.classList.add('drag');});
+dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e=>{
+  e.preventDefault();
+  dropZone.classList.remove('drag');
+  if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e=>{
+  if(e.target.files.length) handleFile(e.target.files[0]);
 });
 
-document.addEventListener('mouseup', function() {
-    if (isDragging && draggedLabel) {
-        const muniName = draggedLabel.querySelector('.muni-name').textContent;
-        labelPositions[muniName] = {
-            x: draggedLabel.offsetLeft,
-            y: draggedLabel.offsetTop
-        };
-        draggedLabel.classList.remove('dragging');
-        isDragging = false;
-        draggedLabel = null;
+function setStatus(msg, isErr){
+  statusEl.textContent = msg;
+  statusEl.className = 'status' + (isErr ? ' err' : '');
+}
+
+// Try to pre-select a dropdown option whose header text matches one of the
+// given keywords. Exact matches are checked first (across all headers)
+// before falling back to partial/substring matches, so a short keyword like
+// "حالة البلاغ" doesn't get accidentally matched to a longer, different
+// column like "حالة البلاغ في النظام".
+function autoSelectByKeyword(selectEl, keywords){
+  for(let i=0; i<headers.length; i++){
+    const h = (headers[i] || '').trim();
+    if(!h) continue;
+    if(keywords.some(k => h === k)){
+      selectEl.value = String(i);
+      return;
     }
+  }
+  for(let i=0; i<headers.length; i++){
+    const h = (headers[i] || '').trim();
+    if(!h) continue;
+    if(keywords.some(k => h.includes(k))){
+      selectEl.value = String(i);
+      return;
+    }
+  }
+}
+
+function handleFile(file){
+  setStatus('جاري قراءة الملف...');
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:true});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+      if(json.length < 2){ setStatus('الملف لا يحتوي بيانات كافية.', true); return; }
+      headers = json[0].map(h => String(h).trim());
+      rows = json.slice(1).filter(r => r.some(c => String(c).trim() !== ''));
+
+      dateColSel.innerHTML = `<option value="">-- اختر العمود --</option>` + headers.map((h,i)=>`<option value="${i}">${h || '(عمود '+(i+1)+')'}</option>`).join('');
+      const optionalColHtml = `<option value="-1">-- بدون --</option>` + headers.map((h,i)=>`<option value="${i}">${h || '(عمود '+(i+1)+')'}</option>`).join('');
+      ratingColSel.innerHTML = optionalColHtml;
+      nameColSel.innerHTML = optionalColHtml;
+      phoneColSel.innerHTML = optionalColHtml;
+      descColSel.innerHTML = optionalColHtml;
+      statusColSel.innerHTML = optionalColHtml;
+      reportNoColSel.innerHTML = optionalColHtml;
+      muniColSel.innerHTML = optionalColHtml;
+      districtColSel.innerHTML = optionalColHtml;
+      streetColSel.innerHTML = optionalColHtml;
+      linkColSel.innerHTML = optionalColHtml;
+      limitColSel.innerHTML = optionalColHtml;
+      sourceColSel.innerHTML = optionalColHtml;
+      systemStatusColSel.innerHTML = optionalColHtml;
+
+      autoSelectByKeyword(ratingColSel, ['التقييم','تقييم البلاغ','الرضا']);
+      autoSelectByKeyword(nameColSel, ['اسم المبلغ','اسم مقدم البلاغ','اسم العميل','الاسم']);
+      autoSelectByKeyword(phoneColSel, ['رقم الجوال','الجوال','رقم الهاتف','الهاتف']);
+      autoSelectByKeyword(descColSel, ['الوصف','وصف البلاغ']);
+      autoSelectByKeyword(statusColSel, ['حالة البلاغ','الحالة']);
+      autoSelectByKeyword(reportNoColSel, ['رقم البلاغ']);
+      autoSelectByKeyword(muniColSel, ['البلدية الفرعية','البلدية']);
+      autoSelectByKeyword(districtColSel, ['الحي']);
+      autoSelectByKeyword(streetColSel, ['الشارع']);
+      autoSelectByKeyword(linkColSel, ['موقع البلاغ','الرابط','رابط']);
+      autoSelectByKeyword(limitColSel, ['الوقت المعياري']);
+      autoSelectByKeyword(sourceColSel, ['مصدر البلاغ']);
+      autoSelectByKeyword(systemStatusColSel, ['حالة البلاغ في النظام']);
+
+      colPicker.classList.remove('hidden');
+      periodPicker.classList.add('hidden');
+      resultsEl.classList.add('hidden');
+      monthCalendarCard.classList.add('hidden');
+      quarterCalendarCard.classList.add('hidden');
+      periods = [];
+      columnFilters = {};
+      ensureValuePickerButtons();
+      setStatus(`تم تحميل الملف: ${rows.length} صف. تأكد من الأعمدة ثم اضغط "تحميل البيانات".`);
+    }catch(err){
+      console.error(err);
+      setStatus('حدث خطأ أثناء قراءة الملف: ' + err.message, true);
+    }
+  };
+  reader.onerror = () => setStatus('فشل في قراءة الملف.', true);
+  reader.readAsArrayBuffer(file);
+}
+
+function parseDate(val){
+  if(val instanceof Date && !isNaN(val)) return val;
+  if(typeof val === 'number'){
+    // excel serial date (may include time fraction)
+    const d = XLSX.SSF.parse_date_code(val);
+    if(d) return new Date(d.y, d.m-1, d.d, d.H||0, d.M||0, Math.floor(d.S||0));
+  }
+  if(typeof val === 'string'){
+    const s = val.trim();
+    // MM/DD/YYYY [H:MM[:SS] AM/PM] (American, with optional time)
+    let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[\s,]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([APap]\.?[Mm]\.?|ص|م)?)?/);
+    if(m){
+      let mo = parseInt(m[1],10), da = parseInt(m[2],10), yr = parseInt(m[3],10);
+      if(yr < 100) yr += 2000;
+      let hh = m[4] ? parseInt(m[4],10) : 0;
+      let mi = m[5] ? parseInt(m[5],10) : 0;
+      let ss = m[6] ? parseInt(m[6],10) : 0;
+      let ap = m[7] ? m[7].toLowerCase().replace(/\./g,'') : null;
+      if(ap === 'pm' || ap === 'م'){ if(hh < 12) hh += 12; }
+      if(ap === 'am' || ap === 'ص'){ if(hh === 12) hh = 0; }
+      const d = new Date(yr, mo-1, da, hh, mi, ss);
+      if(!isNaN(d)) return d;
+    }
+    const d2 = new Date(s);
+    if(!isNaN(d2)) return d2;
+  }
+  return null;
+}
+
+function normalizeRating(val){
+  let s = String(val).trim();
+  if(!s) return 'لا يوجد';
+  // strip common noise: leading numbers/dashes/dots often used in rating
+  // scales (e.g. "5 - راضي جدا", "1) غير راضي"), and stray punctuation.
+  const clean = s.replace(/[0-9٠-٩\-–.)(]/g, '').trim();
+  if(/لا\s*يوجد/.test(clean) || /^n\/?a$/i.test(s) || /none/i.test(s)) return 'لا يوجد';
+  if(/غير\s*راضي/.test(clean) || /not\s*satisfied/i.test(s) || /dissatisfied/i.test(s)) return 'غير راضي';
+  if(/راضي/.test(clean) || /satisfied/i.test(s)) return 'راضي';
+  return s; // unknown category treated as-is, counted in "other"
+}
+
+function fmtDate(d){
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+}
+
+function fmtDateShort(d){
+  return `${d.getDate()}/${d.getMonth()+1}`;
+}
+
+function toInputDate(d){
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const HH = String(d.getHours()).padStart(2,'0');
+  const MM = String(d.getMinutes()).padStart(2,'0');
+  return `${d.getFullYear()}-${mm}-${dd}T${HH}:${MM}`;
+}
+
+// ---- Multi-select month checkboxes ----
+let selectedMonths = []; // array of "YYYY-MM" strings, in the order the user checked them
+let availableMonthValues = []; // all "YYYY-MM" values that exist in the loaded data range
+
+// Populate the "filter by month" checkbox list with every calendar month
+// that actually appears between the earliest and latest dates found in the
+// data. Replaces the old single-select dropdown.
+function populateMonthSelect(minD, maxD){
+  availableMonthValues = [];
+  let y = minD.getFullYear();
+  let m = minD.getMonth();
+  const endY = maxD.getFullYear();
+  const endM = maxD.getMonth();
+  while(y < endY || (y === endY && m <= endM)){
+    availableMonthValues.push(`${y}-${String(m+1).padStart(2,'0')}`);
+    m++;
+    if(m > 11){ m = 0; y++; }
+  }
+  selectedMonths = [];
+  renderMonthCheckboxList();
+  renderMonthChipBar();
+  monthInfoEl.textContent = '';
+  monthCalendarCard.classList.add('hidden');
+}
+
+function monthValueLabel(value){
+  const [yStr, mStr] = value.split('-');
+  const y = parseInt(yStr,10);
+  const m = parseInt(mStr,10);
+  return `${ARABIC_MONTHS[m-1]} ${y}`;
+}
+
+function renderMonthCheckboxList(){
+  if(availableMonthValues.length === 0){
+    monthCheckboxList.innerHTML = '<label style="color:var(--muted);">لا توجد بيانات محمّلة بعد</label>';
+    return;
+  }
+  monthCheckboxList.innerHTML = availableMonthValues.map(v => `
+    <label>
+      <input type="checkbox" class="monthChk" value="${v}" ${selectedMonths.includes(v) ? 'checked' : ''}>
+      <span>${monthValueLabel(v)}</span>
+    </label>
+  `).join('');
+}
+
+function renderMonthChipBar(){
+  monthChipBar.innerHTML = selectedMonths.map(v => `<span class="month-chip">${monthValueLabel(v)}</span>`).join('');
+}
+
+monthCheckboxList.addEventListener('change', (e)=>{
+  const chk = e.target.closest('.monthChk');
+  if(!chk) return;
+  const v = chk.value;
+  if(chk.checked){
+    if(!selectedMonths.includes(v)) selectedMonths.push(v);
+  } else {
+    selectedMonths = selectedMonths.filter(x => x !== v);
+  }
+  renderMonthChipBar();
+  onSelectedMonthsChanged();
 });
 
-function applyCurrentFilter() {
-    const quarter = document.getElementById("quarterFilter").value;
-    const muni = document.getElementById("municipalityFilter").value;
-    const top = document.getElementById("filterSelect").value;
-    const search = document.getElementById("searchBox").value.toLowerCase();
-    const quarterNames = { 'all': 'الكل', 'Q1': 'الربع الأول', 'Q2': 'الربع الثاني', 'Q3': 'الربع الثالث', 'Q4': 'الربع الرابع' };
-    document.getElementById("currentQuarterBadge").textContent = quarterNames[quarter] || quarter;
-    let filtered = rawData.filter(d => (muni === "all" || d.name === muni) && d.name.toLowerCase().includes(search));
-    if (quarter !== "all") {
-        filtered.sort((a, b) => b.quarters[quarter] - a.quarters[quarter]);
-        filtered = filtered.filter(d => d.quarters[quarter] > 0);
+function onSelectedMonthsChanged(){
+  if(selectedMonths.length === 0 || parsedData.length === 0){
+    monthInfoEl.textContent = '';
+    monthCalendarCard.classList.add('hidden');
+    return;
+  }
+  const infoLines = selectedMonths.map(v => {
+    const info = getMonthInfo(v);
+    const monthLabel = monthValueLabel(v);
+    if(info.isComplete){
+      return `${monthLabel}: شهر كامل، عدد أيامه ${info.daysInMonth} يوم.`;
     }
-    visibleMunicipalities = filtered.slice(0, top === "all" ? Infinity : parseInt(top));
-    
-    drawMap();
-    drawChart();
-    buildExport();
-    if (isCompareVisible) updateQuarterComparison();
+    return `${monthLabel}: غير مكتمل، عدد أيام الشهر تقويميًا ${info.daysInMonth} يوم، لكن البيانات المتوفرة تغطي من ${fmtDate(info.monthStart < info.overallMin ? info.overallMin : info.monthStart)} إلى ${fmtDate(info.monthEnd > info.overallMax ? info.overallMax : info.monthEnd)} فقط.`;
+  });
+  monthInfoEl.innerHTML = infoLines.join('<br>');
+  renderMonthCalendars();
 }
 
-function createPolygonFromPoints(points, color) {
-    if (points.length < 3) {
-        const center = points.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]], [0, 0]);
-        center[0] /= points.length; center[1] /= points.length;
-        const radius = 0.01;
-        const circlePoints = [];
-        for (let i = 0; i < 36; i++) {
-            const angle = (i * 10) * Math.PI / 180;
-            circlePoints.push([center[0] + radius * Math.cos(angle), center[1] + radius * Math.sin(angle)]);
-        }
-        return L.polygon(circlePoints.map(p => [p[1], p[0]]), { color: color, fillColor: color, fillOpacity: 0.3, weight: 3 });
+// Given a "YYYY-MM" value, return the calendar boundaries of that month
+// plus whether the loaded data actually covers the month in full (i.e. the
+// data doesn't start after day 1 or end before the last day of that month).
+function getMonthInfo(value){
+  const [yStr, mStr] = value.split('-');
+  const y = parseInt(yStr,10);
+  const m = parseInt(mStr,10); // 1-12
+  const monthStart = new Date(y, m-1, 1, 0, 0, 0);
+  const monthEnd = new Date(y, m, 0, 23, 59, 59); // last day of that month
+  const daysInMonth = monthEnd.getDate();
+
+  const times = parsedData.map(p=>p.date.getTime());
+  const overallMin = new Date(Math.min(...times));
+  const overallMax = new Date(Math.max(...times));
+
+  const isComplete = (overallMin <= monthStart) && (overallMax >= monthEnd);
+
+  return {y, m, monthStart, monthEnd, daysInMonth, isComplete, overallMin, overallMax};
+}
+
+// Convert Arabic-Indic (٠-٩) and Extended Arabic-Indic (۰-۹) digits to
+// plain ASCII digits, since many exported government files use these and
+// the default \d regex only matches ASCII 0-9.
+function normalizeDigits(str){
+  const easternArabic = '٠١٢٣٤٥٦٧٨٩';
+  const extendedArabic = '۰۱۲۳۴۵۶۷۸۹';
+  return String(str).replace(/[٠-٩۰-۹]/g, ch => {
+    let idx = easternArabic.indexOf(ch);
+    if(idx === -1) idx = extendedArabic.indexOf(ch);
+    return idx === -1 ? ch : String(idx);
+  });
+}
+
+// Parse "الوقت المعياري للمعالجة" (SLA / standard processing time) into
+// hours. Understands a plain number (assumed hours), or a number followed
+// by "ساعة/ساعات" (hours), "يوم/أيام" (days, ×24), or "دقيقة" (minutes,
+// ÷60). Also understands "HH:MM" / "HH:MM:SS" duration strings (common
+// when Excel exports a "[h]:mm" formatted cell as text). Returns null if
+// no usable number can be found.
+function parseLimitHours(limitStr){
+  if(limitStr === null || limitStr === undefined || limitStr === '') return null;
+  const s = normalizeDigits(String(limitStr).trim());
+  if(!s) return null;
+
+  // "HH:MM" or "HH:MM:SS" duration format
+  const timeMatch = s.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?$/);
+  if(timeMatch){
+    const hh = parseFloat(timeMatch[1]);
+    const mm = parseFloat(timeMatch[2] || '0');
+    const ss = parseFloat(timeMatch[3] || '0');
+    return hh + mm/60 + ss/3600;
+  }
+
+  const m = s.match(/([\d.]+)/);
+  if(!m) return null;
+  const num = parseFloat(m[1]);
+  if(isNaN(num)) return null;
+  if(/يوم|أيام|ايام|day/i.test(s)) return num * 24;
+  if(/دقيق|minute/i.test(s)) return num / 60;
+  return num; // default: hours
+}
+
+// When "الوقت المعياري للمعالجة" is formatted in Excel as a duration/time
+// cell (e.g. "[h]:mm"), SheetJS (with cellDates:true) reads it back as a
+// JS Date anchored at the spreadsheet date epoch (1899-12-30) instead of a
+// plain number/string — String(thatDate) would produce something like
+// "Sat Dec 30 1899 02:00:00" and silently break parseLimitHours. Detect
+// that case and convert it back into an hours value first.
+function extractLimitValue(raw){
+  if(raw === undefined || raw === null || raw === '') return '';
+  if(raw instanceof Date && !isNaN(raw)){
+    const epoch = new Date(1899, 11, 30);
+    const hours = (raw.getTime() - epoch.getTime()) / (60*60*1000);
+    return `${hours} ساعة`;
+  }
+  return String(raw).trim();
+}
+
+// Hours remaining until a report's SLA deadline (تاريخ البلاغ + الوقت
+// المعياري للمعالجة). Negative = already overdue. Returns null when the
+// report has no usable "limit" value, or is already closed (حالة البلاغ =
+// مغلق) — a closed report has nothing left "remaining".
+function getRemainingHours(item){
+  if(hasStatusCol && item.status && item.status.trim() === 'مغلق') return null;
+  const limitHours = parseLimitHours(item.limit);
+  if(limitHours === null) return null;
+  const deadline = new Date(item.date.getTime() + limitHours*60*60*1000);
+  return (deadline.getTime() - Date.now()) / (60*60*1000);
+}
+
+// Draw a full calendar grid for one month into a container element:
+// Arabic weekday headers (starting Sunday), a cell for every day of that
+// month, the current real-world day highlighted if it falls inside the
+// shown month, and for each day a small total-reports count plus a mini
+// bar/numbers showing the satisfied vs unsatisfied split for that specific
+// day. When the "أقل من 48 ساعة" filter toggle is active, days with no
+// urgent (open, close-to-SLA-deadline) reports are dimmed instead of
+// removed, keeping the grid shape intact.
+let urgentFilterActive = false;
+
+function buildCalendarGridHtml(y, m){
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const firstDayOfWeek = new Date(y, m-1, 1).getDay(); // 0=Sunday ... 6=Saturday
+  const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === y && (today.getMonth()+1) === m;
+  const todayDate = today.getDate();
+
+  let html = dayNames.map(n => `<div class="cal-head">${n}</div>`).join('');
+  for(let i=0; i<firstDayOfWeek; i++){
+    html += `<div class="cal-day empty"></div>`;
+  }
+  for(let d=1; d<=daysInMonth; d++){
+    const isToday = isCurrentMonth && d === todayDate;
+    const dayStart = new Date(y, m-1, d, 0, 0, 0);
+    const dayEnd = new Date(y, m-1, d, 23, 59, 59);
+    const items = parsedData.filter(p => p.date >= dayStart && p.date <= dayEnd);
+    const total = items.length;
+    const sat = items.filter(i=>i.rating==='راضي').length;
+    const unsat = items.filter(i=>i.rating==='غير راضي').length;
+    const participants = sat + unsat;
+    const satWidth = participants ? (sat/participants*100) : 0;
+    const unsatWidth = participants ? (unsat/participants*100) : 0;
+
+    const urgentCount = items.filter(it => {
+      const r = getRemainingHours(it);
+      return r !== null && r < 48;
+    }).length;
+
+    let inner = `<div class="cal-daynum">${d}</div>`;
+    if(total > 0){
+      inner += `<div class="cal-total">${total}</div>`;
+      if(participants > 0){
+        inner += `<div class="cal-bar" title="راضي: ${sat} — غير راضي: ${unsat}"><div class="seg-sat" style="width:${satWidth}%;"></div><div class="seg-unsat" style="width:${unsatWidth}%;"></div></div>`;
+        inner += `<div class="cal-counts"><span class="n-sat">${sat}</span><span class="n-unsat">${unsat}</span></div>`;
+      }
+      if(urgentCount > 0){
+        inner += `<div class="cal-urgent-badge" title="بلاغات مفتوحة متبقي لها أقل من 48 ساعة (أو متأخرة)">⏰ ${urgentCount}</div>`;
+      }
     }
-    try {
-        const pointsCollection = turf.points(points);
-        const hull = turf.convex(pointsCollection);
-        if (hull) {
-            const coords = hull.geometry.coordinates[0].map(c => [c[1], c[0]]);
-            return L.polygon(coords, { color: color, fillColor: color, fillOpacity: 0.3, weight: 3 });
-        }
-    } catch (e) {}
-    const lats = points.map(p => p[1]), lngs = points.map(p => p[0]);
-    const bounds = [[Math.min(...lats) - 0.01, Math.min(...lngs) - 0.01], [Math.max(...lats) + 0.01, Math.max(...lngs) + 0.01]];
-    return L.rectangle(bounds, { color: color, fillColor: color, fillOpacity: 0.3, weight: 3 });
+
+    let dayClasses = `cal-day${isToday ? ' today' : ''}${total>0 ? ' has-data' : ''}`;
+    if(urgentCount > 0) dayClasses += ' urgent';
+    if(urgentFilterActive && urgentCount === 0) dayClasses += ' dim';
+
+    html += `<div class="${dayClasses}" data-y="${y}" data-m="${m}" data-d="${d}">${inner}</div>`;
+  }
+
+  return html;
 }
 
-function drawMap() {
-    if (!polygonLayer) return;
-    polygonLayer.clearLayers();
-    
-    const labelsContainer = document.getElementById('labelsContainer');
-    labelsContainer.innerHTML = '';
-    
-    if (visibleMunicipalities.length === 0) return;
-    const quarter = document.getElementById("quarterFilter").value;
+// Render every selected month as its own calendar block, side by side
+// (they wrap onto new rows on narrow/mobile screens). Each block carries
+// its own month name + year as a title.
+function renderMonthCalendars(){
+  if(selectedMonths.length === 0){
+    monthCalendarCard.classList.add('hidden');
+    return;
+  }
 
-    visibleMunicipalities.forEach(muni => {
-        const count = quarter === "all" ? muni.totalCount : muni.quarters[quarter];
-        
-        const polygon = createPolygonFromPoints(muni.points, muni.color);
-        polygon.addTo(polygonLayer);
-        
-        createDraggableLabel(muni, count, labelsContainer, document.getElementById('map'));
-    });
-    
-    if (visibleMunicipalities.length > 0 && map) {
-        const allPoints = visibleMunicipalities.flatMap(m => m.points.map(p => [p[1], p[0]]));
-        if (allPoints.length > 0) map.fitBounds(allPoints, { padding: [100, 100], maxZoom: 12 });
-    }
+  monthCalendarTitle.textContent = selectedMonths.length === 1
+    ? `تقويم شهر ${monthValueLabel(selectedMonths[0])}`
+    : `تقاويم الأشهر المحددة (${selectedMonths.length})`;
+
+  calMultiWrap.innerHTML = selectedMonths.map(v => {
+    const [yStr, mStr] = v.split('-');
+    const y = parseInt(yStr,10);
+    const m = parseInt(mStr,10);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    return `<div class="month-block">
+      <div class="month-block-title">${monthValueLabel(v)} (${daysInMonth} يوم)</div>
+      <div class="cal-grid">${buildCalendarGridHtml(y, m)}</div>
+    </div>`;
+  }).join('');
+
+  monthCalendarCard.classList.remove('hidden');
 }
 
-function drawChart() {
-    if (chart) chart.destroy();
-    const ctx = document.getElementById("chart").getContext("2d");
-    const quarter = document.getElementById("quarterFilter").value;
-    const labels = visibleMunicipalities.map(m => m.name);
-    const data = visibleMunicipalities.map(m => quarter === "all" ? m.totalCount : m.quarters[quarter]);
-    const colors = visibleMunicipalities.map(m => m.color);
-    const canvasHeight = Math.max(400, labels.length * 50);
-    document.getElementById("chart").height = canvasHeight;
-    document.getElementById("chartWrapper").style.height = canvasHeight + 'px';
-    chart = new Chart(ctx, {
-        type: 'bar',
-        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderRadius: 8, borderSkipped: false, barThickness: 30 }] },
-        options: {
-            responsive: true, maintainAspectRatio: false, animation: false, indexAxis: 'y',
-            plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'right', color: '#333', font: { weight: 'bold', size: 12 }, formatter: (value) => value.toLocaleString(), offset: 5 } },
-            scales: { x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { callback: function(value) { return value.toLocaleString(); } } }, y: { grid: { display: false }, ticks: { font: { size: 12, weight: '600' }, autoSkip: false } } }
-        }
-    });
+document.getElementById('urgentFilterBtn').addEventListener('click', function(){
+  urgentFilterActive = !urgentFilterActive;
+  this.textContent = urgentFilterActive
+    ? '✖ إلغاء الفلتر — عرض كل الأيام'
+    : '⏰ عرض الأيام المتبقي لبلاغاتها أقل من 48 ساعة فقط';
+  this.style.background = urgentFilterActive ? '#6a4f9c' : '#a3432f';
+  if(selectedMonths.length > 0){
+    renderMonthCalendars();
+  } else {
+    setStatus('اختر شهرًا واحدًا على الأقل من قائمة "فلترة شهرية" لعرض التقويم.', true);
+  }
+});
+
+// ---- Multi-select quarter checkboxes (independent from the month picker) ----
+let selectedQuarters = []; // array of "YYYY-Q#" strings
+let availableQuarterValues = []; // all "YYYY-Q#" values spanning the loaded data range
+
+// Populate the "filter by quarter" checkbox list with every quarter that
+// overlaps the earliest..latest dates found in the data (same span logic
+// as populateMonthSelect, but grouped in 3-month blocks).
+function populateQuarterCheckboxList(minD, maxD){
+  availableQuarterValues = [];
+  let y = minD.getFullYear();
+  let q = Math.floor(minD.getMonth()/3) + 1;
+  const endY = maxD.getFullYear();
+  const endQ = Math.floor(maxD.getMonth()/3) + 1;
+  while(y < endY || (y === endY && q <= endQ)){
+    availableQuarterValues.push(`${y}-Q${q}`);
+    q++;
+    if(q > 4){ q = 1; y++; }
+  }
+  selectedQuarters = [];
+  renderQuarterCheckboxList();
+  renderQuarterChipBar();
+  quarterCalendarCard.classList.add('hidden');
 }
 
-function updateQuarterComparison() {
-    const container = document.getElementById("quarterComparison");
-    const totals = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
-    const satisfactionTotals = { Q1: { satisfied: 0, unsatisfied: 0 }, Q2: { satisfied: 0, unsatisfied: 0 }, Q3: { satisfied: 0, unsatisfied: 0 }, Q4: { satisfied: 0, unsatisfied: 0 } };
-    rawData.forEach(m => {
-        totals.Q1 += m.quarters.Q1; totals.Q2 += m.quarters.Q2; totals.Q3 += m.quarters.Q3; totals.Q4 += m.quarters.Q4;
-        satisfactionTotals.Q1.satisfied += m.satisfaction.Q1.satisfied; satisfactionTotals.Q1.unsatisfied += m.satisfaction.Q1.unsatisfied;
-        satisfactionTotals.Q2.satisfied += m.satisfaction.Q2.satisfied; satisfactionTotals.Q2.unsatisfied += m.satisfaction.Q2.unsatisfied;
-        satisfactionTotals.Q3.satisfied += m.satisfaction.Q3.satisfied; satisfactionTotals.Q3.unsatisfied += m.satisfaction.Q3.unsatisfied;
-        satisfactionTotals.Q4.satisfied += m.satisfaction.Q4.satisfied; satisfactionTotals.Q4.unsatisfied += m.satisfaction.Q4.unsatisfied;
-    });
-    const quarters = [{ key: 'Q1', name: 'الربع الأول', color: '#e74c3c' }, { key: 'Q2', name: 'الربع الثاني', color: '#f39c12' }, { key: 'Q3', name: 'الربع الثالث', color: '#27ae60' }, { key: 'Q4', name: 'الربع الرابع', color: '#3498db' }];
-    const maxTotal = Math.max(...Object.values(totals), 1);
-    const months = ['يناير-مارس', 'إبريل-يونيو', 'يوليو-سبتمبر', 'أكتوبر-ديسمبر'];
-    container.innerHTML = quarters.map((q, i) => {
-        const total = totals[q.key];
-        const prevTotal = i > 0 ? totals[quarters[i - 1].key] : total;
-        const trend = total > prevTotal ? 'up' : total < prevTotal ? 'down' : 'same';
-        const sat = satisfactionTotals[q.key];
-        const totalSat = sat.satisfied + sat.unsatisfied;
-        let satisfiedPercent, unsatisfiedPercent;
-        if (manualSatisfactionValues[q.key].satisfied !== null) {
-            satisfiedPercent = manualSatisfactionValues[q.key].satisfied;
-            unsatisfiedPercent = manualSatisfactionValues[q.key].unsatisfied;
-        } else {
-            satisfiedPercent = totalSat > 0 ? Math.round((sat.satisfied / totalSat) * 100) : 0;
-            unsatisfiedPercent = totalSat > 0 ? Math.round((sat.unsatisfied / totalSat) * 100) : 0;
-        }
+function quarterValueLabel(value){
+  const [yStr, qStr] = value.split('-Q');
+  const y = parseInt(yStr,10);
+  const q = parseInt(qStr,10);
+  const startMonth = (q-1)*3; // 0-indexed
+  const endMonth = startMonth + 2;
+  return `${ARABIC_QUARTER_NAMES[q-1]} ${y} (${ARABIC_MONTHS[startMonth]} - ${ARABIC_MONTHS[endMonth]})`;
+}
 
-        return `<div class="quarter-card ${q.key.toLowerCase()}"><div class="quarter-title">${q.name}</div><div class="quarter-months">${months[i]}</div><div class="quarter-value" style="color:${q.color};">${total.toLocaleString()}</div><div style="margin:10px 0;background:#eee;height:8px;border-radius:4px;overflow:hidden;"><div style="width:${(total / maxTotal * 100)}%;height:100%;background:${q.color};"></div></div><span class="quarter-trend ${trend === 'up' ? 'trend-up' : 'trend-down'}">${trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} ${trend === 'up' ? 'ارتفاع' : trend === 'down' ? 'انخفاض' : 'ثبات'}</span><div class="satisfaction-boxes"><div class="satisfaction-box satisfied"><div class="label">راضي</div><div class="percentage"><input type="number" class="percentage-input" id="sat-${q.key}-satisfied" value="${satisfiedPercent}" min="0" max="100" onchange="updateSatisfactionCount('${q.key}', 'satisfied')" onblur="validatePercentage('${q.key}')">%</div><div class="count" id="sat-${q.key}-satisfied-count">(${sat.satisfied})</div></div><div class="satisfaction-box unsatisfied"><div class="label">غير راضي</div><div class="percentage"><input type="number" class="percentage-input" id="sat-${q.key}-unsatisfied" value="${unsatisfiedPercent}" min="0" max="100" onchange="updateSatisfactionCount('${q.key}', 'unsatisfied')" onblur="validatePercentage('${q.key}')">%</div><div class="count" id="sat-${q.key}-unsatisfied-count">(${sat.unsatisfied})</div></div></div></div>`;
+// The 3 (year, month) pairs that make up a "YYYY-Q#" quarter value.
+function getQuarterMonths(value){
+  const [yStr, qStr] = value.split('-Q');
+  const y = parseInt(yStr,10);
+  const q = parseInt(qStr,10);
+  const startMonth = (q-1)*3; // 0-indexed
+  const months = [];
+  for(let i=0; i<3; i++){
+    months.push({y, m: startMonth + i + 1});
+  }
+  return months;
+}
+
+// Independent stats for one quarter's full date range (all 3 months),
+// used for the watermark donut: نسبة الرضا (eligibility-filtered, same
+// formula used everywhere else in the report) and نسبة المشاركة (raw
+// participants ÷ total, matching the periods table's participation column).
+function computeQuarterStats(value){
+  const months = getQuarterMonths(value);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+
+  const items = parsedData.filter(p => p.date >= rangeStart && p.date <= rangeEnd);
+  const total = items.length;
+  const sat = items.filter(i => i.rating === 'راضي').length;
+  const unsat = items.filter(i => i.rating === 'غير راضي').length;
+  const satEligible = items.filter(i => i.rating === 'راضي' && isSatEligible(i)).length;
+  const unsatEligible = items.filter(i => i.rating === 'غير راضي' && isSatEligible(i)).length;
+  const eligTotal = satEligible + unsatEligible;
+
+  return {
+    satPct: eligTotal ? (satEligible / eligTotal * 100) : 0,
+    participPct: total ? ((sat + unsat) / total * 100) : 0
+  };
+}
+
+function renderQuarterCheckboxList(){
+  if(availableQuarterValues.length === 0){
+    quarterCheckboxList.innerHTML = '<label style="color:var(--muted);">لا توجد بيانات محمّلة بعد</label>';
+    return;
+  }
+  quarterCheckboxList.innerHTML = availableQuarterValues.map(v => `
+    <label>
+      <input type="checkbox" class="quarterChk" value="${v}" ${selectedQuarters.includes(v) ? 'checked' : ''}>
+      <span>${quarterValueLabel(v)}</span>
+    </label>
+  `).join('');
+}
+
+function renderQuarterChipBar(){
+  quarterChipBar.innerHTML = selectedQuarters.map(v => `<span class="month-chip">${quarterValueLabel(v)}</span>`).join('');
+}
+
+quarterCheckboxList.addEventListener('change', (e)=>{
+  const chk = e.target.closest('.quarterChk');
+  if(!chk) return;
+  const v = chk.value;
+  if(chk.checked){
+    if(!selectedQuarters.includes(v)) selectedQuarters.push(v);
+  } else {
+    selectedQuarters = selectedQuarters.filter(x => x !== v);
+  }
+  renderQuarterChipBar();
+});
+
+// Render every selected quarter as its own block containing its 3 months'
+// calendars grouped together side by side. Shown as soon as the button is
+// pressed — even for quarters whose data isn't fully complete, since the
+// grid itself is built from the calendar (not from data coverage).
+function renderQuarterCalendars(){
+  if(selectedQuarters.length === 0){
+    quarterCalendarCard.classList.add('hidden');
+    setStatus('اختر ربعًا واحدًا على الأقل من قائمة "فلترة ربع سنوية" لعرض التقويم.', true);
+    return;
+  }
+
+  quarterCalendarTitle.textContent = selectedQuarters.length === 1
+    ? `تقويم ${quarterValueLabel(selectedQuarters[0])}`
+    : `تقاويم الأرباع المحددة (${selectedQuarters.length})`;
+
+  quarterMultiWrap.innerHTML = selectedQuarters.map((v, idx) => {
+    const months = getQuarterMonths(v);
+    const monthBlocksHtml = months.map(({y, m}) => {
+      const daysInMonth = new Date(y, m, 0).getDate();
+      return `<div class="month-block">
+        <div class="month-block-title">${ARABIC_MONTHS[m-1]} ${y} (${daysInMonth} يوم)</div>
+        <div class="cal-grid">${buildCalendarGridHtml(y, m)}</div>
+      </div>`;
     }).join('');
+
+    const stats = computeQuarterStats(v);
+    const satDeg = (stats.satPct / 100) * 180;
+    const partDeg = (stats.participPct / 100) * 180;
+    // Right half (0-180deg) = نسبة الرضا, left half (180-360deg) = نسبة المشاركة.
+    const donutHtml = `<div class="quarter-donut-row">
+      <div class="quarter-donut" style="background:conic-gradient(var(--accent) 0deg ${satDeg}deg, #e4e0d8 ${satDeg}deg 180deg, #c9971f 180deg ${180+partDeg}deg, #e4e0d8 ${180+partDeg}deg 360deg);"></div>
+      <div class="quarter-donut-legend">
+        <div class="qdl-item sat"><span class="qdl-dot"></span>رضا <b>${stats.satPct.toFixed(2)}%</b></div>
+        <div class="qdl-item part"><span class="qdl-dot"></span>مشاركة <b>${stats.participPct.toFixed(2)}%</b></div>
+      </div>
+    </div>`;
+
+    return `<div class="quarter-block qtone-${idx % 4}">
+      <div class="quarter-block-title">${quarterValueLabel(v)}</div>
+      ${donutHtml}
+      <div class="cal-multi-wrap">${monthBlocksHtml}</div>
+    </div>`;
+  }).join('');
+
+  quarterCalendarCard.classList.remove('hidden');
+  quarterCalendarCard.scrollIntoView({behavior:'smooth'});
+  setStatus(`تم عرض تقويم ${selectedQuarters.length} ربع سنوي.`);
 }
 
-function showQuarterComparison() {
-    const section = document.getElementById("compareSection");
-    if (!isCompareVisible) {
-        section.style.display = "block";
-        isCompareVisible = true;
-        updateQuarterComparison();
-        section.scrollIntoView({ behavior: 'smooth' });
-    } else {
-        section.style.display = "none";
-        isCompareVisible = false;
+showQuarterCalendarBtn.addEventListener('click', renderQuarterCalendars);
+
+// Clicking a day cell inside any of the quarter calendars opens the same
+// day-detail popup used by the monthly calendars.
+quarterMultiWrap.addEventListener('click', (e) => {
+  const cell = e.target.closest('.cal-day.has-data');
+  if(!cell) return;
+  const y = parseInt(cell.getAttribute('data-y'),10);
+  const m = parseInt(cell.getAttribute('data-m'),10);
+  const d = parseInt(cell.getAttribute('data-d'),10);
+  openDayModal(y, m, d);
+});
+
+// Search by "رقم البلاغ" or "رقم الجوال": jumps to (and checks) the right
+// month if it isn't already selected, makes that day flash, and once the
+// person opens that day the matching row scrolls into view and flashes too
+// (see openDayModal / pendingHighlightId).
+function searchReportOnCalendar(){
+  const input = document.getElementById('reportSearchInput');
+  const raw = input.value.trim();
+  if(!raw){
+    setStatus('اكتب رقم البلاغ أو رقم الجوال للبحث.', true);
+    return;
+  }
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+
+  const normalizedQuery = normalizeDigits(raw);
+  const queryPhone = normalizePhoneForWhatsapp(raw);
+
+  const match = parsedData.find(p => {
+    if(p.reportNo && normalizeDigits(p.reportNo).includes(normalizedQuery)) return true;
+    if(p.phone){
+      if(normalizeDigits(p.phone).includes(normalizedQuery)) return true;
+      if(queryPhone && normalizePhoneForWhatsapp(p.phone) === queryPhone) return true;
     }
+    return false;
+  });
+
+  if(!match){
+    setStatus(`لم يتم العثور على بلاغ يطابق "${raw}".`, true);
+    return;
+  }
+
+  const y = match.date.getFullYear();
+  const m = match.date.getMonth() + 1;
+  const d = match.date.getDate();
+  const monthValue = `${y}-${String(m).padStart(2,'0')}`;
+
+  pendingHighlightId = match.id;
+
+  if(!selectedMonths.includes(monthValue)){
+    selectedMonths.push(monthValue);
+    renderMonthCheckboxList();
+    renderMonthChipBar();
+    onSelectedMonthsChanged();
+  } else if(monthCalendarCard.classList.contains('hidden')){
+    renderMonthCalendars();
+  }
+
+  setTimeout(() => {
+    const cell = calMultiWrap.querySelector(`.cal-day[data-y="${y}"][data-m="${m}"][data-d="${d}"]`);
+    if(cell){
+      monthCalendarCard.scrollIntoView({behavior:'smooth', block:'center'});
+      cell.classList.add('flash-highlight');
+      setTimeout(() => cell.classList.remove('flash-highlight'), 4200);
+    }
+  }, 60);
+
+  setStatus(`تم العثور على البلاغ ${match.reportNo || ''} — يوم ${d}/${m}/${y}. اضغط على اليوم الوامض بالتقويم لعرض تفاصيله.`);
 }
 
-let exportRows = [];
-function buildExport() {
-    const quarter = document.getElementById("quarterFilter").value;
-    exportRows = [["البلدية", "إجمالي البلاغات", "Q1", "Q2", "Q3", "Q4", "عدد الأحياء", "أعلى 4 أحياء"]];
-    visibleMunicipalities.forEach(m => {
-        let sortedDistricts = [...m.districts];
-        if (quarter !== "all") sortedDistricts.sort((a, b) => b.quarters[quarter] - a.quarters[quarter]);
-        const top4 = sortedDistricts.slice(0, 4);
-        const top4Names = top4.map((d, i) => { const count = quarter === "all" ? d.totalCount : d.quarters[quarter]; return `${i+1}. ${d.name} (${count})`; }).join(" | ");
-        exportRows.push([m.name, m.totalCount, m.quarters.Q1, m.quarters.Q2, m.quarters.Q3, m.quarters.Q4, m.districts.length, top4Names]);
+document.getElementById('reportSearchBtn').addEventListener('click', searchReportOnCalendar);
+document.getElementById('reportSearchInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){ e.preventDefault(); searchReportOnCalendar(); }
+});
+
+// Step 1: load & parse the whole file using chosen columns, show overall summary
+loadDataBtn.addEventListener('click', () => {
+  if(dateColSel.value === ''){
+    setStatus('اختر عمود التاريخ أولاً.', true);
+    return;
+  }
+  const dIdx = parseInt(dateColSel.value,10);
+  const rIdx = parseInt(ratingColSel.value,10);
+  const nIdx = parseInt(nameColSel.value,10);
+  const phIdx = parseInt(phoneColSel.value,10);
+  const dsIdx = parseInt(descColSel.value,10);
+  const stIdx = parseInt(statusColSel.value,10);
+  const rnIdx = parseInt(reportNoColSel.value,10);
+  const muIdx = parseInt(muniColSel.value,10);
+  const diIdx = parseInt(districtColSel.value,10);
+  const srIdx = parseInt(streetColSel.value,10);
+  const lkIdx = parseInt(linkColSel.value,10);
+  const lmIdx = parseInt(limitColSel.value,10);
+  const srcIdx = parseInt(sourceColSel.value,10);
+  const sysStIdx = parseInt(systemStatusColSel.value,10);
+  hasSourceCol = srcIdx >= 0;
+  hasSystemStatusCol = sysStIdx >= 0;
+  hasStatusCol = stIdx >= 0;
+
+  const filteredRows = applyColumnFilters(rows);
+
+  parsedData = [];
+  let badDates = 0;
+  filteredRows.forEach((r, rowIdx) => {
+    const date = parseDate(r[dIdx]);
+    if(!date){ badDates++; return; }
+    parsedData.push({
+      id: rowIdx,
+      date,
+      rating: (rIdx>=0 && r[rIdx]!==undefined) ? normalizeRating(r[rIdx]) : 'لا يوجد',
+      name: (nIdx>=0 && r[nIdx]!==undefined) ? String(r[nIdx]).trim() : '',
+      phone: (phIdx>=0 && r[phIdx]!==undefined) ? String(r[phIdx]).trim() : '',
+      desc: (dsIdx>=0 && r[dsIdx]!==undefined) ? String(r[dsIdx]).trim() : '',
+      status: (stIdx>=0 && r[stIdx]!==undefined) ? String(r[stIdx]).trim() : '',
+      reportNo: (rnIdx>=0 && r[rnIdx]!==undefined) ? String(r[rnIdx]).trim() : '',
+      muni: (muIdx>=0 && r[muIdx]!==undefined) ? String(r[muIdx]).trim() : '',
+      district: (diIdx>=0 && r[diIdx]!==undefined) ? String(r[diIdx]).trim() : '',
+      street: (srIdx>=0 && r[srIdx]!==undefined) ? String(r[srIdx]).trim() : '',
+      link: (lkIdx>=0 && r[lkIdx]!==undefined) ? String(r[lkIdx]).trim() : '',
+      limit: (lmIdx>=0 && r[lmIdx]!==undefined) ? extractLimitValue(r[lmIdx]) : '',
+      source: (srcIdx>=0 && r[srcIdx]!==undefined) ? String(r[srcIdx]).trim() : '',
+      systemStatus: (sysStIdx>=0 && r[sysStIdx]!==undefined) ? String(r[sysStIdx]).trim() : ''
     });
-}
+  });
 
-function exportExcel() {
-    if (exportRows.length <= 1) { alert('لا توجد بيانات'); return; }
-    let ws = XLSX.utils.aoa_to_sheet(exportRows);
-    let wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "البلديات");
-    XLSX.writeFile(wb, "تحليل_البلديات_الربع_سنوي.xlsx");
-}
+  if(parsedData.length === 0){
+    setStatus('لم أستطع قراءة أي تواريخ صحيحة من العمود المحدد (أو أن الفلاتر المطبقة استبعدت كل الصفوف). تأكد من اختيار العمود الصحيح.', true);
+    return;
+  }
 
-async function exportSlide() {
-    showNotification('⏳ جاري تصدير السلايد...');
-    try {
-        const exportContainer = document.getElementById('slideExportContainer');
-        exportContainer.innerHTML = '';
-        exportContainer.style.display = 'flex';
+  const totalAll = parsedData.length;
+  const satAll = parsedData.filter(p=>p.rating==='راضي').length;
+  const unsatAll = parsedData.filter(p=>p.rating==='غير راضي').length;
+  const noneAll = parsedData.filter(p=>p.rating==='لا يوجد').length;
+  const otherAll = totalAll - satAll - unsatAll - noneAll;
+  const kOtherWrap = document.getElementById('kOtherWrap');
+  if(otherAll > 0){
+    kOtherWrap.style.display = '';
+    document.getElementById('kOtherCount').textContent = otherAll;
+  } else {
+    kOtherWrap.style.display = 'none';
+  }
 
-        const topSection = document.createElement('div');
-        topSection.className = 'top-section';
-        
-        const bottomSection = document.createElement('div');
-        bottomSection.className = 'bottom-section';
+  // Percentage-only: exclude rows with an empty "مصدر البلاغ" / "حالة البلاغ
+  // في النظام" (when those columns are mapped) from the sat/unsat percentage.
+  const satEligibleAll = parsedData.filter(p=>p.rating==='راضي' && isSatEligible(p)).length;
+  const unsatEligibleAll = parsedData.filter(p=>p.rating==='غير راضي' && isSatEligible(p)).length;
+  const denom = satEligibleAll + unsatEligibleAll;
 
-        const chartSection = document.createElement('div');
-        chartSection.className = 'chart-section';
-        chartSection.innerHTML = `
-            <div class="card-title" style="font-size: 24px;">📊 توزيع البلديات <span class="quarter-badge">${document.getElementById("currentQuarterBadge").textContent}</span></div>
-            <div class="chart-container" style="height: calc(100% - 60px);">
-                <canvas id="exportChart"></canvas>
-            </div>
-        `;
-        topSection.appendChild(chartSection);
+  document.getElementById('kTotal').textContent = totalAll;
+  document.getElementById('kSatCount').textContent = satAll;
+  document.getElementById('kUnsatCount').textContent = unsatAll;
+  document.getElementById('kNoneCount').textContent = noneAll;
+  document.getElementById('kSatPct').textContent = denom ? ((satEligibleAll/denom)*100).toFixed(1)+'%' : '—';
+  document.getElementById('kUnsatPct').textContent = denom ? ((unsatEligibleAll/denom)*100).toFixed(1)+'%' : '—';
 
-        const mapWrapper = document.createElement('div');
-        mapWrapper.className = 'map-wrapper';
-        const mapDiv = document.createElement('div');
-        mapDiv.id = 'exportMap';
-        mapDiv.style.width = '100%';
-        mapDiv.style.height = '100%';
-        mapWrapper.appendChild(mapDiv);
-        
-        topSection.appendChild(mapWrapper);
+  // pre-fill date inputs with min/max range found in data
+  const times = parsedData.map(p=>p.date.getTime());
+  const minD = new Date(Math.min(...times));
+  const maxD = new Date(Math.max(...times));
+  fromDateInp.value = toInputDate(minD);
+  toDateInp.value = toInputDate(maxD);
+  populateMonthSelect(minD, maxD);
+  populateQuarterCheckboxList(minD, maxD);
 
-        const quarterSection = document.createElement('div');
-        quarterSection.innerHTML = `
-            <div class="card-title" style="font-size: 24px;">📊 مقارنة الأداء الربع سنوي</div>
-            <div class="compare-section" id="exportQuarterComparison"></div>
-        `;
-        bottomSection.appendChild(quarterSection);
+  periods = [];
+  document.getElementById('weeklyBody').innerHTML = '';
+  document.getElementById('weeklyFoot').innerHTML = '';
+  buildPrintPeriodsCards();
+  resultsEl.classList.remove('hidden');
+  periodPicker.classList.remove('hidden');
 
-        exportContainer.appendChild(topSection);
-        exportContainer.appendChild(bottomSection);
+  let msg = `تم تحميل ${totalAll} بلاغ. الآن حدد "من - إلى" واضغط "إضافة الفترة للجدول" لكل فترة تحتاجها.`;
+  if(badDates > 0) msg += ` (تم تجاهل ${badDates} صف بسبب تاريخ غير صالح)`;
+  if(rIdx < 0) msg += ` ملاحظة: لم يتم اختيار عمود التقييم، سيتم اعتبار كل البلاغات "لا يوجد" في إحصاءات الرضا.`;
 
-        const exportCtx = document.getElementById("exportChart").getContext("2d");
-        const quarter = document.getElementById("quarterFilter").value;
-        const labels = visibleMunicipalities.map(m => m.name);
-        const data = visibleMunicipalities.map(m => quarter === "all" ? m.totalCount : m.quarters[quarter]);
-        const colors = visibleMunicipalities.map(m => m.color);
-        
-        new Chart(exportCtx, {
-            type: 'bar',
-            data: { 
-                labels: labels, 
-                datasets: [{ 
-                    data: data, 
-                    backgroundColor: colors, 
-                    borderRadius: 8, 
-                    borderSkipped: false, 
-                    barThickness: 25 
-                }] 
-            },
-            options: {
-                responsive: true, 
-                maintainAspectRatio: false, 
-                animation: false, 
-                indexAxis: 'y',
-                plugins: { 
-                    legend: { display: false }, 
-                    datalabels: { 
-                        anchor: 'end', 
-                        align: 'right', 
-                        color: '#1e3c72', 
-                        font: { weight: 'bold', size: 16 }, 
-                        formatter: (value) => value.toLocaleString(), 
-                        offset: 8 
-                    } 
-                },
-                scales: { 
-                    x: { 
-                        beginAtZero: true, 
-                        grid: { color: 'rgba(0,0,0,0.08)' }, 
-                        ticks: { 
-                            font: { size: 14, weight: 'bold' },
-                            callback: function(value) { return value.toLocaleString(); } 
-                        } 
-                    }, 
-                    y: { 
-                        grid: { display: false }, 
-                        ticks: { 
-                            font: { size: 15, weight: 'bold' }, 
-                            autoSkip: false 
-                        } 
-                    } 
-                }
-            }
-        });
-
-        const exportMap = L.map('exportMap', { 
-            zoomControl: false, 
-            attributionControl: false, 
-            preferCanvas: true 
-        });
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-            maxZoom: 19,
-            maxNativeZoom: 19
-        }).addTo(exportMap);
-        
-        const exportLayer = L.layerGroup().addTo(exportMap);
-
-        visibleMunicipalities.forEach(muni => {
-            if (muni.points.length >= 3) {
-                try {
-                    const pointsCollection = turf.points(muni.points);
-                    const hull = turf.convex(pointsCollection);
-                    if (hull) {
-                        const coords = hull.geometry.coordinates[0].map(c => [c[1], c[0]]);
-                        L.polygon(coords, { 
-                            color: muni.color, 
-                            fillColor: muni.color, 
-                            fillOpacity: 0.4, 
-                            weight: 4 
-                        }).addTo(exportLayer);
-                    }
-                } catch (e) {}
-            }
-        });
-
-        if (visibleMunicipalities.length > 0) {
-            const allPoints = visibleMunicipalities.flatMap(m => m.points.map(p => [p[1], p[0]]));
-            exportMap.fitBounds(allPoints, { padding: [50, 50], maxZoom: 14 });
-        }
-
-        await new Promise(r => setTimeout(r, 2000));
-
-        const exportQuarterContainer = document.getElementById('exportQuarterComparison');
-        const totals = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
-        const satisfactionTotals = { Q1: { satisfied: 0, unsatisfied: 0 }, Q2: { satisfied: 0, unsatisfied: 0 }, Q3: { satisfied: 0, unsatisfied: 0 }, Q4: { satisfied: 0, unsatisfied: 0 } };
-        rawData.forEach(m => {
-            totals.Q1 += m.quarters.Q1; totals.Q2 += m.quarters.Q2; totals.Q3 += m.quarters.Q3; totals.Q4 += m.quarters.Q4;
-            satisfactionTotals.Q1.satisfied += m.satisfaction.Q1.satisfied; satisfactionTotals.Q1.unsatisfied += m.satisfaction.Q1.unsatisfied;
-            satisfactionTotals.Q2.satisfied += m.satisfaction.Q2.satisfied; satisfactionTotals.Q2.unsatisfied += m.satisfaction.Q2.unsatisfied;
-            satisfactionTotals.Q3.satisfied += m.satisfaction.Q3.satisfied; satisfactionTotals.Q3.unsatisfied += m.satisfaction.Q3.unsatisfied;
-            satisfactionTotals.Q4.satisfied += m.satisfaction.Q4.satisfied; satisfactionTotals.Q4.unsatisfied += m.satisfaction.Q4.unsatisfied;
-        });
-        const quarters = [{ key: 'Q1', name: 'الربع الأول', color: '#e74c3c' }, { key: 'Q2', name: 'الربع الثاني', color: '#f39c12' }, { key: 'Q3', name: 'الربع الثالث', color: '#27ae60' }, { key: 'Q4', name: 'الربع الرابع', color: '#3498db' }];
-        const maxTotal = Math.max(...Object.values(totals), 1);
-        const months = ['يناير-مارس', 'إبريل-يونيو', 'يوليو-سبتمبر', 'أكتوبر-ديسمبر'];
-        exportQuarterContainer.innerHTML = quarters.map((q, i) => {
-            const total = totals[q.key];
-            const prevTotal = i > 0 ? totals[quarters[i - 1].key] : total;
-            const trend = total > prevTotal ? 'up' : total < prevTotal ? 'down' : 'same';
-            const sat = satisfactionTotals[q.key];
-            const totalSat = sat.satisfied + sat.unsatisfied;
-            let satisfiedPercent, unsatisfiedPercent;
-            if (manualSatisfactionValues[q.key].satisfied !== null) {
-                satisfiedPercent = manualSatisfactionValues[q.key].satisfied;
-                unsatisfiedPercent = manualSatisfactionValues[q.key].unsatisfied;
-            } else {
-                satisfiedPercent = totalSat > 0 ? Math.round((sat.satisfied / totalSat) * 100) : 0;
-                unsatisfiedPercent = totalSat > 0 ? Math.round((sat.unsatisfied / totalSat) * 100) : 0;
-            }
-
-            return `<div class="quarter-card ${q.key.toLowerCase()}" style="padding: 20px;"><div class="quarter-title" style="font-size: 18px;">${q.name}</div><div class="quarter-months" style="font-size: 12px;">${months[i]}</div><div class="quarter-value" style="color:${q.color}; font-size: 32px;">${total.toLocaleString()}</div><div style="margin:12px 0;background:#eee;height:10px;border-radius:5px;overflow:hidden;"><div style="width:${(total / maxTotal * 100)}%;height:100%;background:${q.color};"></div></div><div class="satisfaction-boxes" style="margin-top: 10px; gap: 10px;"><div class="satisfaction-box satisfied" style="padding: 10px;"><div class="label" style="font-size: 11px;">راضي</div><div class="percentage" style="font-size: 18px;">${satisfiedPercent}%</div></div><div class="satisfaction-box unsatisfied" style="padding: 10px;"><div class="label" style="font-size: 11px;">غير راضي</div><div class="percentage" style="font-size: 18px;">${unsatisfiedPercent}%</div></div></div></div>`;
-        }).join('');
-
-        await new Promise(r => setTimeout(r, 2000));
-        showNotification('⏳ جاري تصدير الصورة...');
-
-        const canvas = await html2canvas(exportContainer, { 
-            scale: 2, 
-            useCORS: true, 
-            allowTaint: true, 
-            backgroundColor: '#ffffff', 
-            width: 1920, 
-            height: 1080, 
-            logging: false,
-            imageTimeout: 0
-        });
-        
-        exportContainer.style.display = 'none';
-
-        // تم حذف إنشاء finalCanvas والشريط الأزرق - نستخدم canvas مباشرة
-        canvas.toBlob(blob => {
-            saveAs(blob, `سلايد_البلديات_${new Date().toLocaleDateString('ar-SA')}.png`);
-            showNotification('✅ تم تصدير السلايد! (1920×1080)');
-        });
-    } catch (err) {
-        console.error(err);
-        document.getElementById('slideExportContainer').style.display = 'none';
-        alert('حدث خطأ: ' + err.message);
+  // Diagnostic for the "⏰ أقل من 48 ساعة" feature: tell the user right
+  // away whether there's any usable data for it, instead of leaving them
+  // to wonder why the calendar shows nothing.
+  if(lmIdx >= 0){
+    const withLimit = parsedData.filter(p => getRemainingHours(p) !== null).length;
+    if(withLimit === 0){
+      msg += ` ⚠️ ملاحظة: لم أستطع احتساب "الوقت المتبقي" لأي بلاغ — تحقق أن عمود "الوقت المعياري للمعالجة" يحتوي أرقام (مثل "48" أو "48 ساعة")، وأن عمود "حالة البلاغ" (إن وُجد) ما يجعل كل البلاغات "مغلق".`;
+    } else {
+      msg += ` (تم احتساب الوقت المتبقي لـ ${withLimit} بلاغ)`;
     }
+  } else {
+    msg += ` ملاحظة: ميزة "⏰ أقل من 48 ساعة" تحتاج اختيار عمود "الوقت المعياري للمعالجة" — لم يتم اختياره.`;
+  }
+
+  if(otherAll > 0){
+    const samples = [...new Set(parsedData.filter(p=>!['راضي','غير راضي','لا يوجد'].includes(p.rating)).map(p=>p.rating))].slice(0,5);
+    msg += ` ⚠️ تنبيه: ${otherAll} صف لم يتم التعرف على تقييمها، تأكد من اختيار عمود التقييم الصحيح. أمثلة على القيم غير المعروفة: ${samples.join(' / ')}`;
+    setStatus(msg, true);
+  } else {
+    setStatus(msg);
+  }
+  resultsEl.scrollIntoView({behavior:'smooth'});
+});
+
+function renderPeriodsTable(){
+  const tbody = document.getElementById('weeklyBody');
+  const foot = document.getElementById('weeklyFoot');
+  tbody.innerHTML = '';
+  let totSat=0, totUnsat=0, totNone=0, totAll=0, totSatEligible=0, totUnsatEligible=0;
+
+  periods.forEach((p, idx) => {
+    const satE = typeof p.satEligible === 'number' ? p.satEligible : p.sat;
+    const unsatE = typeof p.unsatEligible === 'number' ? p.unsatEligible : p.unsat;
+    const eligibleParticipants = satE + unsatE;
+    const participants = p.sat + p.unsat;
+    const satPct = eligibleParticipants ? (satE/eligibleParticipants*100) : 0;
+    const unsatPct = eligibleParticipants ? (unsatE/eligibleParticipants*100) : 0;
+    const participPct = p.total ? ((p.sat+p.unsat)/p.total*100) : 0;
+    const nonParticipPct = p.total ? (p.none/p.total*100) : 0;
+
+    totSat+=p.sat; totUnsat+=p.unsat; totNone+=p.none; totAll+=p.total;
+    totSatEligible+=satE; totUnsatEligible+=unsatE;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${p.label} <span style="cursor:pointer;color:var(--bad);font-weight:700;" data-idx="${idx}" class="delBtn" title="حذف">✕</span></td>
+      <td>${fmtDateShort(p.from)} إلى ${fmtDateShort(p.to)}</td>
+      <td>${p.total}</td>
+      <td>${p.sat}</td>
+      <td>${p.unsat}</td>
+      <td>${p.none}</td>
+      <td>${participants}</td>
+      <td>${satPct.toFixed(1)}%</td>
+      <td>${unsatPct.toFixed(1)}%</td>
+      <td>${participPct.toFixed(1)}%</td>
+      <td>${nonParticipPct.toFixed(1)}%</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.delBtn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const i = parseInt(e.target.getAttribute('data-idx'),10);
+      periods.splice(i,1);
+      renderPeriodsTable();
+    });
+  });
+
+  foot.innerHTML = '';
+
+  buildPrintPeriodsCards();
 }
 
-function fitAll() {
-    if (visibleMunicipalities.length === 0 || !map) return;
-    const allPoints = visibleMunicipalities.flatMap(m => m.points.map(p => [p[1], p[0]]));
-    if (allPoints.length > 0) map.fitBounds(allPoints, { padding: [100, 100] });
+// Build the print-only, vertically-stacked "card" version of the periods
+// table (one compact card per period, metrics listed top-to-bottom instead
+// of as wide table columns). This is what actually shows up when printing —
+// the regular wide table is hidden on print via #periodsTableWrap — so the
+// summary reads as a narrow professional column instead of a huge table
+// that would push the calendars off the page.
+function buildPrintPeriodsCards(){
+  const el = document.getElementById('printPeriodsCards');
+  if(!el) return;
+
+  if(periods.length === 0){
+    el.innerHTML = '<div style="font-size:11px;color:var(--muted);">لا توجد فترات مضافة</div>';
+    return;
+  }
+
+  function pctRow(p){
+    const satE = typeof p.satEligible === 'number' ? p.satEligible : p.sat;
+    const unsatE = typeof p.unsatEligible === 'number' ? p.unsatEligible : p.unsat;
+    const elig = satE + unsatE;
+    return {
+      satPct: elig ? (satE/elig*100).toFixed(1)+'%' : '—',
+      unsatPct: elig ? (unsatE/elig*100).toFixed(1)+'%' : '—',
+      partPct: p.total ? ((p.sat+p.unsat)/p.total*100).toFixed(1)+'%' : '—'
+    };
+  }
+
+  let html = periods.map(p => {
+    const pr = pctRow(p);
+    return `<div class="pp-card">
+      <div class="pp-card-title">${p.label}</div>
+      <div class="pp-card-range">${fmtDateShort(p.from)} — ${fmtDateShort(p.to)}</div>
+      <table class="pp-card-table">
+        <tr><td>إجمالي</td><td>${p.total}</td></tr>
+        <tr><td>راضي</td><td>${p.sat}</td></tr>
+        <tr><td>غير راضي</td><td>${p.unsat}</td></tr>
+        <tr><td>لا يوجد</td><td>${p.none}</td></tr>
+        <tr><td>نسبة الرضا</td><td>${pr.satPct}</td></tr>
+        <tr><td>نسبة عدم الرضا</td><td>${pr.unsatPct}</td></tr>
+        <tr><td>نسبة المشاركة</td><td>${pr.partPct}</td></tr>
+      </table>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = html;
 }
 
-function clearAllData() { 
-    if (confirm('هل أنت متأكد؟')) {
-        labelPositions = {};
-        location.reload(); 
+addPeriodBtn.addEventListener('click', () => {
+  if(!fromDateInp.value || !toDateInp.value){
+    setStatus('حدد تاريخ البداية والنهاية أولاً.', true);
+    return;
+  }
+  const from = new Date(fromDateInp.value);
+  const to = new Date(toDateInp.value);
+  if(isNaN(from) || isNaN(to)){
+    setStatus('صيغة التاريخ/الوقت غير صحيحة، تأكد من تعبئة الحقلين كاملين (تاريخ ووقت).', true);
+    return;
+  }
+  if(from > to){
+    setStatus('تاريخ البداية يجب أن يكون قبل تاريخ النهاية.', true);
+    return;
+  }
+
+  const items = parsedData.filter(p => p.date >= from && p.date <= to);
+  const total = items.length;
+  const sat = items.filter(i=>i.rating==='راضي').length;
+  const unsat = items.filter(i=>i.rating==='غير راضي').length;
+  const none = items.filter(i=>i.rating==='لا يوجد').length;
+  const satEligible = items.filter(i=>i.rating==='راضي' && isSatEligible(i)).length;
+  const unsatEligible = items.filter(i=>i.rating==='غير راضي' && isSatEligible(i)).length;
+
+  const label = periodLabelInp.value.trim() || `فترة ${periods.length+1}`;
+  periods.push({label, from, to, total, sat, unsat, none, satEligible, unsatEligible});
+  renderPeriodsTable();
+  periodLabelInp.value = '';
+  setStatus(`تمت إضافة "${label}": ${total} بلاغ.`);
+});
+
+autoWeeklyBtn.addEventListener('click', () => {
+  if(!fromDateInp.value || !toDateInp.value){
+    setStatus('حدد تاريخ ووقت البداية والنهاية أولاً.', true);
+    return;
+  }
+  const rangeFrom = new Date(fromDateInp.value);
+  const rangeTo = new Date(toDateInp.value);
+  if(isNaN(rangeFrom) || isNaN(rangeTo)){
+    setStatus('صيغة التاريخ/الوقت غير صحيحة.', true);
+    return;
+  }
+  if(rangeFrom > rangeTo){
+    setStatus('تاريخ البداية يجب أن يكون قبل تاريخ النهاية.', true);
+    return;
+  }
+
+  periods = [];
+  let weekStart = new Date(rangeFrom);
+  let weekNum = 1;
+  while(weekStart < rangeTo){
+    let weekEnd = new Date(weekStart.getTime() + 7*24*60*60*1000 - 1000); // 7 days minus 1 second
+    if(weekEnd > rangeTo) weekEnd = new Date(rangeTo);
+
+    const items = parsedData.filter(p => p.date >= weekStart && p.date <= weekEnd);
+    const total = items.length;
+    const sat = items.filter(i=>i.rating==='راضي').length;
+    const unsat = items.filter(i=>i.rating==='غير راضي').length;
+    const none = items.filter(i=>i.rating==='لا يوجد').length;
+    const satEligible = items.filter(i=>i.rating==='راضي' && isSatEligible(i)).length;
+    const unsatEligible = items.filter(i=>i.rating==='غير راضي' && isSatEligible(i)).length;
+
+    periods.push({label: `الأسبوع ${weekNum}`, from: new Date(weekStart), to: new Date(weekEnd), total, sat, unsat, none, satEligible, unsatEligible});
+
+    weekStart = new Date(weekStart.getTime() + 7*24*60*60*1000);
+    weekNum++;
+  }
+
+  renderPeriodsTable();
+  setStatus(`تم تقسيم الفترة إلى ${periods.length} أسبوع تلقائيًا.`);
+});
+
+autoQuarterlyBtn.addEventListener('click', () => {
+  if(!fromDateInp.value || !toDateInp.value){
+    setStatus('حدد تاريخ ووقت البداية والنهاية أولاً.', true);
+    return;
+  }
+  const rangeFrom = new Date(fromDateInp.value);
+  const rangeTo = new Date(toDateInp.value);
+  if(isNaN(rangeFrom) || isNaN(rangeTo)){
+    setStatus('صيغة التاريخ/الوقت غير صحيحة.', true);
+    return;
+  }
+  if(rangeFrom > rangeTo){
+    setStatus('تاريخ البداية يجب أن يكون قبل تاريخ النهاية.', true);
+    return;
+  }
+
+  periods = [];
+  let qStart = new Date(rangeFrom);
+  let qNum = 1;
+  while(qStart < rangeTo){
+    // add 3 calendar months, then step back 1 second for the end boundary
+    let qEnd = new Date(qStart);
+    qEnd.setMonth(qEnd.getMonth() + 3);
+    qEnd = new Date(qEnd.getTime() - 1000);
+    if(qEnd > rangeTo) qEnd = new Date(rangeTo);
+
+    const items = parsedData.filter(p => p.date >= qStart && p.date <= qEnd);
+    const total = items.length;
+    const sat = items.filter(i=>i.rating==='راضي').length;
+    const unsat = items.filter(i=>i.rating==='غير راضي').length;
+    const none = items.filter(i=>i.rating==='لا يوجد').length;
+    const satEligible = items.filter(i=>i.rating==='راضي' && isSatEligible(i)).length;
+    const unsatEligible = items.filter(i=>i.rating==='غير راضي' && isSatEligible(i)).length;
+
+    periods.push({label: `الربع ${qNum}`, from: new Date(qStart), to: new Date(qEnd), total, sat, unsat, none, satEligible, unsatEligible});
+
+    const nextStart = new Date(qStart);
+    nextStart.setMonth(nextStart.getMonth() + 3);
+    qStart = nextStart;
+    qNum++;
+  }
+
+  renderPeriodsTable();
+  setStatus(`تم تقسيم الفترة إلى ${periods.length} ربع سنوي تلقائيًا.`);
+});
+
+printBtn.addEventListener('click', () => {
+  window.print();
+});
+
+resetPeriodsBtn.addEventListener('click', () => {
+  periods = [];
+  renderPeriodsTable();
+  setStatus('تم تصفير جدول الفترات.');
+});
+
+// Add "weeks" periods for every currently-selected month (checkbox list).
+// Each selected month contributes its own set of week rows to the periods
+// table; existing periods from other months/ranges are kept as-is.
+monthlyWeeksBtn.addEventListener('click', () => {
+  if(selectedMonths.length === 0){
+    setStatus('اختر شهرًا واحدًا على الأقل من القائمة.', true);
+    return;
+  }
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+
+  let totalAdded = 0;
+  const noteParts = [];
+
+  selectedMonths.forEach(monthValue => {
+    const info = getMonthInfo(monthValue);
+    const {monthStart, monthEnd, daysInMonth, isComplete} = info;
+    const monthLabel = monthValueLabel(monthValue);
+
+    // Build week boundaries so the last week absorbs whatever days are left
+    // over (0-6 days) instead of spawning a separate short "week 5". A month
+    // always ends up with exactly floor(daysInMonth/7) weeks this way.
+    const numWeeks = Math.max(1, Math.floor(daysInMonth / 7));
+    const weekBoundaries = [];
+    let cursor = new Date(monthStart);
+    for(let w = 1; w <= numWeeks; w++){
+      let weekEnd;
+      if(w === numWeeks){
+        weekEnd = new Date(monthEnd); // last week absorbs the remainder days
+      } else {
+        weekEnd = new Date(cursor.getTime() + 7*24*60*60*1000 - 1000);
+      }
+      weekBoundaries.push({from: new Date(cursor), to: weekEnd});
+      cursor = new Date(cursor.getTime() + 7*24*60*60*1000);
     }
+
+    const addedPeriods = weekBoundaries.map((wb, idx) => {
+      const items = parsedData.filter(p => p.date >= wb.from && p.date <= wb.to);
+      const total = items.length;
+      const sat = items.filter(i=>i.rating==='راضي').length;
+      const unsat = items.filter(i=>i.rating==='غير راضي').length;
+      const none = items.filter(i=>i.rating==='لا يوجد').length;
+      const satEligible = items.filter(i=>i.rating==='راضي' && isSatEligible(i)).length;
+      const unsatEligible = items.filter(i=>i.rating==='غير راضي' && isSatEligible(i)).length;
+      return {label: `${monthLabel} - الأسبوع ${idx+1}`, from: wb.from, to: wb.to, total, sat, unsat, none, satEligible, unsatEligible};
+    });
+
+    periods = periods.concat(addedPeriods);
+    totalAdded += addedPeriods.length;
+
+    const completeNote = isComplete
+      ? `شهر كامل (${daysInMonth} يوم)`
+      : `غير مكتمل تقويميًا`;
+    noteParts.push(`${monthLabel}: ${addedPeriods.length} أسبوع (${completeNote})`);
+  });
+
+  renderPeriodsTable();
+  setStatus(`تمت إضافة ${totalAdded} أسبوع إجمالاً — ${noteParts.join(' | ')}.`);
+});
+
+// ---- Generic "column value picker": click a small button next to any
+// column dropdown to see every distinct value found in that column across
+// the raw uploaded rows (with counts), multi-select the ones wanted, and
+// apply that as a row-level filter for the whole analysis. ----
+
+let columnFilters = {}; // { selectId: { colIdx:number, allowed:Set<string> } }
+
+const allColumnSelects = [
+  {id:'dateCol', el:dateColSel},
+  {id:'ratingCol', el:ratingColSel},
+  {id:'nameCol', el:nameColSel},
+  {id:'phoneCol', el:phoneColSel},
+  {id:'descCol', el:descColSel},
+  {id:'statusCol', el:statusColSel},
+  {id:'reportNoCol', el:reportNoColSel},
+  {id:'muniCol', el:muniColSel},
+  {id:'districtCol', el:districtColSel},
+  {id:'streetCol', el:streetColSel},
+  {id:'linkCol', el:linkColSel},
+  {id:'limitCol', el:limitColSel},
+  {id:'sourceCol', el:sourceColSel},
+  {id:'systemStatusCol', el:systemStatusColSel}
+];
+
+function ensureValuePickerButtons(){
+  allColumnSelects.forEach(({id, el})=>{
+    let wrap = el.parentElement.querySelector('.vp-btn-wrap');
+    if(!wrap){
+      wrap = document.createElement('div');
+      wrap.className = 'vp-btn-wrap';
+      wrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'vp-btn';
+      btn.textContent = '👁 عرض القيم واختيار';
+      btn.style.cssText = 'background:#eee;border:1px solid var(--line);border-radius:6px;padding:4px 9px;font-size:11.5px;cursor:pointer;color:var(--ink);';
+      btn.addEventListener('click', ()=> openValuePickerModal(id, el));
+      const badge = document.createElement('span');
+      badge.className = 'vp-badge';
+      badge.id = `vpBadge_${id}`;
+      badge.style.cssText = 'font-size:11px;color:var(--muted);';
+      wrap.appendChild(btn);
+      wrap.appendChild(badge);
+      el.insertAdjacentElement('afterend', wrap);
+    }
+    updateFilterBadge(id);
+  });
 }
 
-function showNotification(message) {
-    const notif = document.createElement('div');
-    notif.style.cssText = 'position:fixed; top:90px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.85); color:white; padding:15px 30px; border-radius:30px; font-weight:600; z-index:100001;';
-    notif.textContent = message;
-    document.body.appendChild(notif);
-    setTimeout(() => { notif.style.opacity = '0'; setTimeout(() => notif.remove(), 300); }, 3000);
+function updateFilterBadge(id){
+  const badge = document.getElementById(`vpBadge_${id}`);
+  if(!badge) return;
+  const f = columnFilters[id];
+  if(f){
+    badge.textContent = `فلتر مفعّل: ${f.allowed.size} قيمة محددة`;
+    badge.style.color = 'var(--accent)';
+    badge.style.fontWeight = '600';
+  } else {
+    badge.textContent = '';
+  }
 }
 
-document.addEventListener('DOMContentLoaded', function() { initMap(); });
+function getUniqueColumnValues(colIdx){
+  const map = new Map();
+  rows.forEach(r=>{
+    const raw = (r[colIdx]!==undefined && r[colIdx]!==null) ? String(r[colIdx]).trim() : '';
+    const key = raw === '' ? '(فارغ)' : raw;
+    map.set(key, (map.get(key)||0)+1);
+  });
+  return Array.from(map.entries()).sort((a,b)=> b[1]-a[1]);
+}
+
+function openValuePickerModal(selectId, selectEl){
+  const colIdx = parseInt(selectEl.value,10);
+  if(isNaN(colIdx) || colIdx < 0){
+    alert('اختر العمود من القائمة أولاً ثم اضغط عرض القيم.');
+    return;
+  }
+  const values = getUniqueColumnValues(colIdx);
+  const existing = columnFilters[selectId];
+  const allowed = (existing && existing.colIdx === colIdx) ? existing.allowed : null;
+
+  document.getElementById('valuePickerTitle').textContent = `قيم العمود: ${headers[colIdx] || '(عمود '+(colIdx+1)+')'}`;
+  const body = document.getElementById('valuePickerBody');
+  body.innerHTML = values.map(([val,count])=>{
+    const checked = allowed ? allowed.has(val) : true;
+    return `<label class="vp-row" data-val="${val.replace(/"/g,'&quot;')}" style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--line);font-size:13px;">
+      <input type="checkbox" class="vp-check" value="${val.replace(/"/g,'&quot;')}" ${checked?'checked':''}>
+      <span style="flex:1;">${val}</span>
+      <span style="color:var(--muted);font-size:11.5px;">${count}</span>
+    </label>`;
+  }).join('') || '<div style="color:var(--muted);font-size:13px;">لا توجد قيم.</div>';
+
+  const overlay = document.getElementById('valuePickerOverlay');
+  overlay.dataset.selectId = selectId;
+  overlay.dataset.colIdx = colIdx;
+  document.getElementById('valuePickerSearch').value = '';
+  overlay.classList.remove('hidden');
+}
+
+document.getElementById('valuePickerSearch').addEventListener('input', (e)=>{
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('#valuePickerBody .vp-row').forEach(row=>{
+    const v = (row.getAttribute('data-val')||'').toLowerCase();
+    row.style.display = v.includes(q) ? 'flex' : 'none';
+  });
+});
+
+document.getElementById('valuePickerSelectAll').addEventListener('click', ()=>{
+  document.querySelectorAll('#valuePickerBody .vp-row').forEach(row=>{
+    if(row.style.display !== 'none') row.querySelector('.vp-check').checked = true;
+  });
+});
+document.getElementById('valuePickerDeselectAll').addEventListener('click', ()=>{
+  document.querySelectorAll('#valuePickerBody .vp-row').forEach(row=>{
+    if(row.style.display !== 'none') row.querySelector('.vp-check').checked = false;
+  });
+});
+document.getElementById('valuePickerClear').addEventListener('click', ()=>{
+  const overlay = document.getElementById('valuePickerOverlay');
+  const selectId = overlay.dataset.selectId;
+  delete columnFilters[selectId];
+  updateFilterBadge(selectId);
+  overlay.classList.add('hidden');
+  setStatus('تمت إزالة الفلتر عن هذا العمود. اضغط "تحميل البيانات" لتحديث النتائج.');
+});
+document.getElementById('valuePickerApply').addEventListener('click', ()=>{
+  const overlay = document.getElementById('valuePickerOverlay');
+  const selectId = overlay.dataset.selectId;
+  const colIdx = parseInt(overlay.dataset.colIdx,10);
+  const checks = Array.from(document.querySelectorAll('#valuePickerBody .vp-check'));
+  const allValues = getUniqueColumnValues(colIdx).map(v=>v[0]);
+  const checked = checks.filter(c=>c.checked).map(c=>c.value);
+
+  if(checked.length === 0){
+    alert('اختر قيمة واحدة على الأقل، أو استخدم "إزالة الفلتر".');
+    return;
+  }
+  if(checked.length === allValues.length){
+    delete columnFilters[selectId]; // all selected == no restriction
+  } else {
+    columnFilters[selectId] = {colIdx, allowed: new Set(checked)};
+  }
+  updateFilterBadge(selectId);
+  overlay.classList.add('hidden');
+  setStatus('تم تطبيق الفلتر. اضغط "تحميل البيانات" لتحديث النتائج بحسب القيم المحددة.');
+});
+document.getElementById('valuePickerClose').addEventListener('click', ()=>{
+  document.getElementById('valuePickerOverlay').classList.add('hidden');
+});
+document.getElementById('valuePickerOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'valuePickerOverlay') e.target.classList.add('hidden');
+});
+
+// Apply every active column filter to the raw rows before parsing dates.
+function applyColumnFilters(sourceRows){
+  const activeFilters = Object.values(columnFilters);
+  if(activeFilters.length === 0) return sourceRows;
+  return sourceRows.filter(r=>{
+    return activeFilters.every(f=>{
+      const raw = (r[f.colIdx]!==undefined && r[f.colIdx]!==null) ? String(r[f.colIdx]).trim() : '';
+      const key = raw === '' ? '(فارغ)' : raw;
+      return f.allowed.has(key);
+    });
+  });
+}
+
+// ---- Day-detail popup + duplicates + WhatsApp workflow (localStorage-tracked) ----
+
+let sentMsgs = JSON.parse(localStorage.getItem('sentMsgs') || '[]');
+let sentColors = JSON.parse(localStorage.getItem('sentColors') || '{}');
+let dupRows = [];
+let dupPhone = '';
+let currentDayY = null, currentDayM = null, currentDayD = null;
+let dayStatusFilter = '';
+let pendingHighlightId = null; // set by the report/phone search; consumed once the matching day's modal opens
+let activeHighlightRowId = null; // stays set while that day's modal is open, so the row keeps its blue border across re-renders (e.g. status filter changes)
+
+function saveSentMsgs(){ localStorage.setItem('sentMsgs', JSON.stringify(sentMsgs)); }
+function saveSentColors(){ localStorage.setItem('sentColors', JSON.stringify(sentColors)); }
+
+function addSentRecord(type, item, note){
+  sentMsgs.push({
+    النوع: type,
+    رقم_البلاغ: item.reportNo || '',
+    رقم_الجوال: item.phone || '',
+    البلدية: item.muni || '',
+    الحي: item.district || '',
+    التاريخ: new Date().toLocaleString('ar-EG'),
+    الملاحظة: note || '-'
+  });
+  saveSentMsgs();
+}
+
+// Turn a raw phone number into an international-format digits-only string
+// suitable for a wa.me link. Assumes Saudi numbers when no country code is
+// present (05xxxxxxxx -> 9665xxxxxxxx, 5xxxxxxxx -> 9665xxxxxxxx).
+function normalizePhoneForWhatsapp(phone){
+  let digits = String(phone || '').replace(/\D/g, '');
+  if(!digits) return '';
+  if(digits.startsWith('00')) digits = digits.slice(2);
+  if(digits.startsWith('966')) return digits;
+  if(digits.startsWith('0')) return '966' + digits.slice(1);
+  if(digits.startsWith('5') && digits.length === 9) return '966' + digits;
+  return digits;
+}
+
+function getDayItems(y, m, d){
+  const dayStart = new Date(y, m-1, d, 0, 0, 0);
+  const dayEnd = new Date(y, m-1, d, 23, 59, 59);
+  return parsedData.filter(p => p.date >= dayStart && p.date <= dayEnd);
+}
+
+function copyText(txt){
+  navigator.clipboard.writeText(String(txt || ''));
+}
+
+// Render (or re-render, e.g. after a delete) the day table for the
+// currently-open day.
+function renderDayTable(){
+  const allItems = getDayItems(currentDayY, currentDayM, currentDayD);
+  const statuses = [...new Set(allItems.map(i => i.status).filter(Boolean))];
+  if(dayStatusFilter && !statuses.includes(dayStatusFilter)) dayStatusFilter = '';
+  const items = dayStatusFilter ? allItems.filter(i => i.status === dayStatusFilter) : allItems;
+
+  dayModalTitle.textContent = `بلاغات يوم ${currentDayD}/${currentDayM}/${currentDayY} (${items.length}${dayStatusFilter ? ' من ' + allItems.length : ''})`;
+
+  const satCount = items.filter(i => i.rating === 'راضي').length;
+  const unsatCount = items.filter(i => i.rating === 'غير راضي').length;
+  const noneCount = items.filter(i => i.rating === 'لا يوجد').length;
+
+  let html = `<div class="day-stats">
+    <span class="stat-badge sat">راضي: ${satCount}</span>
+    <span class="stat-badge unsat">غير راضي: ${unsatCount}</span>
+    <span class="stat-badge">لا يوجد: ${noneCount}</span>
+  </div>`;
+
+  if(statuses.length > 0){
+    html += `<div class="row" style="margin-top:0;margin-bottom:12px;">
+      <div class="field" style="min-width:200px;max-width:280px;">
+        <label>تصفية حسب حالة البلاغ</label>
+        <select id="dayStatusFilterSel">
+          <option value="">كل الحالات (${allItems.length})</option>
+          ${statuses.map(s => `<option value="${s}" ${s===dayStatusFilter?'selected':''}>${s} (${allItems.filter(i=>i.status===s).length})</option>`).join('')}
+        </select>
+      </div>
+    </div>`;
+  }
+
+  if(allItems.length === 0){
+    html += '<div style="color:var(--muted);font-size:13px;">لا توجد بلاغات لهذا اليوم.</div>';
+    dayModalBody.innerHTML = html;
+    return;
+  }
+  if(items.length === 0){
+    html += '<div style="color:var(--muted);font-size:13px;">لا توجد بلاغات بهذه الحالة.</div>';
+    dayModalBody.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="wrap-table"><table class="day-table"><thead><tr>
+    <th>البلدية</th><th>الحي</th><th>الشارع</th><th>الوصف</th><th>رقم البلاغ</th>
+    <th>رقم الجوال</th><th>الحالة</th><th>التاريخ</th><th>المتبقي</th><th>صورة</th><th></th><th></th><th></th>
+  </tr></thead><tbody>`;
+
+  items.forEach(item => {
+    let colorClass = sentColors[item.reportNo] === 'blue' ? 'sent-blue' : (sentColors[item.reportNo] === 'orange' ? 'sent-orange' : '');
+    const safeId = String(item.reportNo || item.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    const remaining = getRemainingHours(item);
+    let remainingCell = '-';
+    if(remaining !== null){
+      remainingCell = remaining < 0
+        ? `<span style="color:var(--bad);font-weight:700;">متأخر ${Math.abs(Math.round(remaining))} س</span>`
+        : `<span style="${remaining < 48 ? 'color:var(--bad);font-weight:700;' : ''}">${Math.round(remaining)} س</span>`;
+      if(remaining < 48) colorClass = (colorClass ? colorClass + ' ' : '') + 'urgent-row';
+    }
+
+    if(activeHighlightRowId !== null && item.id === activeHighlightRowId){
+      colorClass = (colorClass ? colorClass + ' ' : '') + 'row-target';
+    }
+
+    html += `<tr class="${colorClass}" data-id="${item.id}">
+      <td>${item.muni || '-'}</td>
+      <td>${item.district || '-'}</td>
+      <td>${item.street || '-'}</td>
+      <td class="desc-cell">${item.desc || '-'}</td>
+      <td>${item.reportNo || '-'} ${item.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${item.reportNo}">نسخ</button>` : ''}</td>
+      <td class="ltr">${item.phone || '-'}</td>
+      <td>${item.status || '-'}</td>
+      <td>${fmtDateShort(item.date)}</td>
+      <td>${remainingCell}</td>
+      <td class="file-cell"><input type="file" accept="image/*" id="img_${safeId}"></td>
+      <td>${item.phone ? `<button type="button" class="mini-btn wa send-img-btn" data-id="${item.id}">إرسال</button>` : ''}</td>
+      <td>${item.phone ? `<button type="button" class="mini-btn copy dup-btn" data-id="${item.id}">عرض</button>` : ''}</td>
+      <td><button type="button" class="mini-btn del del-btn" data-id="${item.id}">حذف</button></td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  dayModalBody.innerHTML = html;
+}
+
+function openDayModal(y, m, d){
+  currentDayY = y; currentDayM = m; currentDayD = d;
+  dayStatusFilter = '';
+  activeHighlightRowId = pendingHighlightId; // null unless we just arrived here from a search
+  renderDayTable();
+  dayModalOverlay.classList.remove('hidden');
+
+  if(pendingHighlightId !== null){
+    const targetId = pendingHighlightId;
+    pendingHighlightId = null;
+    setTimeout(() => {
+      const row = dayModalBody.querySelector(`tr[data-id="${targetId}"]`);
+      if(row){
+        row.scrollIntoView({behavior:'smooth', block:'center'});
+        row.classList.add('row-flash');
+        setTimeout(() => row.classList.remove('row-flash'), 3000);
+      }
+    }, 80);
+  }
+}
+
+function closeDayModal(){
+  dayModalOverlay.classList.add('hidden');
+  activeHighlightRowId = null;
+}
+
+dayModalClose.addEventListener('click', closeDayModal);
+dayModalOverlay.addEventListener('click', (e) => {
+  if(e.target === dayModalOverlay) closeDayModal();
+});
+
+// Click on any day cell that has data (in any of the rendered month
+// blocks) opens the popup for that day. Delegated on the shared wrapper
+// so it works regardless of how many month calendars are on screen.
+calMultiWrap.addEventListener('click', (e) => {
+  const cell = e.target.closest('.cal-day.has-data');
+  if(!cell) return;
+  const y = parseInt(cell.getAttribute('data-y'),10);
+  const m = parseInt(cell.getAttribute('data-m'),10);
+  const d = parseInt(cell.getAttribute('data-d'),10);
+  openDayModal(y, m, d);
+});
+
+// Delegated clicks inside the day table: copy ticket, delete report,
+// send an attached image via WhatsApp, or open the duplicates modal.
+dayModalBody.addEventListener('change', (e) => {
+  if(e.target.id === 'dayStatusFilterSel'){
+    dayStatusFilter = e.target.value;
+    renderDayTable();
+  }
+});
+
+dayModalBody.addEventListener('click', (e) => {
+  const copyBtn = e.target.closest('.copy-btn');
+  if(copyBtn){ copyText(copyBtn.getAttribute('data-copy')); return; }
+
+  const delBtn = e.target.closest('.del-btn');
+  if(delBtn){
+    const id = parseInt(delBtn.getAttribute('data-id'),10);
+    if(!confirm('حذف هذا البلاغ نهائيًا؟')) return;
+    parsedData = parsedData.filter(p => p.id !== id);
+    renderDayTable();
+    if(selectedMonths.length > 0) renderMonthCalendars();
+    if(selectedQuarters.length > 0) renderQuarterCalendars();
+    return;
+  }
+
+  const dupBtn = e.target.closest('.dup-btn');
+  if(dupBtn){
+    const id = parseInt(dupBtn.getAttribute('data-id'),10);
+    const item = parsedData.find(p => p.id === id);
+    if(item) openDuplicatesModal(item.phone);
+    return;
+  }
+
+  const sendImgBtn = e.target.closest('.send-img-btn');
+  if(sendImgBtn){
+    const id = parseInt(sendImgBtn.getAttribute('data-id'),10);
+    sendTicketImage(id);
+    return;
+  }
+});
+
+async function sendTicketImage(id){
+  const item = parsedData.find(p => p.id === id);
+  if(!item){ alert('البلاغ غير موجود'); return; }
+
+  const safeId = String(item.reportNo || item.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const fileInput = document.getElementById(`img_${safeId}`);
+  const file = fileInput?.files?.[0];
+  if(!file){ alert('ارفق صورة أولاً'); return; }
+
+  const phone = normalizePhoneForWhatsapp(item.phone);
+  const text = `البلدية: ${item.muni || ''}\n\nرقم البلاغ: ${item.reportNo || ''}\n\nرقم الجوال: ${item.phone || ''}\n\nرابط الموقع:\n${item.link || ''}`;
+
+  try{
+    await navigator.share({files:[file], text});
+  }catch(err){
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+  }
+
+  addSentRecord('إرسال صورة', item, 'صورة + رابط');
+  if(item.reportNo){ sentColors[item.reportNo] = 'blue'; saveSentColors(); }
+  renderDayTable();
+}
+
+// ---- Duplicates modal: every report across the whole dataset for a phone ----
+
+function openDuplicatesModal(phone){
+  dupPhone = String(phone || '').trim();
+  dupRows = parsedData.filter(p => p.phone && normalizePhoneForWhatsapp(p.phone) === normalizePhoneForWhatsapp(dupPhone));
+
+  document.getElementById('dupInfo').textContent = `رقم الجوال: ${dupPhone} — عدد البلاغات: ${dupRows.length}`;
+
+  let html = '';
+  dupRows.forEach((r, idx) => {
+    html += `<tr>
+      <td><input type="checkbox" class="dup-check" data-idx="${idx}"></td>
+      <td>${r.reportNo || '-'}</td>
+      <td>${r.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.reportNo}">نسخ</button>` : ''}</td>
+      <td>${r.muni || '-'}</td>
+      <td>${r.status || '-'}</td>
+      <td class="ltr">${r.phone || '-'}</td>
+    </tr>`;
+  });
+
+  document.getElementById('dupTableBody').innerHTML = html || `<tr><td colspan="6">لا توجد بلاغات</td></tr>`;
+  document.getElementById('dupModalOverlay').classList.remove('hidden');
+}
+
+document.getElementById('dupTableBody').addEventListener('click', (e) => {
+  const copyBtn = e.target.closest('.copy-btn');
+  if(copyBtn) copyText(copyBtn.getAttribute('data-copy'));
+});
+
+document.getElementById('dupModalClose').addEventListener('click', () => {
+  document.getElementById('dupModalOverlay').classList.add('hidden');
+});
+document.getElementById('dupModalOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'dupModalOverlay') document.getElementById('dupModalOverlay').classList.add('hidden');
+});
+
+function getCheckedDupRows(){
+  const checks = Array.from(document.querySelectorAll('.dup-check:checked'));
+  return checks.map(ch => dupRows[parseInt(ch.getAttribute('data-idx'),10)]);
+}
+
+const closingVariations = [
+  'هل تم معالجة وتلافي الملاحظة على الوجه المطلوب؟',
+  'نأمل إفادتنا عن حالة الملاحظة وهل تم معالجتها بالشكل المطلوب؟',
+  'هل تم إنهاء الملاحظة بشكل كامل؟',
+  'هل تمت معالجة البلاغ بالشكل الصحيح؟',
+  'هل لازالت لديكم أي ملاحظات تحتاج متابعة؟',
+  'هل تم تصحيح وضع الملاحظة كما هو مطلوب؟',
+  'هل تمت معالجة البلاغ أم لازالت هناك ملاحظات؟',
+  'هل انتهت المشكلة وتم إغلاق الملاحظة لديكم؟',
+  'هل تم التعامل مع الملاحظة وحلها تمامًا؟',
+  'هل تمت المعالجة بالشكل المطلوب أم توجد ملاحظات إضافية؟'
+];
+
+// "مراسلة المستفيد": message the beneficiary directly on WhatsApp, with a
+// 30-second countdown (so it's easy to cancel by closing the modal) before
+// the chat actually opens.
+document.getElementById('dupSendAll').addEventListener('click', () => {
+  const rows = getCheckedDupRows();
+  if(rows.length === 0){ alert('اختر بلاغ واحد على الأقل'); return; }
+
+  const phone = normalizePhoneForWhatsapp(rows[0].phone);
+  let lines = '';
+  rows.forEach(r => {
+    lines += `${r.reportNo || ''}\n`;
+    lines += `${r.desc || '—'}\n\n`;
+  });
+
+  const closingLine = closingVariations[Math.floor(Math.random() * closingVariations.length)];
+  const text = `السلام عليكم ورحمة الله وبركاته\n\nلديكم بلاغ:\n\n${lines}\n${closingLine}`;
+
+  const btn = document.getElementById('dupSendAll');
+  const original = btn.textContent;
+  let timeLeft = 30;
+  btn.disabled = true;
+
+  const timer = setInterval(() => {
+    btn.textContent = `الإرسال خلال ${timeLeft} ثانية...`;
+    timeLeft--;
+    if(timeLeft < 0){
+      clearInterval(timer);
+      btn.disabled = false;
+      btn.textContent = original;
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+      rows.forEach(r => {
+        if(r.reportNo) sentColors[r.reportNo] = 'orange';
+        addSentRecord('مراسلة المستفيد', r, '-');
+      });
+      saveSentColors();
+      if(currentDayY) renderDayTable();
+    }
+  }, 1000);
+});
+
+// "إرسال الملاحظات": compose and send an internal note (to any destination
+// number, e.g. a supervisor/contractor group) about the selected reports.
+let blueSelectedRows = [];
+
+document.getElementById('dupBlueGroup').addEventListener('click', () => {
+  const rows = getCheckedDupRows();
+  if(rows.length === 0){ alert('اختر بلاغ واحد على الأقل'); return; }
+  blueSelectedRows = rows;
+  document.getElementById('blueGroupTo').value = '';
+  document.getElementById('blueGroupNote').value = '';
+  document.getElementById('blueGroupModalOverlay').classList.remove('hidden');
+});
+
+document.getElementById('blueGroupClose').addEventListener('click', () => {
+  document.getElementById('blueGroupModalOverlay').classList.add('hidden');
+});
+document.getElementById('blueGroupModalOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'blueGroupModalOverlay') document.getElementById('blueGroupModalOverlay').classList.add('hidden');
+});
+
+document.getElementById('blueGroupSend').addEventListener('click', () => {
+  if(blueSelectedRows.length === 0){ alert('لم يتم اختيار أي بلاغ'); return; }
+
+  const dest = normalizePhoneForWhatsapp(document.getElementById('blueGroupTo').value);
+  if(!dest){ alert('أدخل رقم الإرسال'); return; }
+
+  const note = document.getElementById('blueGroupNote').value.trim();
+  const rows = blueSelectedRows;
+  const links = rows.map(r => r.link).filter(Boolean);
+  const uniqueLinks = [...new Set(links)];
+
+  let msg = `رقم الجوال: ${dupPhone}\nعدد البلاغات: ${rows.length}\n\nالبلاغات:\n`;
+
+  if(uniqueLinks.length === 1){
+    rows.forEach(r => {
+      msg += `${r.reportNo || ''}\n`;
+      msg += `الحي: ${r.district || ''}\n`;
+      msg += `الشارع: ${r.street || ''}\n`;
+      msg += `الوقت المعياري: ${r.limit || ''}\n\n`;
+    });
+    msg += `رابط الموقع:\n${uniqueLinks[0]}`;
+  } else {
+    rows.forEach(r => {
+      msg += `${r.reportNo || ''}\n`;
+      if(r.link) msg += `رابط الموقع: ${r.link}\n`;
+      msg += `الحي: ${r.district || ''}\n`;
+      msg += `الشارع: ${r.street || ''}\n`;
+      msg += `الوقت المعياري: ${r.limit || ''}\n\n`;
+    });
+  }
+
+  if(note) msg += `\nالملاحظة: ${note}`;
+
+  window.open(`https://wa.me/${dest}?text=${encodeURIComponent(msg)}`, '_blank');
+
+  rows.forEach(r => {
+    if(r.reportNo) sentColors[r.reportNo] = 'blue';
+    addSentRecord('إرسال الملاحظات', r, note || '-');
+  });
+  saveSentColors();
+
+  document.getElementById('blueGroupModalOverlay').classList.add('hidden');
+  if(currentDayY) renderDayTable();
+});
+
+// Export the full sent-message log (kept in localStorage) to an Excel file.
+document.getElementById('exportMsgsBtn').addEventListener('click', () => {
+  if(sentMsgs.length === 0){ alert('لا يوجد سجل مرسلات'); return; }
+
+  const data = [['النوع','رقم البلاغ','رقم الجوال','البلدية','الحي','التاريخ','الملاحظة']];
+  sentMsgs.forEach(r => {
+    data.push([r.النوع||'', r.رقم_البلاغ||'', r.رقم_الجوال||'', r.البلدية||'', r.الحي||'', r.التاريخ||'', r.الملاحظة||'']);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, 'سجل المرسلات');
+  XLSX.writeFile(wb, 'سجل_المرسلات.xlsx');
+});
 </script>
 </body>
 </html>
