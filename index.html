@@ -340,6 +340,16 @@
     margin-top:2px;
   }
   .cal-day.today .cal-urgent-badge{background:#fff;color:var(--bad);}
+  .cal-final-badge{
+    font-size:9.5px;
+    font-weight:700;
+    color:#fff;
+    background:#f59e0b;
+    border-radius:10px;
+    padding:0 6px;
+    margin-top:2px;
+  }
+  .cal-day.today .cal-final-badge{background:#fff;color:#f59e0b;}
   @keyframes flashHighlight{
     0%,100%{ box-shadow:0 0 0 2px var(--accent-soft); background:var(--neutral-soft); }
     50%{ box-shadow:0 0 0 4px #f59e0b; background:#fef3c7; }
@@ -350,7 +360,7 @@
     50%{ background:#fef3c7; }
   }
   .day-table tr.row-flash td{ animation: rowFlash 0.7s ease-in-out 4; }
-  .day-table tr.row-target td{ border-top:2px solid #2563eb; border-bottom:2px solid #2563eb; }
+  .day-table tr.row-target td{ background:#bfdbfe !important; border-top:2px solid #2563eb; border-bottom:2px solid #2563eb; }
   .day-table tr.row-target td:first-child{ border-right:2px solid #2563eb; }
   .day-table tr.row-target td:last-child{ border-left:2px solid #2563eb; }
   .mini-btn{border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px;color:#fff;}
@@ -522,12 +532,36 @@
     .cal-total{font-size:7px;}
     .cal-bar{height:3px;}
     .cal-counts{font-size:6.5px;gap:3px;}
+    .cal-urgent-badge, .cal-final-badge{font-size:5.5px;padding:0 3px;margin-top:1px;border-radius:6px;line-height:1.4;}
     .cal-legend{font-size:8px;margin-top:5px;gap:8px;}
     .cal-legend .dot{width:6px;height:6px;}
   }
 
   /* ---- Print-only vertical periods summary + print layout ---- */
   .print-only-block{display:none;}
+
+  #printTargetGaugeBody .target-gauge{
+    width:190px;
+    height:98px;
+    margin:0 auto;
+  }
+  #printTargetGaugeBody .target-gauge-circle{width:190px;height:190px;}
+  #printTargetGaugeBody .target-gauge-needle{height:84px;width:3px;margin-left:-1.5px;}
+  #printTargetGaugeBody .target-gauge-needle-label-pivot{height:100px;}
+  #printTargetGaugeBody .target-gauge-needle-label{font-size:8px;padding:1px 5px;border-width:1px;}
+  #printTargetGaugeBody .target-gauge-pivot{width:12px;height:12px;margin-left:-6px;bottom:-6px;}
+  #printTargetGaugeBody .target-gauge-sub{font-size:10.5px;font-weight:800;color:var(--ink);margin-top:3px;}
+  #printTargetGaugeBody .target-gauge-labels{width:190px;font-size:9.5px;font-weight:700;color:var(--ink);margin-top:1px;}
+  #printTargetGaugeBody .target-gauge-empty{display:none;}
+
+  @media print{
+    #printTargetGaugeBody{
+      display:flex !important;
+      justify-content:center;
+      margin-bottom:10px;
+      page-break-inside:avoid;
+    }
+  }
 
   .pp-card{
     border:1px solid var(--line);
@@ -545,6 +579,280 @@
   .pp-card.pp-total .pp-card-title{color:#4a4038;}
 
   .calendars-print-col{display:contents;}
+
+  /* ---- Value-count charts (effort / time-satisfaction / approach / rating) ---- */
+  .charts-page-inner{
+    display:flex;
+    gap:16px;
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  .charts-left-col{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    flex:1 1 260px;
+    max-width:300px;
+  }
+  #overallSummaryCard, #closureReasonCard{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+    background:#fdfcfa;
+  }
+  #overallSummaryCard.hidden, #closureReasonCard.hidden{display:none;}
+  #overallSummaryCard .ov-title{font-size:14px;font-weight:700;color:var(--accent);margin-bottom:4px;}
+  #overallSummaryCard .ov-sub{font-size:11.5px;color:var(--muted);margin-bottom:10px;}
+  #overallSummaryCard .ov-q-block{margin-bottom:14px;}
+  #overallSummaryCard .ov-q-block:last-child{margin-bottom:0;}
+  #overallSummaryCard .ov-q-title{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+  .cr-title{font-size:14px;font-weight:700;color:var(--accent);margin-bottom:8px;}
+  .cr-empty-note{font-size:12px;color:var(--muted);}
+  .cr-table{width:100%;border-collapse:collapse;font-size:11px;}
+  .cr-table th, .cr-table td{padding:5px 3px;border-bottom:1px solid var(--line);text-align:center;}
+  .cr-table th:first-child, .cr-table td:first-child{text-align:right;}
+  .cr-table thead th{background:#f2efe9;font-weight:700;}
+  #chartsGrid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+    gap:16px;
+    align-items:start;
+    flex:2 1 480px;
+    min-width:0;
+  }
+  .charts-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:22px;
+  }
+  .chart-block{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+    background:#fdfcfa;
+  }
+  .chart-block-title{
+    font-size:13.5px;
+    font-weight:700;
+    color:var(--accent);
+    margin:0 0 2px;
+  }
+  .chart-block-sub{
+    font-size:11px;
+    color:var(--muted);
+    margin-bottom:12px;
+  }
+  .chart-empty-note{
+    font-size:12px;
+    color:var(--muted);
+    text-align:center;
+    padding:26px 0;
+  }
+  .hbar-list{display:flex;flex-direction:column;gap:9px;}
+  .hbar-row{display:flex;align-items:center;gap:8px;}
+  .hbar-label{
+    flex:0 0 108px;
+    max-width:108px;
+    font-size:11.5px;
+    color:var(--ink);
+    text-align:right;
+    line-height:1.35;
+    overflow-wrap:break-word;
+  }
+  .hbar-track{
+    flex:1;
+    height:16px;
+    background:var(--neutral-soft);
+    border-radius:20px;
+    overflow:hidden;
+    position:relative;
+  }
+  .hbar-fill{
+    height:100%;
+    border-radius:20px;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+    transition:width .3s;
+  }
+  .hbar-count{
+    flex:0 0 34px;
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink);
+    text-align:left;
+  }
+
+  /* ---- Target-percentage gauge (نسبة مطلوبة للرضا) ---- */
+  .target-gauge-outer{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+  }
+  .target-gauge{
+    position:relative;
+    width:220px;
+    height:112px;
+    overflow:visible;
+  }
+  .target-gauge-circle{
+    position:absolute;
+    top:0;
+    left:0;
+    width:220px;
+    height:220px;
+    border-radius:50%;
+    clip-path:inset(0 0 50% 0);
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .target-gauge-needle{
+    position:absolute;
+    left:50%;
+    bottom:0;
+    width:3px;
+    height:96px;
+    background:#a3432f;
+    transform-origin:bottom center;
+    border-radius:3px;
+    margin-left:-1.5px;
+  }
+  .target-gauge-needle-label-pivot{
+    position:absolute;
+    left:50%;
+    bottom:0;
+    width:0;
+    height:116px;
+    transform-origin:bottom center;
+  }
+  .target-gauge-needle-label{
+    position:absolute;
+    top:0;
+    left:0;
+    display:inline-block;
+    white-space:nowrap;
+    font-size:12px;
+    font-weight:800;
+    color:#a3432f;
+    background:#fff;
+    padding:2px 7px;
+    border-radius:10px;
+    border:1.5px solid #a3432f;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .target-gauge-pivot{
+    position:absolute;
+    left:50%;
+    bottom:-7px;
+    width:14px;
+    height:14px;
+    margin-left:-7px;
+    border-radius:50%;
+    background:#a3432f;
+    border:3px solid #fff;
+  }
+  .target-gauge-center{
+    position:absolute;
+    bottom:2px;
+    left:0;
+    right:0;
+    text-align:center;
+  }
+  .target-gauge-sub{
+    font-size:13.5px;
+    font-weight:800;
+    color:var(--ink);
+    margin-top:2px;
+  }
+  .target-gauge-labels{
+    display:flex;
+    justify-content:space-between;
+    width:220px;
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink);
+    margin-top:-4px;
+  }
+
+  #chartsCard{page-break-before:always;}
+  @media print{
+    #chartsCard{
+      page-break-before:always;
+      page-break-inside:auto;
+    }
+    .charts-page-inner{
+      display:flex;
+      flex-wrap:nowrap;
+      align-items:flex-start;
+      gap:6px;
+    }
+    .charts-left-col{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      flex:0 0 160px;
+      max-width:160px;
+    }
+    #overallSummaryCard, #closureReasonCard{
+      padding:6px 7px;
+      border-radius:6px;
+    }
+    #overallSummaryCard .ov-title{font-size:8.5px;margin-bottom:2px;}
+    #overallSummaryCard .ov-sub{font-size:6.5px;margin-bottom:5px;}
+    #overallSummaryCard .ov-q-block{margin-bottom:6px;}
+    #overallSummaryCard .ov-q-title{font-size:6.5px;margin-bottom:3px;}
+    #overallSummaryCard .quarter-donut-row{gap:5px;margin:0 0 6px;}
+    #overallSummaryCard .quarter-donut{width:30px;height:30px;}
+    #overallSummaryCard .quarter-donut-legend{font-size:6px;gap:1px;}
+    #overallSummaryCard .qdl-dot{width:5px;height:5px;}
+    #overallSummaryCard .hbar-label{flex-basis:34px;max-width:34px;font-size:5px;}
+    #overallSummaryCard .hbar-track{height:5px;}
+    #overallSummaryCard .hbar-count{flex-basis:10px;font-size:5px;}
+    .cr-title{font-size:8.5px;margin-bottom:4px;}
+    .cr-empty-note{font-size:6px;}
+    .cr-table{font-size:5px;}
+    .cr-table th, .cr-table td{padding:1.5px 1px;}
+    #chartsGrid{
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:8px;
+      align-items:start;
+      flex:1 1 auto;
+      min-width:0;
+    }
+    #chartsGrid .quarter-block{
+      display:block;
+      width:100%;
+      min-width:0;
+      page-break-inside:avoid;
+      margin-bottom:0;
+      padding:4px 5px 6px;
+    }
+    #chartsGrid .quarter-block-title{
+      font-size:8.5px;
+      margin:0 0 4px;
+      padding:1px 8px;
+    }
+    .charts-grid{
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:5px;
+    }
+    .chart-block{
+      padding:4px 5px;
+      page-break-inside:avoid;
+      overflow:hidden;
+      border-radius:6px;
+    }
+    .chart-block-title{font-size:6.8px;line-height:1.25;}
+    .chart-block-sub{font-size:5.6px;margin-bottom:3px;}
+    .hbar-list{gap:2px;}
+    .hbar-row{gap:3px;}
+    .hbar-label{flex-basis:42px;max-width:42px;font-size:5.4px;line-height:1.15;}
+    .hbar-track{height:6px;flex:1 1 auto;min-width:0;border-radius:8px;}
+    .hbar-count{flex-basis:12px;font-size:5.6px;}
+  }
 
   @media print{
     .print-only-block{display:block;}
@@ -578,18 +886,25 @@
     .quarter-block .cal-daynum{font-size:6px;}
     .quarter-block .cal-total{font-size:4.5px;}
     .quarter-block .cal-counts{font-size:4px;gap:1px;}
+    .quarter-block .cal-urgent-badge, .quarter-block .cal-final-badge{font-size:3.5px;padding:0 2px;margin-top:0.5px;border-radius:4px;line-height:1.3;}
     .quarter-block .cal-bar{height:1.5px;}
     .quarter-donut-row{gap:5px;margin:0 0 5px;}
     .quarter-donut{width:26px;height:26px;}
     .quarter-donut-legend{font-size:6.5px;gap:1px;}
     .qdl-dot{width:5px;height:5px;}
   }
+
+  /* Filter/mapping columns are no longer shown to the user — data loads
+     automatically as soon as a file is attached, using auto-detected
+     columns. Kept in the DOM (hidden) because the JS still reads values
+     from these selects. */
+  #colPicker{display:none !important;}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1 class="no-print">تحليل التقييمات الأسبوعي</h1>
-  <div class="sub no-print">ارفق ملف Excel أو CSV يحتوي على عمود تاريخ الإنشاء (وعمود التقييم اختياريًا: راضي / غير راضي / لا يوجد)</div>
+  <div class="sub no-print">ارفق ملف Excel أو CSV يحتوي على عمود تاريخ الإنشاء (وعمود التقييم اختياريًا: راضي / غير راضي / لا يوجد) — سيتم تحليل البيانات تلقائيًا فور إرفاق الملف</div>
 
   <div class="card no-print">
     <label class="drop" id="dropZone">
@@ -598,6 +913,20 @@
       <div class="txt">اضغط هنا لإرفاق الملف أو اسحبه</div>
       <div class="txt2">يدعم xlsx, xls, csv</div>
     </label>
+
+    <div id="statusColVisibleRow" class="row no-print" style="margin-top:14px;">
+      <div class="field" style="max-width:320px;">
+        <label>عمود حالة البلاغ (اختياري)</label>
+        <select id="statusCol"></select>
+      </div>
+    </div>
+
+    <div class="row no-print" style="margin-top:10px;align-items:center;">
+      <button type="button" class="btn" id="calStatusPickBtn" style="background:#3d6b8a;margin-top:0;">🔎 اختر من القائمة</button>
+      <button type="button" class="btn" id="calStatusRefreshBtn" style="background:#2f6f5e;margin-top:0;">🔄 تحديث</button>
+      <span id="calStatusFilterBadge" style="font-size:12px;color:var(--accent);font-weight:600;align-self:center;"></span>
+    </div>
+    <div class="status" id="calStatusFilterNote" style="margin-top:4px;">هذا الفلتر يتحكم بالتقويم (الأشهر/الأرباع) فقط — لا يؤثر إطلاقًا على أي نسبة أو رقم بالملخص العام أو جدول الفترات.</div>
 
     <div id="colPicker" class="hidden">
       <div class="row">
@@ -625,10 +954,6 @@
         </div>
       </div>
       <div class="row">
-        <div class="field">
-          <label>عمود حالة البلاغ (اختياري)</label>
-          <select id="statusCol"></select>
-        </div>
         <div class="field">
           <label>عمود رقم البلاغ (اختياري)</label>
           <select id="reportNoCol"></select>
@@ -666,6 +991,26 @@
         <div class="field">
           <label>عمود حالة البلاغ في النظام (اختياري)</label>
           <select id="systemStatusCol"></select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:18px;border-top:1px dashed var(--line);padding-top:14px;">
+        <div class="field">
+          <label>عمود: مقدار الجهد الذي بذله لمتابعة البلاغ (اختياري)</label>
+          <select id="effortCol"></select>
+        </div>
+        <div class="field">
+          <label>عمود: الرضا عن الوقت المستغرق في المعالجة (اختياري)</label>
+          <select id="timeSatCol"></select>
+        </div>
+        <div class="field">
+          <label>عمود: نهج وطريقة موظف الأمانة (اختياري)</label>
+          <select id="approachCol"></select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:18px;border-top:1px dashed var(--line);padding-top:14px;">
+        <div class="field">
+          <label>عمود: سبب الإغلاق (اختياري)</label>
+          <select id="closureReasonCol"></select>
         </div>
       </div>
       <div class="status" style="margin-top:6px;">حساب <b>نسبة الرضا/عدم الرضا فقط</b> (باقي الأعداد ما تتأثر): يُشترط أن تكون "حالة البلاغ" = مغلق، وأن لا تكون "مصدر البلاغ" أو "حالة البلاغ في النظام" فاضية أو من ضمن القيم المستثناة (حسب فلتر لوحة البلدية).</div>
@@ -733,7 +1078,49 @@
       <div class="kpis">
         <div class="kpi"><div class="n" id="kSatPct">0%</div><div class="l">نسبة الرضا (من مجموع راضي+غير راضي)</div></div>
         <div class="kpi bad"><div class="n" id="kUnsatPct">0%</div><div class="l">نسبة عدم الرضا (من مجموع راضي+غير راضي)</div></div>
+        <div class="kpi neutral"><div class="n" id="kParticipPct">—</div><div class="l">نسبة المشاركة (راضي+غير راضي ÷ البلاغات المغلقة)</div></div>
       </div>
+
+      <div class="row no-print" style="margin-top:4px;border-top:1px dashed var(--line);padding-top:14px;">
+        <div class="field">
+          <label>عدد الراضين الفعلي (يدوي)</label>
+          <input type="number" id="manualSatInput" min="0" value="0">
+        </div>
+        <div class="field">
+          <label>عدد غير الراضين الفعلي (يدوي)</label>
+          <input type="number" id="manualUnsatInput" min="0" value="0">
+        </div>
+        <div class="field">
+          <label>عدد الإغلاقات الفعلي (يدوي)</label>
+          <input type="number" id="manualClosedInput" min="0" value="0">
+        </div>
+      </div>
+      <div class="row no-print" style="margin-top:0;">
+        <div class="field">
+          <label>عدد الراضين حسب الجدول (الربع الحالي)</label>
+          <input type="text" id="fileSatCurrentQ" value="0" readonly disabled style="background:var(--accent-soft);color:var(--ink);font-weight:700;cursor:default;">
+        </div>
+        <div class="field">
+          <label>عدد غير الراضين حسب الجدول (الربع الحالي)</label>
+          <input type="text" id="fileUnsatCurrentQ" value="0" readonly disabled style="background:var(--bad-soft);color:var(--ink);font-weight:700;cursor:default;">
+        </div>
+        <div class="field">
+          <label>عدد الإغلاقات حسب الجدول (الربع الحالي)</label>
+          <input type="text" id="fileClosedCurrentQ" value="0" readonly disabled style="background:var(--neutral-soft);color:var(--ink);font-weight:700;cursor:default;">
+        </div>
+      </div>
+      <button class="btn no-print" id="refreshManualBtn" style="background:#3d6b8a;">🔄 رفرش</button>
+      <div class="status" style="margin-top:6px;">بعد تعديل القيم اليدوية الثلاث اضغط "رفرش" لتحديث نسبة الرضا/عدم الرضا ونسبة المشاركة الخاصة بالربع الحالي فقط داخل تقويم الأرباع أدناه (إذا كانت أي قيمة يدوية أكبر من العدد الموجود فعليًا في جدول الربع الحالي، يُضاف الفرق فقط وليس الاستبدال — لكل من راضي، غير راضي، والإغلاقات). بقية الأرباع (الماضية أو القادمة) لا تتأثر بهذه المربعات.</div>
+
+      <div class="row no-print" style="margin-top:4px;border-top:1px dashed var(--line);padding-top:14px;align-items:flex-end;">
+        <div class="field" style="max-width:220px;">
+          <label>النسبة المطلوبة للرضا % (الربع الحالي)</label>
+          <input type="number" id="targetSatPctInput" min="0.1" max="99.9" step="0.1" placeholder="مثال: 90">
+        </div>
+        <button class="btn" id="calcTargetBtn" style="background:#a35d2f;">🎯 احسب الفرق المطلوب</button>
+      </div>
+      <div id="targetCalcResult" class="status" style="margin-top:6px;"></div>
+      <div id="targetGaugeWrap" class="hidden" style="margin-top:6px;"></div>
     </div>
 
     <div class="card">
@@ -786,6 +1173,7 @@
       <div class="item"><span class="dot" style="background:var(--accent);"></span> راضي</div>
       <div class="item"><span class="dot unsat"></span> غير راضي</div>
       <div class="item"><span class="dot" style="background:var(--bad);"></span> ⏰ متبقي أقل من 48 ساعة (أو متأخر)</div>
+      <div class="item"><span class="dot" style="background:#f59e0b;"></span> ✅ تمت معالجته بشكل نهائي (سبب الإغلاق)</div>
     </div>
   </div>
 
@@ -793,11 +1181,18 @@
     <div class="row" style="align-items:center;margin-top:0;margin-bottom:10px;">
       <h2 id="quarterCalendarTitle" style="margin:0;">تقويم الأرباع المحددة</h2>
     </div>
+    <div class="row no-print" style="margin-top:0;margin-bottom:14px;">
+      <div class="field" style="flex:2;min-width:220px;">
+        <input type="text" id="reportSearchInput2" placeholder="ابحث برقم البلاغ أو رقم الجوال...">
+      </div>
+      <button class="btn" id="reportSearchBtn2" style="background:#3d6b8a;margin-top:0;white-space:nowrap;">🔍 بحث عن بلاغ</button>
+    </div>
     <div id="quarterMultiWrap"></div>
     <div class="cal-legend">
       <div class="item"><span class="dot"></span> اليوم الحالي</div>
       <div class="item"><span class="dot" style="background:var(--accent);"></span> راضي</div>
       <div class="item"><span class="dot unsat"></span> غير راضي</div>
+      <div class="item"><span class="dot" style="background:#f59e0b;"></span> ✅ تمت معالجته بشكل نهائي (سبب الإغلاق)</div>
     </div>
   </div>
   </div>
@@ -880,6 +1275,41 @@
       </div>
     </div>
   </div>
+
+  <div id="calStatusPickerOverlay" class="modal-overlay hidden no-print">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2>اختر قيمة/قيم حالة البلاغ لعرضها بالتقويم</h2>
+        <button id="calStatusPickerClose" class="modal-close" title="إغلاق">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="calStatusPickerBody"></div>
+      </div>
+      <div class="modal-foot" style="flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;">
+          <button id="calStatusPickerSelectAll" class="mini-btn copy" type="button">تحديد الكل</button>
+          <button id="calStatusPickerDeselectAll" class="mini-btn del" type="button">إلغاء تحديد الكل</button>
+          <button id="calStatusPickerClear" class="mini-btn" style="background:#8a8478;" type="button">إزالة الفلتر</button>
+        </div>
+        <button id="calStatusPickerApply" class="btn" style="margin-top:0;">تطبيق</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="chartsCard" class="card hidden">
+    <div id="printTargetGaugeBody" class="print-only-block"></div>
+    <h2 style="margin:0 0 2px;">توزيع الإجابات على أسئلة الاستبيان (حسب كل ربع)</h2>
+    <div class="chart-block-sub no-print" style="margin-bottom:14px;">عدد تكرار كل قيمة كما وردت في الملف، لكل ربع من الأرباع المحددة في قسم "فلترة ربع سنوية" أعلاه.</div>
+    <div class="charts-page-inner">
+      <div class="charts-left-col">
+        <div id="overallSummaryCard" class="hidden"></div>
+        <div id="closureReasonCard" class="hidden"></div>
+      </div>
+      <div id="chartsGrid"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -901,6 +1331,10 @@ const linkColSel = document.getElementById('linkCol');
 const limitColSel = document.getElementById('limitCol');
 const sourceColSel = document.getElementById('sourceCol');
 const systemStatusColSel = document.getElementById('systemStatusCol');
+const effortColSel = document.getElementById('effortCol');
+const timeSatColSel = document.getElementById('timeSatCol');
+const approachColSel = document.getElementById('approachCol');
+const closureReasonColSel = document.getElementById('closureReasonCol');
 const loadDataBtn = document.getElementById('loadDataBtn');
 const periodPicker = document.getElementById('periodPicker');
 const fromDateInp = document.getElementById('fromDate');
@@ -937,6 +1371,23 @@ let periods = []; // {label, from, to, total, sat, unsat, none, satEligible, uns
 let hasSourceCol = false;
 let hasSystemStatusCol = false;
 let hasStatusCol = false;
+let hasEffortCol = false;
+let hasTimeSatCol = false;
+let hasApproachCol = false;
+let hasClosureReasonCol = false;
+let hasRatingCol = false;
+
+// Fixed set of closure-reason ("سبب الإغلاق") categories, in the exact
+// display order requested — counted per quarter in the small summary
+// table next to the survey charts.
+const CLOSURE_REASON_VALUES = [
+  'تمت معالجة البلاغ بشكل نهائي',
+  'البلاغ يتبع لجهة أخرى (خارج النطاق البلدي)',
+  'عدم استدلال – المبلغ لا يرد',
+  'البلاغ غير صحيح / خاطئ',
+  'تمت معالجة البلاغ بشكل جزئي',
+  'تم تطبيق الغرامات والعقوبات اللازمة'
+];
 
 // Exact "حالة البلاغ في النظام" / "مصدر البلاغ" values that are excluded
 // (unchecked) in the reference dashboard filter — rows matching these are
@@ -1006,7 +1457,7 @@ function autoSelectByKeyword(selectEl, keywords){
     if(!h) continue;
     if(keywords.some(k => h === k)){
       selectEl.value = String(i);
-      return;
+      return true;
     }
   }
   for(let i=0; i<headers.length; i++){
@@ -1014,9 +1465,36 @@ function autoSelectByKeyword(selectEl, keywords){
     if(!h) continue;
     if(keywords.some(k => h.includes(k))){
       selectEl.value = String(i);
-      return;
+      return true;
     }
   }
+  return false;
+}
+
+// Auto-detect the date column without any user input. Tries header-keyword
+// matching first; if nothing matches, falls back to scanning every column
+// and picking whichever one successfully parses as a date most often
+// across a sample of rows (so the tool still works even with unfamiliar
+// column names).
+function autoDetectDateColumn(){
+  const matched = autoSelectByKeyword(dateColSel, ['تاريخ الإنشاء','تاريخ البلاغ','تاريخ الإدخال','التاريخ','تاريخ']);
+  if(matched) return true;
+
+  const sample = rows.slice(0, Math.min(30, rows.length));
+  let bestIdx = -1, bestScore = 0;
+  const colCount = headers.length;
+  for(let c=0; c<colCount; c++){
+    let score = 0;
+    sample.forEach(r=>{
+      if(r[c] !== undefined && r[c] !== '' && parseDate(r[c])) score++;
+    });
+    if(score > bestScore){ bestScore = score; bestIdx = c; }
+  }
+  if(bestIdx >= 0 && bestScore > 0){
+    dateColSel.value = String(bestIdx);
+    return true;
+  }
+  return false;
 }
 
 function handleFile(file){
@@ -1047,8 +1525,17 @@ function handleFile(file){
       limitColSel.innerHTML = optionalColHtml;
       sourceColSel.innerHTML = optionalColHtml;
       systemStatusColSel.innerHTML = optionalColHtml;
+      effortColSel.innerHTML = optionalColHtml;
+      timeSatColSel.innerHTML = optionalColHtml;
+      approachColSel.innerHTML = optionalColHtml;
+      closureReasonColSel.innerHTML = optionalColHtml;
 
+      autoDetectDateColumn();
       autoSelectByKeyword(ratingColSel, ['التقييم','تقييم البلاغ','الرضا']);
+      autoSelectByKeyword(effortColSel, ['ما مقدار الجهد الذي بذلته لمتابعة حالة البلاغ؟','مقدار الجهد','الجهد الذي بذلته','الجهد']);
+      autoSelectByKeyword(timeSatColSel, ['ما مدى رضاك عن الوقت المستغرق في معالجة البلاغ؟','الوقت المستغرق في معالجة البلاغ','الوقت المستغرق']);
+      autoSelectByKeyword(approachColSel, ['ما مدى رضاك عن نهج وطريقة موظف الامانة في محاولة معالجة البلاغ؟','نهج وطريقة موظف الامانة','نهج وطريقة موظف الأمانة','موظف الامانة','موظف الأمانة']);
+      autoSelectByKeyword(closureReasonColSel, ['سبب الإغلاق','سبب الاغلاق','سبب غلق البلاغ','سبب غلق']);
       autoSelectByKeyword(nameColSel, ['اسم المبلغ','اسم مقدم البلاغ','اسم العميل','الاسم']);
       autoSelectByKeyword(phoneColSel, ['رقم الجوال','الجوال','رقم الهاتف','الهاتف']);
       autoSelectByKeyword(descColSel, ['الوصف','وصف البلاغ']);
@@ -1062,15 +1549,17 @@ function handleFile(file){
       autoSelectByKeyword(sourceColSel, ['مصدر البلاغ']);
       autoSelectByKeyword(systemStatusColSel, ['حالة البلاغ في النظام']);
 
-      colPicker.classList.remove('hidden');
       periodPicker.classList.add('hidden');
       resultsEl.classList.add('hidden');
       monthCalendarCard.classList.add('hidden');
       quarterCalendarCard.classList.add('hidden');
       periods = [];
       columnFilters = {};
+      calendarStatusFilter = null;
       ensureValuePickerButtons();
-      setStatus(`تم تحميل الملف: ${rows.length} صف. تأكد من الأعمدة ثم اضغط "تحميل البيانات".`);
+
+      // Data loads automatically now — no manual column mapping step.
+      performLoadData();
     }catch(err){
       console.error(err);
       setStatus('حدث خطأ أثناء قراءة الملف: ' + err.message, true);
@@ -1310,6 +1799,24 @@ function getRemainingHours(item){
   return (deadline.getTime() - Date.now()) / (60*60*1000);
 }
 
+// Calendar-only status filter: when set, the month/quarter calendar grids
+// (and the day-detail modal opened from them) only show reports whose
+// "حالة البلاغ" matches one of the selected values. This is a DISPLAY
+// filter only — it never touches parsedData itself, so every percentage,
+// KPI, or table elsewhere in the report (الملخص العام، جدول الفترات،
+// نسبة الرضا/المشاركة بالأرباع...) keeps being computed from the full,
+// unfiltered data regardless of what's chosen here.
+let calendarStatusFilter = null; // Set<string> of selected status values, or null = show everything
+
+function statusKeyOf(item){
+  return (item.status && item.status.trim()) ? item.status.trim() : '(فارغ)';
+}
+
+function getCalendarSourceData(){
+  if(!calendarStatusFilter) return parsedData;
+  return parsedData.filter(p => calendarStatusFilter.has(statusKeyOf(p)));
+}
+
 // Draw a full calendar grid for one month into a container element:
 // Arabic weekday headers (starting Sunday), a cell for every day of that
 // month, the current real-world day highlighted if it falls inside the
@@ -1328,6 +1835,7 @@ function buildCalendarGridHtml(y, m){
   const today = new Date();
   const isCurrentMonth = today.getFullYear() === y && (today.getMonth()+1) === m;
   const todayDate = today.getDate();
+  const calendarSource = getCalendarSourceData();
 
   let html = dayNames.map(n => `<div class="cal-head">${n}</div>`).join('');
   for(let i=0; i<firstDayOfWeek; i++){
@@ -1337,7 +1845,7 @@ function buildCalendarGridHtml(y, m){
     const isToday = isCurrentMonth && d === todayDate;
     const dayStart = new Date(y, m-1, d, 0, 0, 0);
     const dayEnd = new Date(y, m-1, d, 23, 59, 59);
-    const items = parsedData.filter(p => p.date >= dayStart && p.date <= dayEnd);
+    const items = calendarSource.filter(p => p.date >= dayStart && p.date <= dayEnd);
     const total = items.length;
     const sat = items.filter(i=>i.rating==='راضي').length;
     const unsat = items.filter(i=>i.rating==='غير راضي').length;
@@ -1350,6 +1858,8 @@ function buildCalendarGridHtml(y, m){
       return r !== null && r < 48;
     }).length;
 
+    const finalResolvedCount = items.filter(it => (it.closureReason || '').trim() === 'تمت معالجة البلاغ بشكل نهائي').length;
+
     let inner = `<div class="cal-daynum">${d}</div>`;
     if(total > 0){
       inner += `<div class="cal-total">${total}</div>`;
@@ -1359,6 +1869,9 @@ function buildCalendarGridHtml(y, m){
       }
       if(urgentCount > 0){
         inner += `<div class="cal-urgent-badge" title="بلاغات مفتوحة متبقي لها أقل من 48 ساعة (أو متأخرة)">⏰ ${urgentCount}</div>`;
+      }
+      if(finalResolvedCount > 0){
+        inner += `<div class="cal-final-badge" title="بلاغات تمت معالجتها بشكل نهائي (حسب عمود سبب الإغلاق)">✅ ${finalResolvedCount}</div>`;
       }
     }
 
@@ -1458,10 +1971,29 @@ function getQuarterMonths(value){
   return months;
 }
 
+// The "YYYY-Q#" value for the real current quarter (based on today's
+// actual date, not on whatever quarters happen to be selected/filtered).
+// Used to scope the manual "عدد الراضين / عدد غير الراضين" boxes so their
+// effect only ever touches the quarter we're currently in — never past or
+// future quarters, even if several quarters are selected at once.
+function getCurrentQuarterValue(){
+  const now = new Date();
+  const y = now.getFullYear();
+  const q = Math.floor(now.getMonth()/3) + 1;
+  return `${y}-Q${q}`;
+}
+
 // Independent stats for one quarter's full date range (all 3 months),
 // used for the watermark donut: نسبة الرضا (eligibility-filtered, same
-// formula used everywhere else in the report) and نسبة المشاركة (raw
-// participants ÷ total, matching the periods table's participation column).
+// formula used everywhere else in the report) and نسبة المشاركة (راضي +
+// غير راضي ÷ عدد البلاغات المغلقة، نفس تعريف بطاقة الملخص العام بالأعلى).
+//
+// If — and only if — this quarter IS the real current quarter (today's
+// date), the three manual boxes ("عدد الراضين / عدد غير الراضين / عدد
+// الإغلاقات") are folded in: only the difference between each typed
+// number and its file-derived count gets added on top, same top-up logic
+// throughout. Any other quarter (past or future) is computed purely from
+// the file, unaffected by the manual boxes.
 function computeQuarterStats(value){
   const months = getQuarterMonths(value);
   const first = months[0];
@@ -1476,11 +2008,51 @@ function computeQuarterStats(value){
   const unsat = items.filter(i => i.rating === 'غير راضي').length;
   const satEligible = items.filter(i => i.rating === 'راضي' && isSatEligible(i)).length;
   const unsatEligible = items.filter(i => i.rating === 'غير راضي' && isSatEligible(i)).length;
-  const eligTotal = satEligible + unsatEligible;
+  const closed = hasStatusCol ? items.filter(i => i.status && i.status.trim() === 'مغلق').length : 0;
+
+  let satAdjusted = sat, unsatAdjusted = unsat, closedAdjusted = closed;
+  let satEligibleAdjusted = satEligible, unsatEligibleAdjusted = unsatEligible;
+
+  if(value === getCurrentQuarterValue()){
+    const manualSatBox = document.getElementById('manualSatInput');
+    const manualUnsatBox = document.getElementById('manualUnsatInput');
+    const manualClosedBox = document.getElementById('manualClosedInput');
+    const manualSatVal = manualSatBox ? (parseInt(manualSatBox.value, 10) || 0) : 0;
+    const manualUnsatVal = manualUnsatBox ? (parseInt(manualUnsatBox.value, 10) || 0) : 0;
+    const manualClosedVal = manualClosedBox ? (parseInt(manualClosedBox.value, 10) || 0) : 0;
+    const satDiff = Math.max(0, manualSatVal - sat);
+    const unsatDiff = Math.max(0, manualUnsatVal - unsat);
+    const closedDiff = Math.max(0, manualClosedVal - closed);
+    satAdjusted = sat + satDiff;
+    unsatAdjusted = unsat + unsatDiff;
+    satEligibleAdjusted = satEligible + satDiff;
+    unsatEligibleAdjusted = unsatEligible + unsatDiff;
+    closedAdjusted = closed + closedDiff;
+  }
+
+  const eligTotal = satEligibleAdjusted + unsatEligibleAdjusted;
+  const participants = satAdjusted + unsatAdjusted;
+  // نسبة المشاركة = المشاركون ÷ المغلق (إن وُجد عمود "حالة البلاغ")، وإلا
+  // تُحسب من إجمالي بلاغات الربع كبديل (نفس السلوك القديم بدون عمود الحالة).
+  const participDenom = hasStatusCol ? closedAdjusted : total;
+
+  const isCurrentQ = (value === getCurrentQuarterValue());
+  // For the CURRENT quarter only (the one the manual boxes affect): compute
+  // نسبة الرضا/عدم الرضا directly from the raw adjusted راضي/غير راضي
+  // numbers shown in the manual boxes themselves — e.g. راضي ÷ (راضي + غير
+  // راضي) — with no eligibility filtering applied. Any other quarter keeps
+  // the eligibility-filtered formula (حالة البلاغ = مغلق + مصدر غير مستثنى)
+  // used everywhere else in the report.
+  const satPctRaw = participants ? (satAdjusted / participants * 100) : 0;
+  const unsatPctRaw = participants ? (unsatAdjusted / participants * 100) : 0;
+  const satPctEligible = eligTotal ? (satEligibleAdjusted / eligTotal * 100) : 0;
+  const unsatPctEligible = eligTotal ? (unsatEligibleAdjusted / eligTotal * 100) : 0;
 
   return {
-    satPct: eligTotal ? (satEligible / eligTotal * 100) : 0,
-    participPct: total ? ((sat + unsat) / total * 100) : 0
+    satPct: isCurrentQ ? satPctRaw : satPctEligible,
+    unsatPct: isCurrentQ ? unsatPctRaw : unsatPctEligible,
+    participPct: participDenom ? (participants / participDenom * 100) : 0,
+    satAdjusted, unsatAdjusted, closedAdjusted
   };
 }
 
@@ -1559,6 +2131,7 @@ function renderQuarterCalendars(){
 
   quarterCalendarCard.classList.remove('hidden');
   quarterCalendarCard.scrollIntoView({behavior:'smooth'});
+  renderQuarterValueCharts();
   setStatus(`تم عرض تقويم ${selectedQuarters.length} ربع سنوي.`);
 }
 
@@ -1579,9 +2152,8 @@ quarterMultiWrap.addEventListener('click', (e) => {
 // month if it isn't already selected, makes that day flash, and once the
 // person opens that day the matching row scrolls into view and flashes too
 // (see openDayModal / pendingHighlightId).
-function searchReportOnCalendar(){
-  const input = document.getElementById('reportSearchInput');
-  const raw = input.value.trim();
+function performReportSearch(raw){
+  raw = (raw || '').trim();
   if(!raw){
     setStatus('اكتب رقم البلاغ أو رقم الجوال للبحث.', true);
     return;
@@ -1636,15 +2208,223 @@ function searchReportOnCalendar(){
   setStatus(`تم العثور على البلاغ ${match.reportNo || ''} — يوم ${d}/${m}/${y}. اضغط على اليوم الوامض بالتقويم لعرض تفاصيله.`);
 }
 
+function searchReportOnCalendar(){
+  performReportSearch(document.getElementById('reportSearchInput').value);
+}
+
 document.getElementById('reportSearchBtn').addEventListener('click', searchReportOnCalendar);
 document.getElementById('reportSearchInput').addEventListener('keydown', (e) => {
   if(e.key === 'Enter'){ e.preventDefault(); searchReportOnCalendar(); }
 });
 
-// Step 1: load & parse the whole file using chosen columns, show overall summary
-loadDataBtn.addEventListener('click', () => {
+// Second search box (inside the quarter-calendar card) — same logic, so
+// search works even when only quarters (no months) have been selected.
+document.getElementById('reportSearchBtn2').addEventListener('click', () => {
+  performReportSearch(document.getElementById('reportSearchInput2').value);
+});
+document.getElementById('reportSearchInput2').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){ e.preventDefault(); performReportSearch(document.getElementById('reportSearchInput2').value); }
+});
+
+// Recomputes and redraws the راضي/غير راضي counts, نسبة الرضا/عدم الرضا,
+// and نسبة المشاركة KPI boxes from the currently-loaded parsedData. These
+// are plain file-derived totals across the WHOLE loaded file — the manual
+// "عدد الراضين / عدد غير الراضين" boxes do NOT affect this card; their
+// effect is scoped only to the current quarter's block inside the quarter
+// calendar (see computeQuarterStats / refreshCurrentQuarterEffect below).
+function updateSummaryKpis(){
+  const kSatCountEl = document.getElementById('kSatCount');
+  const kUnsatCountEl = document.getElementById('kUnsatCount');
+  const kSatPctEl = document.getElementById('kSatPct');
+  const kUnsatPctEl = document.getElementById('kUnsatPct');
+  const kParticipPctEl = document.getElementById('kParticipPct');
+  if(!kSatCountEl) return;
+
+  if(parsedData.length === 0){
+    kSatCountEl.textContent = '0';
+    kUnsatCountEl.textContent = '0';
+    kSatPctEl.textContent = '0%';
+    kUnsatPctEl.textContent = '0%';
+    if(kParticipPctEl) kParticipPctEl.textContent = '—';
+    return;
+  }
+
+  const satAll = parsedData.filter(p=>p.rating==='راضي').length;
+  const unsatAll = parsedData.filter(p=>p.rating==='غير راضي').length;
+
+  // Percentage-only: exclude rows with an empty "مصدر البلاغ" / "حالة البلاغ
+  // في النظام" (when those columns are mapped) from the sat/unsat percentage.
+  const satEligibleAll = parsedData.filter(p=>p.rating==='راضي' && isSatEligible(p)).length;
+  const unsatEligibleAll = parsedData.filter(p=>p.rating==='غير راضي' && isSatEligible(p)).length;
+  const denom = satEligibleAll + unsatEligibleAll;
+
+  kSatCountEl.textContent = satAll;
+  kUnsatCountEl.textContent = unsatAll;
+  kSatPctEl.textContent = denom ? ((satEligibleAll/denom)*100).toFixed(1)+'%' : '—';
+  kUnsatPctEl.textContent = denom ? ((unsatEligibleAll/denom)*100).toFixed(1)+'%' : '—';
+
+  // نسبة المشاركة = (راضي + غير راضي) ÷ (عدد البلاغات المغلقة فقط، حسب
+  // عمود "حالة البلاغ"). بدون هذا العمود لا يمكن معرفة البلاغات المغلقة،
+  // فتُعرض "—".
+  const closedCountAll = hasStatusCol ? parsedData.filter(p => p.status && p.status.trim() === 'مغلق').length : 0;
+  const participAll = satAll + unsatAll;
+  if(kParticipPctEl){
+    kParticipPctEl.textContent = (hasStatusCol && closedCountAll)
+      ? ((participAll/closedCountAll)*100).toFixed(1)+'%'
+      : '—';
+  }
+}
+
+// Fills the three read-only reference boxes ("عدد الراضين / غير الراضين /
+// الإغلاقات حسب الجدول (الربع الحالي)") with the raw, file-derived counts
+// for whatever the real current quarter is (today's date) — so the person
+// can see exactly what number the manual boxes above are being compared
+// against, and how many reports are actually closed this quarter.
+function updateFileCurrentQuarterBoxes(){
+  const satEl = document.getElementById('fileSatCurrentQ');
+  const unsatEl = document.getElementById('fileUnsatCurrentQ');
+  const closedEl = document.getElementById('fileClosedCurrentQ');
+  if(!satEl || !unsatEl) return;
+
+  if(parsedData.length === 0){
+    satEl.value = '0';
+    unsatEl.value = '0';
+    if(closedEl) closedEl.value = '0';
+    return;
+  }
+
+  const value = getCurrentQuarterValue();
+  const months = getQuarterMonths(value);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  const items = parsedData.filter(p => p.date >= rangeStart && p.date <= rangeEnd);
+
+  satEl.value = items.filter(i => i.rating === 'راضي').length;
+  unsatEl.value = items.filter(i => i.rating === 'غير راضي').length;
+  if(closedEl){
+    closedEl.value = hasStatusCol
+      ? items.filter(i => i.status && i.status.trim() === 'مغلق').length
+      : '—';
+  }
+}
+
+// Refreshes everything that depends on the three manual boxes ("عدد
+// الراضين / عدد غير الراضين / عدد الإغلاقات"): the reference boxes, and —
+// since their effect only applies to the REAL current quarter (see
+// computeQuarterStats) — the quarter calendar/donut section, if it's
+// currently on screen and the current quarter happens to be among the
+// selected ones. Triggered only by pressing the "🔄 رفرش" button (no live
+// auto-update while typing), so the person can finish entering all three
+// numbers before anything recalculates.
+function refreshCurrentQuarterEffect(){
+  updateFileCurrentQuarterBoxes();
+  if(!quarterCalendarCard.classList.contains('hidden') && selectedQuarters.includes(getCurrentQuarterValue())){
+    renderQuarterCalendars();
+    setStatus('تم تحديث بيانات الربع الحالي.');
+  } else {
+    setStatus('تم تحديث المربعات المرجعية. لعرض تأثير القيم على النسب، فعّل الربع الحالي من قائمة "فلترة ربع سنوية" واضغط "عرض تقويم الأرباع المحددة".');
+  }
+}
+
+document.getElementById('refreshManualBtn').addEventListener('click', refreshCurrentQuarterEffect);
+
+// ---- Target satisfaction-percentage calculator (نسبة مطلوبة للرضا) ----
+// Given a target % typed by the person, works out how many MORE "راضي"
+// reports (on top of the current quarter's actual/adjusted count) would be
+// needed — holding "غير راضي" fixed — so that راضي ÷ (راضي + غير راضي)
+// equals that target. Also draws a speedometer-style gauge: the filled
+// arc shows the CURRENT percentage, a needle marks the TARGET percentage,
+// and the center shows exactly how many percentage points remain to close
+// that gap.
+function buildTargetGaugeMarkup(currentPct, targetPct){
+  const currentDeg = Math.max(0, Math.min(180, (currentPct/100)*180));
+  const needleDeg = Math.max(0, Math.min(180, (targetPct/100)*180)) - 90;
+  const remaining = targetPct - currentPct;
+  const remainingText = remaining > 0.05
+    ? `باقي ${remaining.toFixed(1)}%`
+    : '✅ تم بلوغ الهدف';
+
+  return `
+    <div class="target-gauge-outer">
+      <div class="target-gauge">
+        <div class="target-gauge-circle" style="background:conic-gradient(from -90deg, var(--accent) 0deg ${currentDeg}deg, #e4e0d8 ${currentDeg}deg 180deg, transparent 180deg 360deg);"></div>
+        <div class="target-gauge-needle" style="transform:rotate(${needleDeg}deg);" title="الهدف: ${targetPct}%"></div>
+        <div class="target-gauge-needle-label-pivot" style="transform:rotate(${needleDeg}deg);">
+          <span class="target-gauge-needle-label" style="transform:translateX(-50%) rotate(${-needleDeg}deg);">${remainingText}</span>
+        </div>
+        <div class="target-gauge-pivot"></div>
+        <div class="target-gauge-center">
+          <div class="target-gauge-sub">الحالي ${currentPct.toFixed(1)}% ← الهدف ${targetPct.toFixed(1)}%</div>
+        </div>
+      </div>
+      <div class="target-gauge-labels"><span>0%</span><span>50%</span><span>100%</span></div>
+    </div>
+  `;
+}
+
+function renderTargetGauge(currentPct, targetPct, resultLineHtml){
+  const wrap = document.getElementById('targetGaugeWrap');
+  wrap.innerHTML = buildTargetGaugeMarkup(currentPct, targetPct);
+  wrap.classList.remove('hidden');
+
+  // Mirrors the same gauge onto the print-only slot that lives inside the
+  // charts card, so it shares page 2 with the survey charts on print
+  // instead of taking its own separate page. No title/result text here —
+  // just the gauge, per request (the "باقي X%" figure is already the
+  // center label inside the gauge itself).
+  const printBody = document.getElementById('printTargetGaugeBody');
+  if(printBody){
+    printBody.innerHTML = buildTargetGaugeMarkup(currentPct, targetPct);
+  }
+}
+
+document.getElementById('calcTargetBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  const targetInput = document.getElementById('targetSatPctInput');
+  const targetPct = parseFloat(targetInput.value);
+  if(isNaN(targetPct) || targetPct <= 0 || targetPct >= 100){
+    setStatus('أدخل نسبة صحيحة بين 0.1 و99.9.', true);
+    return;
+  }
+
+  // Uses the SAME current-quarter + manual-topup counts as everywhere else
+  // (عدد الراضين/غير الراضين/الإغلاقات حسب المربعات اليدوية إن وُجدت).
+  const stats = computeQuarterStats(getCurrentQuarterValue());
+  const S = stats.satAdjusted, U = stats.unsatAdjusted, C = stats.closedAdjusted;
+  const P = targetPct / 100;
+
+  // Solve for x (extra راضي to add, غير راضي fixed) in:
+  // (S + x) / (S + x + U) = P  =>  x = (P*(S+U) - S) / (1 - P)
+  const rawExtra = (P*(S+U) - S) / (1 - P);
+  const neededExtra = Math.max(0, Math.ceil(rawExtra));
+  const newSat = S + neededExtra;
+  const newTotal = newSat + U;
+  const achievedPct = newTotal ? (newSat/newTotal*100) : 0;
+
+  const resultEl = document.getElementById('targetCalcResult');
+  let resultHtml;
+  if(neededExtra === 0){
+    resultHtml = `عدد الراضين الحالي: <b>${S}</b> — عدد غير الراضين: <b>${U}</b> — عدد الإغلاقات: <b>${C}</b><br>النسبة الحالية (${stats.satPct.toFixed(1)}%) أعلى من أو تساوي الهدف (${targetPct}%) بالفعل — لا حاجة لأي زيادة.`;
+  } else {
+    resultHtml = `عدد الراضين الحالي: <b>${S}</b> — عدد غير الراضين: <b>${U}</b> — عدد الإغلاقات: <b>${C}</b><br>الزيادة المطلوبة على عدد الراضين (وغير الراضين ثابت) للوصول لـ ${targetPct}%: <b style="color:var(--accent);font-size:15px;">${neededExtra}</b> (يعني ${S} + ${neededExtra} = ${newSat}، فتصير النسبة ${achievedPct.toFixed(1)}%)`;
+  }
+  resultEl.innerHTML = resultHtml;
+
+  renderTargetGauge(stats.satPct, targetPct, resultHtml);
+});
+
+// Step 1: load & parse the whole file using the auto-detected columns, and
+// show the overall summary. Runs automatically right after a file is
+// attached — no manual column mapping step required from the user.
+function performLoadData(){
   if(dateColSel.value === ''){
-    setStatus('اختر عمود التاريخ أولاً.', true);
+    setStatus('تعذّر التعرف تلقائيًا على عمود التاريخ في هذا الملف. تأكد أن الملف يحتوي عمود تاريخ صالح.', true);
     return;
   }
   const dIdx = parseInt(dateColSel.value,10);
@@ -1661,9 +2441,18 @@ loadDataBtn.addEventListener('click', () => {
   const lmIdx = parseInt(limitColSel.value,10);
   const srcIdx = parseInt(sourceColSel.value,10);
   const sysStIdx = parseInt(systemStatusColSel.value,10);
+  const effIdx = parseInt(effortColSel.value,10);
+  const tsIdx = parseInt(timeSatColSel.value,10);
+  const apIdx = parseInt(approachColSel.value,10);
+  const crIdx = parseInt(closureReasonColSel.value,10);
   hasSourceCol = srcIdx >= 0;
   hasSystemStatusCol = sysStIdx >= 0;
   hasStatusCol = stIdx >= 0;
+  hasEffortCol = effIdx >= 0;
+  hasTimeSatCol = tsIdx >= 0;
+  hasApproachCol = apIdx >= 0;
+  hasClosureReasonCol = crIdx >= 0;
+  hasRatingCol = rIdx >= 0;
 
   const filteredRows = applyColumnFilters(rows);
 
@@ -1676,6 +2465,11 @@ loadDataBtn.addEventListener('click', () => {
       id: rowIdx,
       date,
       rating: (rIdx>=0 && r[rIdx]!==undefined) ? normalizeRating(r[rIdx]) : 'لا يوجد',
+      ratingRaw: (rIdx>=0 && r[rIdx]!==undefined && String(r[rIdx]).trim()!=='') ? String(r[rIdx]).trim() : 'لا يوجد',
+      effort: (effIdx>=0 && r[effIdx]!==undefined && String(r[effIdx]).trim()!=='') ? String(r[effIdx]).trim() : '',
+      timeSat: (tsIdx>=0 && r[tsIdx]!==undefined && String(r[tsIdx]).trim()!=='') ? String(r[tsIdx]).trim() : '',
+      approach: (apIdx>=0 && r[apIdx]!==undefined && String(r[apIdx]).trim()!=='') ? String(r[apIdx]).trim() : '',
+      closureReason: (crIdx>=0 && r[crIdx]!==undefined) ? String(r[crIdx]).trim() : '',
       name: (nIdx>=0 && r[nIdx]!==undefined) ? String(r[nIdx]).trim() : '',
       phone: (phIdx>=0 && r[phIdx]!==undefined) ? String(r[phIdx]).trim() : '',
       desc: (dsIdx>=0 && r[dsIdx]!==undefined) ? String(r[dsIdx]).trim() : '',
@@ -1692,7 +2486,7 @@ loadDataBtn.addEventListener('click', () => {
   });
 
   if(parsedData.length === 0){
-    setStatus('لم أستطع قراءة أي تواريخ صحيحة من العمود المحدد (أو أن الفلاتر المطبقة استبعدت كل الصفوف). تأكد من اختيار العمود الصحيح.', true);
+    setStatus('لم أستطع قراءة أي تواريخ صحيحة من عمود التاريخ المكتشف (أو أن الفلاتر المطبقة استبعدت كل الصفوف).', true);
     return;
   }
 
@@ -1709,18 +2503,10 @@ loadDataBtn.addEventListener('click', () => {
     kOtherWrap.style.display = 'none';
   }
 
-  // Percentage-only: exclude rows with an empty "مصدر البلاغ" / "حالة البلاغ
-  // في النظام" (when those columns are mapped) from the sat/unsat percentage.
-  const satEligibleAll = parsedData.filter(p=>p.rating==='راضي' && isSatEligible(p)).length;
-  const unsatEligibleAll = parsedData.filter(p=>p.rating==='غير راضي' && isSatEligible(p)).length;
-  const denom = satEligibleAll + unsatEligibleAll;
-
   document.getElementById('kTotal').textContent = totalAll;
-  document.getElementById('kSatCount').textContent = satAll;
-  document.getElementById('kUnsatCount').textContent = unsatAll;
   document.getElementById('kNoneCount').textContent = noneAll;
-  document.getElementById('kSatPct').textContent = denom ? ((satEligibleAll/denom)*100).toFixed(1)+'%' : '—';
-  document.getElementById('kUnsatPct').textContent = denom ? ((unsatEligibleAll/denom)*100).toFixed(1)+'%' : '—';
+  updateSummaryKpis();
+  updateFileCurrentQuarterBoxes();
 
   // pre-fill date inputs with min/max range found in data
   const times = parsedData.map(p=>p.date.getTime());
@@ -1737,10 +2523,11 @@ loadDataBtn.addEventListener('click', () => {
   buildPrintPeriodsCards();
   resultsEl.classList.remove('hidden');
   periodPicker.classList.remove('hidden');
+  document.getElementById('chartsCard').classList.add('hidden');
 
-  let msg = `تم تحميل ${totalAll} بلاغ. الآن حدد "من - إلى" واضغط "إضافة الفترة للجدول" لكل فترة تحتاجها.`;
+  let msg = `تم تحميل وتحليل ${totalAll} بلاغ تلقائيًا. الآن حدد "من - إلى" واضغط "إضافة الفترة للجدول" لكل فترة تحتاجها.`;
   if(badDates > 0) msg += ` (تم تجاهل ${badDates} صف بسبب تاريخ غير صالح)`;
-  if(rIdx < 0) msg += ` ملاحظة: لم يتم اختيار عمود التقييم، سيتم اعتبار كل البلاغات "لا يوجد" في إحصاءات الرضا.`;
+  if(rIdx < 0) msg += ` ملاحظة: لم يتم العثور على عمود تقييم في الملف، سيتم اعتبار كل البلاغات "لا يوجد" في إحصاءات الرضا.`;
 
   // Diagnostic for the "⏰ أقل من 48 ساعة" feature: tell the user right
   // away whether there's any usable data for it, instead of leaving them
@@ -1748,23 +2535,136 @@ loadDataBtn.addEventListener('click', () => {
   if(lmIdx >= 0){
     const withLimit = parsedData.filter(p => getRemainingHours(p) !== null).length;
     if(withLimit === 0){
-      msg += ` ⚠️ ملاحظة: لم أستطع احتساب "الوقت المتبقي" لأي بلاغ — تحقق أن عمود "الوقت المعياري للمعالجة" يحتوي أرقام (مثل "48" أو "48 ساعة")، وأن عمود "حالة البلاغ" (إن وُجد) ما يجعل كل البلاغات "مغلق".`;
+      msg += ` ⚠️ ملاحظة: لم أستطع احتساب "الوقت المتبقي" لأي بلاغ.`;
     } else {
       msg += ` (تم احتساب الوقت المتبقي لـ ${withLimit} بلاغ)`;
     }
-  } else {
-    msg += ` ملاحظة: ميزة "⏰ أقل من 48 ساعة" تحتاج اختيار عمود "الوقت المعياري للمعالجة" — لم يتم اختياره.`;
   }
 
   if(otherAll > 0){
     const samples = [...new Set(parsedData.filter(p=>!['راضي','غير راضي','لا يوجد'].includes(p.rating)).map(p=>p.rating))].slice(0,5);
-    msg += ` ⚠️ تنبيه: ${otherAll} صف لم يتم التعرف على تقييمها، تأكد من اختيار عمود التقييم الصحيح. أمثلة على القيم غير المعروفة: ${samples.join(' / ')}`;
+    msg += ` ⚠️ تنبيه: ${otherAll} صف لم يتم التعرف على تقييمها. أمثلة على القيم غير المعروفة: ${samples.join(' / ')}`;
     setStatus(msg, true);
   } else {
     setStatus(msg);
   }
   resultsEl.scrollIntoView({behavior:'smooth'});
+}
+
+loadDataBtn.addEventListener('click', performLoadData);
+
+// The "عمود حالة البلاغ" dropdown is the one column mapping still shown to
+// the user (everything else auto-detects silently). If they change it
+// after a file is already loaded, immediately re-run the analysis with the
+// new mapping instead of requiring a separate load step.
+statusColSel.addEventListener('change', () => {
+  calendarStatusFilter = null;
+  updateCalStatusBadge();
+  if(rows.length > 0){
+    performLoadData();
+  }
 });
+
+// ---- Calendar-only "حالة البلاغ" display filter ----
+// Lets the person pick one or more status values and, after pressing
+// "🔄 تحديث", re-draws only the month/quarter calendars (and their
+// day-detail popups) to show just those reports. Nothing else in the
+// report — الملخص العام، جدول الفترات، نسب الأرباع — is touched.
+
+function getStatusUniqueValues(){
+  const map = new Map();
+  parsedData.forEach(p => {
+    const key = statusKeyOf(p);
+    map.set(key, (map.get(key)||0)+1);
+  });
+  return Array.from(map.entries()).sort((a,b)=> b[1]-a[1]);
+}
+
+function updateCalStatusBadge(){
+  const badge = document.getElementById('calStatusFilterBadge');
+  if(!badge) return;
+  badge.textContent = calendarStatusFilter
+    ? `فلتر التقويم مفعّل (${calendarStatusFilter.size} قيمة) — اضغط "تحديث" لتطبيقه`
+    : '';
+}
+
+document.getElementById('calStatusPickBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  const values = getStatusUniqueValues();
+  const body = document.getElementById('calStatusPickerBody');
+  body.innerHTML = values.map(([val,count])=>{
+    const checked = calendarStatusFilter ? calendarStatusFilter.has(val) : false;
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--line);font-size:13px;">
+      <input type="checkbox" class="calStatusCheck" value="${val.replace(/"/g,'&quot;')}" ${checked?'checked':''}>
+      <span style="flex:1;">${val}</span>
+      <span style="color:var(--muted);font-size:11.5px;">${count}</span>
+    </label>`;
+  }).join('') || '<div style="color:var(--muted);font-size:13px;">لا توجد قيم.</div>';
+  document.getElementById('calStatusPickerOverlay').classList.remove('hidden');
+});
+
+document.getElementById('calStatusPickerClose').addEventListener('click', () => {
+  document.getElementById('calStatusPickerOverlay').classList.add('hidden');
+});
+document.getElementById('calStatusPickerOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'calStatusPickerOverlay') e.target.classList.add('hidden');
+});
+document.getElementById('calStatusPickerSelectAll').addEventListener('click', () => {
+  document.querySelectorAll('.calStatusCheck').forEach(c => c.checked = true);
+});
+document.getElementById('calStatusPickerDeselectAll').addEventListener('click', () => {
+  document.querySelectorAll('.calStatusCheck').forEach(c => c.checked = false);
+});
+document.getElementById('calStatusPickerApply').addEventListener('click', () => {
+  const checked = Array.from(document.querySelectorAll('.calStatusCheck:checked')).map(c => c.value);
+  calendarStatusFilter = checked.length > 0 ? new Set(checked) : null;
+  document.getElementById('calStatusPickerOverlay').classList.add('hidden');
+  updateCalStatusBadge();
+  setStatus('تم حفظ اختيارك. اضغط "🔄 تحديث" لتطبيقه على التقويم.');
+});
+document.getElementById('calStatusPickerClear').addEventListener('click', () => {
+  calendarStatusFilter = null;
+  document.getElementById('calStatusPickerOverlay').classList.add('hidden');
+  updateCalStatusBadge();
+  setStatus('تمت إزالة فلتر التقويم. اضغط "🔄 تحديث" لتطبيق ذلك.');
+});
+
+// The only place calendarStatusFilter actually takes visual effect: simply
+// re-render whichever calendars are currently on screen. Percentages/KPIs
+// are never recalculated here — they aren't affected by this filter at all.
+document.getElementById('calStatusRefreshBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  let did = false;
+  if(selectedMonths.length > 0){ renderMonthCalendars(); did = true; }
+  if(selectedQuarters.length > 0){ renderQuarterCalendars(); did = true; }
+  if(!did){
+    setStatus('اختر شهرًا أو ربعًا أولاً من الفلترة أدناه لعرض التقويم.', true);
+    return;
+  }
+  setStatus(calendarStatusFilter
+    ? `تم تحديث التقويم ليعرض فقط: ${[...calendarStatusFilter].join('، ')}`
+    : 'تم تحديث التقويم لعرض كل الحالات.');
+});
+
+// A period row is treated as "the current quarter" for percentage display
+// only if it was created by the quarterly-split button (isQuarterly) AND
+// its start date falls within the real current quarter. Matching by which
+// quarter the start date belongs to — rather than requiring the end date
+// to exactly equal the quarter's calendar end — means this still works
+// correctly even when the row's end got clamped to the data's last
+// available date instead of the full quarter's last day.
+function quarterValueOfDate(d){
+  return `${d.getFullYear()}-Q${Math.floor(d.getMonth()/3) + 1}`;
+}
+function periodMatchesCurrentQuarter(p){
+  return !!p.isQuarterly && quarterValueOfDate(p.from) === getCurrentQuarterValue();
+}
 
 function renderPeriodsTable(){
   const tbody = document.getElementById('weeklyBody');
@@ -1777,10 +2677,17 @@ function renderPeriodsTable(){
     const unsatE = typeof p.unsatEligible === 'number' ? p.unsatEligible : p.unsat;
     const eligibleParticipants = satE + unsatE;
     const participants = p.sat + p.unsat;
-    const satPct = eligibleParticipants ? (satE/eligibleParticipants*100) : 0;
-    const unsatPct = eligibleParticipants ? (unsatE/eligibleParticipants*100) : 0;
-    const participPct = p.total ? ((p.sat+p.unsat)/p.total*100) : 0;
+    let satPct = eligibleParticipants ? (satE/eligibleParticipants*100) : 0;
+    let unsatPct = eligibleParticipants ? (unsatE/eligibleParticipants*100) : 0;
+    let participPct = p.total ? ((p.sat+p.unsat)/p.total*100) : 0;
     const nonParticipPct = p.total ? (p.none/p.total*100) : 0;
+
+    if(hasStatusCol && periodMatchesCurrentQuarter(p)){
+      const cq = computeQuarterStats(getCurrentQuarterValue());
+      satPct = cq.satPct;
+      unsatPct = cq.unsatPct;
+      participPct = cq.participPct;
+    }
 
     totSat+=p.sat; totUnsat+=p.unsat; totNone+=p.none; totAll+=p.total;
     totSatEligible+=satE; totUnsatEligible+=unsatE;
@@ -1834,6 +2741,14 @@ function buildPrintPeriodsCards(){
     const satE = typeof p.satEligible === 'number' ? p.satEligible : p.sat;
     const unsatE = typeof p.unsatEligible === 'number' ? p.unsatEligible : p.unsat;
     const elig = satE + unsatE;
+    if(hasStatusCol && periodMatchesCurrentQuarter(p)){
+      const cq = computeQuarterStats(getCurrentQuarterValue());
+      return {
+        satPct: cq.satPct.toFixed(1)+'%',
+        unsatPct: cq.unsatPct.toFixed(1)+'%',
+        partPct: cq.participPct.toFixed(1)+'%'
+      };
+    }
     return {
       satPct: elig ? (satE/elig*100).toFixed(1)+'%' : '—',
       unsatPct: elig ? (unsatE/elig*100).toFixed(1)+'%' : '—',
@@ -1859,6 +2774,227 @@ function buildPrintPeriodsCards(){
   }).join('');
 
   el.innerHTML = html;
+}
+
+// ---- Value-count charts: عدد تكرار كل قيمة ضمن كل عمود من أعمدة الاستبيان ----
+// Renders one horizontal bar-chart per mapped column (الجهد / الوقت
+// المستغرق / نهج الموظف / التقييم العام), counting the raw text values
+// exactly as they appear in the file. Built with plain HTML/CSS (no
+// external chart library) so it always renders reliably and prints
+// cleanly. Shown on screen in its own card, and forced onto its own
+// printed page (below the periods+calendars page) via CSS.
+
+const CHART_PALETTE = ['#2f6f5e','#4fa483','#7fbfa4','#c9971f','#a3432f','#3d6b8a','#6a4f9c','#b5762f','#8a8478','#1a4d3e'];
+
+function countRawValues(items, field){
+  const map = new Map();
+  items.forEach(it => {
+    const v = (it[field] || '').toString().trim();
+    const key = v === '' ? 'لا يوجد' : v;
+    map.set(key, (map.get(key)||0)+1);
+  });
+  return Array.from(map.entries()).sort((a,b)=> b[1]-a[1]);
+}
+
+function buildHbarChartHtml(entries){
+  if(entries.length === 0){
+    return '<div class="chart-empty-note">لا توجد بيانات لعرضها</div>';
+  }
+  const maxCount = Math.max(...entries.map(e=>e[1]));
+  const rows = entries.map(([label, count], i) => {
+    const pct = maxCount ? (count / maxCount * 100) : 0;
+    const color = CHART_PALETTE[i % CHART_PALETTE.length];
+    return `<div class="hbar-row">
+      <div class="hbar-label">${label}</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%;background:${color};"></div></div>
+      <div class="hbar-count">${count}</div>
+    </div>`;
+  }).join('');
+  return `<div class="hbar-list">${rows}</div>`;
+}
+
+const CHART_COLUMN_DEFS = [
+  {key:'effort', hasFn:()=>hasEffortCol, title:'مقدار الجهد الذي بذله لمتابعة حالة البلاغ'},
+  {key:'timeSat', hasFn:()=>hasTimeSatCol, title:'الرضا عن الوقت المستغرق في معالجة البلاغ'},
+  {key:'approach', hasFn:()=>hasApproachCol, title:'نهج وطريقة موظف الأمانة في المعالجة'},
+  {key:'ratingRaw', hasFn:()=>hasRatingCol, title:'التقييم العام'}
+];
+
+// One quarter's set of 4 question-charts, computed only from that
+// quarter's own date range — mirrors buildQuarterCalendarBlock's approach
+// of scoping everything to the quarter, and reuses the same
+// "quarter-block qtone-N" styling so the two sections read as one system.
+function buildQuarterChartsBlockHtml(value, idx){
+  const months = getQuarterMonths(value);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  const items = parsedData.filter(p => p.date >= rangeStart && p.date <= rangeEnd);
+
+  const blocksHtml = CHART_COLUMN_DEFS.map(c => {
+    if(!c.hasFn()){
+      return `<div class="chart-block">
+        <div class="chart-block-title">${c.title}</div>
+        <div class="chart-block-sub">لم يتم اختيار عمود لهذا السؤال</div>
+      </div>`;
+    }
+    const entries = countRawValues(items, c.key);
+    return `<div class="chart-block">
+      <div class="chart-block-title">${c.title}</div>
+      <div class="chart-block-sub">عدد التكرارات لهذا الربع (${items.length} بلاغ)</div>
+      ${buildHbarChartHtml(entries)}
+    </div>`;
+  }).join('');
+
+  return `<div class="quarter-block qtone-${idx % 4}">
+    <div class="quarter-block-title">${quarterValueLabel(value)}</div>
+    <div class="charts-grid">${blocksHtml}</div>
+  </div>`;
+}
+
+// Overall stats across the ENTIRE loaded dataset (not limited to the
+// selected quarters / any date range) — used for the combined summary card
+// so the reader gets one clear professional overview of all the surveys
+// together, alongside the per-quarter breakdown.
+function computeOverallStats(){
+  const items = parsedData;
+  const total = items.length;
+  const sat = items.filter(i => i.rating === 'راضي').length;
+  const unsat = items.filter(i => i.rating === 'غير راضي').length;
+  const satEligible = items.filter(i => i.rating === 'راضي' && isSatEligible(i)).length;
+  const unsatEligible = items.filter(i => i.rating === 'غير راضي' && isSatEligible(i)).length;
+  const eligTotal = satEligible + unsatEligible;
+
+  return {
+    total, sat, unsat,
+    satPct: eligTotal ? (satEligible / eligTotal * 100) : 0,
+    participPct: total ? ((sat + unsat) / total * 100) : 0
+  };
+}
+
+// Builds the combined "كل الفترات" summary: an overall رضا/مشاركة donut,
+// plus a compact top-values bar list for each mapped survey question,
+// computed over ALL the data at once (as opposed to the quarter blocks
+// which are each scoped to their own quarter only).
+function buildOverallSummaryHtml(){
+  const stats = computeOverallStats();
+  const satDeg = (stats.satPct / 100) * 180;
+  const partDeg = (stats.participPct / 100) * 180;
+
+  const donutHtml = `<div class="quarter-donut-row">
+    <div class="quarter-donut" style="background:conic-gradient(var(--accent) 0deg ${satDeg}deg, #e4e0d8 ${satDeg}deg 180deg, #c9971f 180deg ${180+partDeg}deg, #e4e0d8 ${180+partDeg}deg 360deg);"></div>
+    <div class="quarter-donut-legend">
+      <div class="qdl-item sat"><span class="qdl-dot"></span>رضا عام <b>${stats.satPct.toFixed(1)}%</b></div>
+      <div class="qdl-item part"><span class="qdl-dot"></span>مشاركة عامة <b>${stats.participPct.toFixed(1)}%</b></div>
+    </div>
+  </div>`;
+
+  const questionsHtml = CHART_COLUMN_DEFS.map(c => {
+    if(!c.hasFn()) return '';
+    const entries = countRawValues(parsedData, c.key).slice(0, 5); // top values only, to stay compact in the narrow column
+    return `<div class="ov-q-block">
+      <div class="ov-q-title">${c.title}</div>
+      ${buildHbarChartHtml(entries)}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  return `
+    <div class="ov-title">📊 الملخص العام لكل الفترات</div>
+    <div class="ov-sub">إجمالي البلاغات: ${stats.total}</div>
+    ${donutHtml}
+    ${questionsHtml}
+  `;
+}
+
+function renderOverallSummary(){
+  const el = document.getElementById('overallSummaryCard');
+  if(!el) return;
+  if(parsedData.length === 0){
+    el.classList.add('hidden');
+    return;
+  }
+  el.innerHTML = buildOverallSummaryHtml();
+  el.classList.remove('hidden');
+}
+
+// Counts, for one quarter's date range, how many rows fall under each of
+// the fixed CLOSURE_REASON_VALUES categories (exact match on the trimmed
+// raw column value). Values that don't match any of the fixed categories
+// are simply not counted in this table (it's a fixed-category summary,
+// not a full breakdown).
+function countClosureReasonForQuarter(value){
+  const months = getQuarterMonths(value);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  const items = parsedData.filter(p => p.date >= rangeStart && p.date <= rangeEnd);
+
+  const counts = {};
+  CLOSURE_REASON_VALUES.forEach(v => counts[v] = 0);
+  items.forEach(it => {
+    const v = (it.closureReason || '').trim();
+    if(counts.hasOwnProperty(v)) counts[v]++;
+  });
+  return counts;
+}
+
+// Builds the small "سبب الإغلاق" table: one row per fixed category, one
+// column per selected quarter (labelled Q1..Q4, in the same order as the
+// quarter checkboxes were selected — up to 4 quarters).
+function buildClosureReasonTableHtml(){
+  if(selectedQuarters.length === 0){
+    return '<div class="cr-empty-note">اختر ربعًا واحدًا على الأقل من قائمة "فلترة ربع سنوية" لعرض الجدول.</div>';
+  }
+
+  const quarters = selectedQuarters.slice(0, 4);
+  const perQuarterCounts = quarters.map(v => countClosureReasonForQuarter(v));
+
+  const headCells = perQuarterCounts.map((_, i) => `<th>Q${i+1}</th>`).join('');
+  const bodyRows = CLOSURE_REASON_VALUES.map(val => {
+    const cells = perQuarterCounts.map(c => `<td>${c[val]}</td>`).join('');
+    return `<tr><td>${val}</td>${cells}</tr>`;
+  }).join('');
+
+  return `<table class="cr-table">
+    <thead><tr><th>سبب الإغلاق</th>${headCells}</tr></thead>
+    <tbody>${bodyRows}</tbody>
+  </table>`;
+}
+
+function renderClosureReasonCard(){
+  const el = document.getElementById('closureReasonCard');
+  if(!el) return;
+  if(!hasClosureReasonCol || parsedData.length === 0){
+    el.classList.add('hidden');
+    return;
+  }
+  el.innerHTML = `<div class="cr-title">📋 أسباب إغلاق البلاغات (حسب الربع)</div>${buildClosureReasonTableHtml()}`;
+  el.classList.remove('hidden');
+}
+
+// Renders the value-count charts split per selected quarter — same idea as
+// the quarter calendars: one titled, color-coded block per quarter, each
+// scoped to its own data only. Requires quarters to be selected via the
+// "فلترة ربع سنوية" checkboxes first. Also renders the combined
+// all-quarters summary card and the closure-reason table alongside it.
+function renderQuarterValueCharts(){
+  const chartsCard = document.getElementById('chartsCard');
+  const grid = document.getElementById('chartsGrid');
+
+  const anyMapped = CHART_COLUMN_DEFS.some(c=>c.hasFn()) || hasClosureReasonCol;
+  if(!anyMapped || parsedData.length === 0 || selectedQuarters.length === 0){
+    chartsCard.classList.add('hidden');
+    return;
+  }
+
+  grid.innerHTML = selectedQuarters.map((v, idx) => buildQuarterChartsBlockHtml(v, idx)).join('');
+  renderOverallSummary();
+  renderClosureReasonCard();
+  chartsCard.classList.remove('hidden');
 }
 
 addPeriodBtn.addEventListener('click', () => {
@@ -1967,7 +3103,7 @@ autoQuarterlyBtn.addEventListener('click', () => {
     const satEligible = items.filter(i=>i.rating==='راضي' && isSatEligible(i)).length;
     const unsatEligible = items.filter(i=>i.rating==='غير راضي' && isSatEligible(i)).length;
 
-    periods.push({label: `الربع ${qNum}`, from: new Date(qStart), to: new Date(qEnd), total, sat, unsat, none, satEligible, unsatEligible});
+    periods.push({label: `الربع ${qNum}`, from: new Date(qStart), to: new Date(qEnd), total, sat, unsat, none, satEligible, unsatEligible, isQuarterly: true});
 
     const nextStart = new Date(qStart);
     nextStart.setMonth(nextStart.getMonth() + 3);
@@ -2054,7 +3190,9 @@ monthlyWeeksBtn.addEventListener('click', () => {
 // ---- Generic "column value picker": click a small button next to any
 // column dropdown to see every distinct value found in that column across
 // the raw uploaded rows (with counts), multi-select the ones wanted, and
-// apply that as a row-level filter for the whole analysis. ----
+// apply that as a row-level filter for the whole analysis. Column dropdowns
+// are hidden from the UI now, but this logic is kept intact/unused so
+// nothing else in the tool changes. ----
 
 let columnFilters = {}; // { selectId: { colIdx:number, allowed:Set<string> } }
 
@@ -2261,7 +3399,7 @@ function normalizePhoneForWhatsapp(phone){
 function getDayItems(y, m, d){
   const dayStart = new Date(y, m-1, d, 0, 0, 0);
   const dayEnd = new Date(y, m-1, d, 23, 59, 59);
-  return parsedData.filter(p => p.date >= dayStart && p.date <= dayEnd);
+  return getCalendarSourceData().filter(p => p.date >= dayStart && p.date <= dayEnd);
 }
 
 function copyText(txt){
@@ -2276,7 +3414,16 @@ function renderDayTable(){
   if(dayStatusFilter && !statuses.includes(dayStatusFilter)) dayStatusFilter = '';
   const items = dayStatusFilter ? allItems.filter(i => i.status === dayStatusFilter) : allItems;
 
-  dayModalTitle.textContent = `بلاغات يوم ${currentDayD}/${currentDayM}/${currentDayY} (${items.length}${dayStatusFilter ? ' من ' + allItems.length : ''})`;
+  let titleSuffix = `(${items.length}${dayStatusFilter ? ' من ' + allItems.length : ''})`;
+  if(calendarStatusFilter){
+    // Also show the true, un-filtered total for this day so it's obvious
+    // the "فلتر التقويم" (status picker) is actually being applied here.
+    const dayStart = new Date(currentDayY, currentDayM-1, currentDayD, 0, 0, 0);
+    const dayEnd = new Date(currentDayY, currentDayM-1, currentDayD, 23, 59, 59);
+    const trueTotal = parsedData.filter(p => p.date >= dayStart && p.date <= dayEnd).length;
+    titleSuffix = `(${items.length} من أصل ${trueTotal} — فلتر التقويم مفعّل${dayStatusFilter ? '، ومصفّى أيضًا حسب ' + dayStatusFilter : ''})`;
+  }
+  dayModalTitle.textContent = `بلاغات يوم ${currentDayD}/${currentDayM}/${currentDayY} ${titleSuffix}`;
 
   const satCount = items.filter(i => i.rating === 'راضي').length;
   const unsatCount = items.filter(i => i.rating === 'غير راضي').length;
