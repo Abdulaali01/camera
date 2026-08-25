@@ -979,8 +979,8 @@
           <select id="linkCol"></select>
         </div>
         <div class="field">
-          <label>عمود الوقت المعياري للمعالجة (اختياري)</label>
-          <select id="limitCol"></select>
+          <label>عمود الوقت المستهدف لمعالجة البلاغ (تاريخ/وقت مستهدف، اختياري)</label>
+          <select id="targetTimeCol"></select>
         </div>
       </div>
       <div class="row">
@@ -1328,7 +1328,7 @@ const muniColSel = document.getElementById('muniCol');
 const districtColSel = document.getElementById('districtCol');
 const streetColSel = document.getElementById('streetCol');
 const linkColSel = document.getElementById('linkCol');
-const limitColSel = document.getElementById('limitCol');
+const targetTimeColSel = document.getElementById('targetTimeCol');
 const sourceColSel = document.getElementById('sourceCol');
 const systemStatusColSel = document.getElementById('systemStatusCol');
 const effortColSel = document.getElementById('effortCol');
@@ -1522,7 +1522,7 @@ function handleFile(file){
       districtColSel.innerHTML = optionalColHtml;
       streetColSel.innerHTML = optionalColHtml;
       linkColSel.innerHTML = optionalColHtml;
-      limitColSel.innerHTML = optionalColHtml;
+      targetTimeColSel.innerHTML = optionalColHtml;
       sourceColSel.innerHTML = optionalColHtml;
       systemStatusColSel.innerHTML = optionalColHtml;
       effortColSel.innerHTML = optionalColHtml;
@@ -1545,7 +1545,7 @@ function handleFile(file){
       autoSelectByKeyword(districtColSel, ['الحي']);
       autoSelectByKeyword(streetColSel, ['الشارع']);
       autoSelectByKeyword(linkColSel, ['موقع البلاغ','الرابط','رابط']);
-      autoSelectByKeyword(limitColSel, ['الوقت المعياري']);
+      autoSelectByKeyword(targetTimeColSel, ['الوقت المستهدف لمعالجة البلاغ','الوقت المستهدف','تاريخ الاستهداف']);
       autoSelectByKeyword(sourceColSel, ['مصدر البلاغ']);
       autoSelectByKeyword(systemStatusColSel, ['حالة البلاغ في النظام']);
 
@@ -1742,61 +1742,17 @@ function normalizeDigits(str){
   });
 }
 
-// Parse "الوقت المعياري للمعالجة" (SLA / standard processing time) into
-// hours. Understands a plain number (assumed hours), or a number followed
-// by "ساعة/ساعات" (hours), "يوم/أيام" (days, ×24), or "دقيقة" (minutes,
-// ÷60). Also understands "HH:MM" / "HH:MM:SS" duration strings (common
-// when Excel exports a "[h]:mm" formatted cell as text). Returns null if
-// no usable number can be found.
-function parseLimitHours(limitStr){
-  if(limitStr === null || limitStr === undefined || limitStr === '') return null;
-  const s = normalizeDigits(String(limitStr).trim());
-  if(!s) return null;
-
-  // "HH:MM" or "HH:MM:SS" duration format
-  const timeMatch = s.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?$/);
-  if(timeMatch){
-    const hh = parseFloat(timeMatch[1]);
-    const mm = parseFloat(timeMatch[2] || '0');
-    const ss = parseFloat(timeMatch[3] || '0');
-    return hh + mm/60 + ss/3600;
-  }
-
-  const m = s.match(/([\d.]+)/);
-  if(!m) return null;
-  const num = parseFloat(m[1]);
-  if(isNaN(num)) return null;
-  if(/يوم|أيام|ايام|day/i.test(s)) return num * 24;
-  if(/دقيق|minute/i.test(s)) return num / 60;
-  return num; // default: hours
-}
-
-// When "الوقت المعياري للمعالجة" is formatted in Excel as a duration/time
-// cell (e.g. "[h]:mm"), SheetJS (with cellDates:true) reads it back as a
-// JS Date anchored at the spreadsheet date epoch (1899-12-30) instead of a
-// plain number/string — String(thatDate) would produce something like
-// "Sat Dec 30 1899 02:00:00" and silently break parseLimitHours. Detect
-// that case and convert it back into an hours value first.
-function extractLimitValue(raw){
-  if(raw === undefined || raw === null || raw === '') return '';
-  if(raw instanceof Date && !isNaN(raw)){
-    const epoch = new Date(1899, 11, 30);
-    const hours = (raw.getTime() - epoch.getTime()) / (60*60*1000);
-    return `${hours} ساعة`;
-  }
-  return String(raw).trim();
-}
-
-// Hours remaining until a report's SLA deadline (تاريخ البلاغ + الوقت
-// المعياري للمعالجة). Negative = already overdue. Returns null when the
-// report has no usable "limit" value, or is already closed (حالة البلاغ =
-// مغلق) — a closed report has nothing left "remaining".
+// Hours remaining until a report's target processing date/time (from the
+// "الوقت المستهدف لمعالجة البلاغ" column, parsed as an actual date/time —
+// same parser used for the main date column). Positive = not late yet,
+// this many hours remain before it becomes late. Negative = already late,
+// by this many hours. Returns null when the report has no usable target
+// time, or is already closed (حالة البلاغ = مغلق) — a closed report has
+// nothing left "remaining".
 function getRemainingHours(item){
   if(hasStatusCol && item.status && item.status.trim() === 'مغلق') return null;
-  const limitHours = parseLimitHours(item.limit);
-  if(limitHours === null) return null;
-  const deadline = new Date(item.date.getTime() + limitHours*60*60*1000);
-  return (deadline.getTime() - Date.now()) / (60*60*1000);
+  if(!item.targetTime) return null;
+  return (item.targetTime.getTime() - Date.now()) / (60*60*1000);
 }
 
 // Calendar-only status filter: when set, the month/quarter calendar grids
@@ -2438,7 +2394,7 @@ function performLoadData(){
   const diIdx = parseInt(districtColSel.value,10);
   const srIdx = parseInt(streetColSel.value,10);
   const lkIdx = parseInt(linkColSel.value,10);
-  const lmIdx = parseInt(limitColSel.value,10);
+  const ttIdx = parseInt(targetTimeColSel.value,10);
   const srcIdx = parseInt(sourceColSel.value,10);
   const sysStIdx = parseInt(systemStatusColSel.value,10);
   const effIdx = parseInt(effortColSel.value,10);
@@ -2479,7 +2435,7 @@ function performLoadData(){
       district: (diIdx>=0 && r[diIdx]!==undefined) ? String(r[diIdx]).trim() : '',
       street: (srIdx>=0 && r[srIdx]!==undefined) ? String(r[srIdx]).trim() : '',
       link: (lkIdx>=0 && r[lkIdx]!==undefined) ? String(r[lkIdx]).trim() : '',
-      limit: (lmIdx>=0 && r[lmIdx]!==undefined) ? extractLimitValue(r[lmIdx]) : '',
+      targetTime: (ttIdx>=0 && r[ttIdx]!==undefined && r[ttIdx]!=='') ? parseDate(r[ttIdx]) : null,
       source: (srcIdx>=0 && r[srcIdx]!==undefined) ? String(r[srcIdx]).trim() : '',
       systemStatus: (sysStIdx>=0 && r[sysStIdx]!==undefined) ? String(r[sysStIdx]).trim() : ''
     });
@@ -2529,15 +2485,14 @@ function performLoadData(){
   if(badDates > 0) msg += ` (تم تجاهل ${badDates} صف بسبب تاريخ غير صالح)`;
   if(rIdx < 0) msg += ` ملاحظة: لم يتم العثور على عمود تقييم في الملف، سيتم اعتبار كل البلاغات "لا يوجد" في إحصاءات الرضا.`;
 
-  // Diagnostic for the "⏰ أقل من 48 ساعة" feature: tell the user right
-  // away whether there's any usable data for it, instead of leaving them
-  // to wonder why the calendar shows nothing.
-  if(lmIdx >= 0){
-    const withLimit = parsedData.filter(p => getRemainingHours(p) !== null).length;
-    if(withLimit === 0){
-      msg += ` ⚠️ ملاحظة: لم أستطع احتساب "الوقت المتبقي" لأي بلاغ.`;
+  // Diagnostic for the "⏰ أقل من 48 ساعة" / "متأخر" feature: tell the
+  // user right away whether there's any usable data for it.
+  if(ttIdx >= 0){
+    const withTarget = parsedData.filter(p => getRemainingHours(p) !== null).length;
+    if(withTarget === 0){
+      msg += ` ⚠️ ملاحظة: لم أستطع قراءة "الوقت المستهدف لمعالجة البلاغ" كتاريخ صالح لأي بلاغ — تأكد أن العمود يحتوي تواريخ/أوقات فعلية.`;
     } else {
-      msg += ` (تم احتساب الوقت المتبقي لـ ${withLimit} بلاغ)`;
+      msg += ` (تم احتساب حالة التأخير لـ ${withTarget} بلاغ)`;
     }
   }
 
@@ -3208,7 +3163,7 @@ const allColumnSelects = [
   {id:'districtCol', el:districtColSel},
   {id:'streetCol', el:streetColSel},
   {id:'linkCol', el:linkColSel},
-  {id:'limitCol', el:limitColSel},
+  {id:'targetTimeCol', el:targetTimeColSel},
   {id:'sourceCol', el:sourceColSel},
   {id:'systemStatusCol', el:systemStatusColSel}
 ];
@@ -3472,7 +3427,7 @@ function renderDayTable(){
     if(remaining !== null){
       remainingCell = remaining < 0
         ? `<span style="color:var(--bad);font-weight:700;">متأخر ${Math.abs(Math.round(remaining))} س</span>`
-        : `<span style="${remaining < 48 ? 'color:var(--bad);font-weight:700;' : ''}">${Math.round(remaining)} س</span>`;
+        : `<span style="${remaining < 48 ? 'color:var(--bad);font-weight:700;' : 'color:var(--accent);'}">غير متأخر — متبقي ${Math.round(remaining)} س</span>`;
       if(remaining < 48) colorClass = (colorClass ? colorClass + ' ' : '') + 'urgent-row';
     }
 
@@ -3611,12 +3566,20 @@ async function sendTicketImage(id){
 
 function openDuplicatesModal(phone){
   dupPhone = String(phone || '').trim();
-  dupRows = parsedData.filter(p => p.phone && normalizePhoneForWhatsapp(p.phone) === normalizePhoneForWhatsapp(dupPhone));
+  const allRows = parsedData.filter(p => p.phone && normalizePhoneForWhatsapp(p.phone) === normalizePhoneForWhatsapp(dupPhone));
 
-  document.getElementById('dupInfo').textContent = `رقم الجوال: ${dupPhone} — عدد البلاغات: ${dupRows.length}`;
+  // Split: closed reports (حالة البلاغ = مغلق) are summarized as a single
+  // count line instead of being listed row by row. Everything else (قيد
+  // التنفيذ / جديد / معاد فتحه / أي حالة غير مغلق) keeps its own row with
+  // a checkbox, exactly as before.
+  const closedRows = allRows.filter(r => r.status && r.status.trim() === 'مغلق');
+  const openRows = allRows.filter(r => !(r.status && r.status.trim() === 'مغلق'));
+  dupRows = openRows; // checkboxes/actions (إرسال الملاحظات، مراسلة المستفيد) only ever apply to these
+
+  document.getElementById('dupInfo').textContent = `رقم الجوال: ${dupPhone} — عدد البلاغات: ${allRows.length} (غير مغلقة: ${openRows.length} — مغلقة: ${closedRows.length})`;
 
   let html = '';
-  dupRows.forEach((r, idx) => {
+  openRows.forEach((r, idx) => {
     html += `<tr>
       <td><input type="checkbox" class="dup-check" data-idx="${idx}"></td>
       <td>${r.reportNo || '-'}</td>
@@ -3626,6 +3589,18 @@ function openDuplicatesModal(phone){
       <td class="ltr">${r.phone || '-'}</td>
     </tr>`;
   });
+
+  if(closedRows.length > 0){
+    const closedSat = closedRows.filter(r => r.rating === 'راضي').length;
+    const closedUnsat = closedRows.filter(r => r.rating === 'غير راضي').length;
+    html += `<tr class="hist-row">
+      <td colspan="6" style="text-align:center;">
+        <b>مغلق: ${closedRows.length} بلاغ</b>
+        &nbsp;—&nbsp; راضي: <b style="color:var(--accent);">${closedSat}</b>
+        &nbsp;—&nbsp; غير راضي: <b style="color:var(--bad);">${closedUnsat}</b>
+      </td>
+    </tr>`;
+  }
 
   document.getElementById('dupTableBody').innerHTML = html || `<tr><td colspan="6">لا توجد بلاغات</td></tr>`;
   document.getElementById('dupModalOverlay').classList.remove('hidden');
@@ -3739,7 +3714,7 @@ document.getElementById('blueGroupSend').addEventListener('click', () => {
       msg += `${r.reportNo || ''}\n`;
       msg += `الحي: ${r.district || ''}\n`;
       msg += `الشارع: ${r.street || ''}\n`;
-      msg += `الوقت المعياري: ${r.limit || ''}\n\n`;
+      msg += `الوقت المستهدف: ${r.targetTime ? fmtDate(r.targetTime) : ''}\n\n`;
     });
     msg += `رابط الموقع:\n${uniqueLinks[0]}`;
   } else {
@@ -3748,7 +3723,7 @@ document.getElementById('blueGroupSend').addEventListener('click', () => {
       if(r.link) msg += `رابط الموقع: ${r.link}\n`;
       msg += `الحي: ${r.district || ''}\n`;
       msg += `الشارع: ${r.street || ''}\n`;
-      msg += `الوقت المعياري: ${r.limit || ''}\n\n`;
+      msg += `الوقت المستهدف: ${r.targetTime ? fmtDate(r.targetTime) : ''}\n\n`;
     });
   }
 
