@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>تحليل التقييمات الأسبوعي</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
@@ -320,6 +321,24 @@
   .day-table td.ltr{direction:ltr;}
   .view-btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11.5px;cursor:pointer;white-space:nowrap;}
   .hist-row td{background:#faf9f6;text-align:right;padding:10px;}
+  .dup-closed-summary{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    background:var(--neutral-soft);
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    margin-bottom:14px;
+  }
+  .dup-summary-item{
+    font-size:14px;
+    font-weight:700;
+    color:var(--ink);
+  }
+  .dup-summary-item b{font-size:16px;}
+  .dup-summary-item.sat b{color:var(--accent);}
+  .dup-summary-item.unsat b{color:var(--bad);}
   .hist-count{font-weight:700;color:var(--ink);margin-bottom:6px;}
 
   .print-bar{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
@@ -360,9 +379,28 @@
     50%{ background:#fef3c7; }
   }
   .day-table tr.row-flash td{ animation: rowFlash 0.7s ease-in-out 4; }
+  @keyframes dupFlash{
+    0%,100%{ background:#fff7ed; }
+    50%{ background:#fcd34d; }
+  }
+  .day-table tr.dup-row td{ animation: dupFlash 1.1s ease-in-out infinite; }
+  .dup-count-badge{
+    display:inline-block;
+    background:#a3432f;
+    color:#fff;
+    font-size:10px;
+    font-weight:800;
+    border-radius:10px;
+    padding:0 6px;
+    margin-right:4px;
+    vertical-align:middle;
+  }
   .day-table tr.row-target td{ background:#bfdbfe !important; border-top:2px solid #2563eb; border-bottom:2px solid #2563eb; }
   .day-table tr.row-target td:first-child{ border-right:2px solid #2563eb; }
   .day-table tr.row-target td:last-child{ border-left:2px solid #2563eb; }
+  .day-table tr.pending-closure-check td{ border-top:4px solid #14532d; border-bottom:4px solid #14532d; }
+  .day-table tr.pending-closure-check td:first-child{ border-right:4px solid #14532d; }
+  .day-table tr.pending-closure-check td:last-child{ border-left:4px solid #14532d; }
   .mini-btn{border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px;color:#fff;}
   .mini-btn.copy{background:#10b981;}
   .mini-btn.del{background:#a3432f;}
@@ -470,6 +508,45 @@
   .qdl-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
   .qdl-item.sat b{color:var(--accent);}
   .qdl-item.sat .qdl-dot{background:var(--accent);}
+
+  .status-breakdown-row{
+    display:flex;
+    flex-wrap:wrap;
+    margin:0 0 10px;
+  }
+  .status-breakdown-row > *{
+    margin-left:4px;
+    margin-bottom:2px;
+  }
+  .sb-item{
+    display:inline-block;
+    background:var(--neutral-soft);
+    border-radius:5px;
+    padding:2px 4px;
+    text-align:center;
+    min-width:36px;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .sb-pair .sb-item{margin-left:2px;}
+  .sb-label{font-size:8.5px;color:var(--muted);white-space:nowrap;}
+  .sb-num{font-size:11px;font-weight:800;color:var(--ink);}
+  .sb-group{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    border:1px solid var(--line);
+    border-radius:7px;
+    padding:4px 5px;
+    background:#fff;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .sb-group .sb-group-label{margin-top:2px;}
+  .sb-pair{display:flex;}
+  .sb-group-label{font-size:10px;font-weight:700;color:var(--accent);}
+  .sb-item.sb-pct{background:var(--accent-soft);}
+  .sb-item.sb-pct .sb-num{color:var(--accent);}
   .qdl-item.part b{color:#c9971f;}
   .qdl-item.part .qdl-dot{background:#c9971f;}
 
@@ -892,6 +969,14 @@
     .quarter-donut{width:26px;height:26px;}
     .quarter-donut-legend{font-size:6.5px;gap:1px;}
     .qdl-dot{width:5px;height:5px;}
+    .status-breakdown-row{margin:0 0 5px;}
+    .status-breakdown-row > *{margin-left:3px;margin-bottom:1px;}
+    .sb-item{padding:0.5px 1.5px;border-radius:2px;min-width:18px;}
+    .sb-pair .sb-item{margin-left:1px;}
+    .sb-label{font-size:4px;}
+    .sb-num{font-size:5.5px;}
+    .sb-group{padding:1.5px 2px;border-radius:3px;}
+    .sb-group-label{font-size:4.5px;}
   }
 
   /* Filter/mapping columns are no longer shown to the user — data loads
@@ -899,9 +984,172 @@
      columns. Kept in the DOM (hidden) because the JS still reads values
      from these selects. */
   #colPicker{display:none !important;}
+
+  /* ---- Per-employee print report (طباعة تقرير الموظفين) ---- */
+  #employeeReportPrint{display:none;}
+  body.printing-employee-report > *:not(#employeeReportPrint){display:none !important;}
+  body.printing-employee-report #employeeReportPrint{
+    display:block;
+    padding:20px;
+    font-family:"Segoe UI", Tahoma, Arial, sans-serif;
+    color:var(--ink);
+  }
+  .emp-report-page{page-break-after:always;}
+  .emp-report-page:last-child{page-break-after:auto;}
+  .emp-report-title{
+    font-size:20px;
+    font-weight:800;
+    color:var(--accent);
+    margin-bottom:4px;
+  }
+  .emp-report-sub{
+    font-size:12.5px;
+    color:var(--muted);
+    margin-bottom:16px;
+  }
+  .emp-report-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+  }
+  .emp-report-table th, .emp-report-table td{
+    border:1px solid var(--line);
+    padding:7px 8px;
+    text-align:center;
+  }
+  .emp-report-table th{
+    background:var(--accent);
+    color:#fff;
+    font-weight:800;
+    font-size:14px;
+    padding:10px 8px;
+    letter-spacing:0.2px;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .emp-report-table td.emp-reports-cell{text-align:right;max-width:320px;line-height:1.9;padding-top:9px;padding-bottom:9px;}
+  .emp-report-table td.emp-phone-cell{direction:ltr;text-align:center;}
+  @media print{
+    @page{size:landscape;margin:10mm;}
+    body.printing-employee-report{background:#fff;}
+    .emp-report-page{padding:0;}
+  }
+
+  :root{
+    --ink:#1b1f23;
+    --paper:#faf9f7;
+    --line:#dcd7cf;
+    --accent:#2f6f5e;
+    --accent-soft:#e6efec;
+    --bad:#a3432f;
+    --bad-soft:#f5e8e4;
+    --muted:#7a746a;
+  }
+  *{box-sizing:border-box;}
+  .gate-outer{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .gate-card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:32px 26px;
+    max-width:380px;
+    width:100%;
+    text-align:center;
+    box-shadow:0 4px 18px rgba(0,0,0,0.05);
+  }
+  h1{font-size:19px;margin:0 0 6px;}
+  .sub{font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.6;}
+  .email-box{
+    background:var(--accent-soft);
+    color:var(--accent);
+    font-weight:700;
+    font-size:14.5px;
+    border-radius:8px;
+    padding:10px 12px;
+    margin-bottom:20px;
+    direction:ltr;
+  }
+  .btn{
+    display:inline-block;
+    width:100%;
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:12px 18px;
+    border-radius:8px;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .btn:disabled{background:#c8c3b8;cursor:not-allowed;}
+  .btn.secondary{background:#8a8478;margin-top:10px;}
+  .status{font-size:13px;color:var(--muted);margin-top:14px;min-height:18px;}
+  .status.err{color:var(--bad);}
+  .status.ok{color:var(--accent);}
+
+  .otp-row{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    margin:22px 0 6px;
+    direction:ltr;
+  }
+  .otp-row input{
+    width:52px;
+    height:58px;
+    text-align:center;
+    font-size:24px;
+    font-weight:800;
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    color:var(--ink);
+  }
+  .otp-row input:focus{
+    outline:none;
+    border-color:var(--accent);
+  }
+
+  .hidden{display:none;}
+
+
+
 </style>
 </head>
 <body>
+<div id="gateOuter" class="gate-outer">
+<div id="gateScreen" class="gate-card">
+  <h1>🔒 تسجيل الدخول</h1>
+  <div class="sub">اضغط الزر لإرسال كود تحقق مكوّن من 4 أرقام إلى الإيميل التالي:</div>
+  <div class="email-box">aq130096z@gmail.com</div>
+
+  <button class="btn" id="sendCodeBtn">📩 إرسال الكود</button>
+  <div class="status" id="sendStatus"></div>
+</div>
+<div id="otpScreen" class="gate-card hidden">
+  <h1>أدخل الكود</h1>
+  <div class="sub">تم إرسال كود مكوّن من 4 أرقام إلى الإيميل. اطلب الكود من المسؤول وأدخله هنا.</div>
+
+  <div class="otp-row">
+    <input type="tel" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="0">
+    <input type="tel" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="1">
+    <input type="tel" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="2">
+    <input type="tel" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="3">
+  </div>
+
+  <button class="btn" id="verifyBtn">✅ تحقق</button>
+  <button class="btn secondary" id="resendBtn">🔄 إعادة إرسال الكود</button>
+  <div class="status" id="verifyStatus"></div>
+</div>
+</div>
+
+<div id="mainToolWrap" class="hidden">
+
 <div class="wrap">
   <h1 class="no-print">تحليل التقييمات الأسبوعي</h1>
   <div class="sub no-print">ارفق ملف Excel أو CSV يحتوي على عمود تاريخ الإنشاء (وعمود التقييم اختياريًا: راضي / غير راضي / لا يوجد) — سيتم تحليل البيانات تلقائيًا فور إرفاق الملف</div>
@@ -914,7 +1162,7 @@
       <div class="txt2">يدعم xlsx, xls, csv</div>
     </label>
 
-    <div id="statusColVisibleRow" class="row no-print" style="margin-top:14px;">
+    <div id="statusColVisibleRow" class="row no-print hidden" style="margin-top:14px;">
       <div class="field" style="max-width:320px;">
         <label>عمود حالة البلاغ (اختياري)</label>
         <select id="statusCol"></select>
@@ -1012,6 +1260,14 @@
           <label>عمود: سبب الإغلاق (اختياري)</label>
           <select id="closureReasonCol"></select>
         </div>
+        <div class="field">
+          <label>عمود: اسم الموظف المسند إليه (اختياري)</label>
+          <select id="assignedEmployeeCol"></select>
+        </div>
+        <div class="field">
+          <label>عمود: التصنيف التخصصي (اختياري)</label>
+          <select id="classificationCol"></select>
+        </div>
       </div>
       <div class="status" style="margin-top:6px;">حساب <b>نسبة الرضا/عدم الرضا فقط</b> (باقي الأعداد ما تتأثر): يُشترط أن تكون "حالة البلاغ" = مغلق، وأن لا تكون "مصدر البلاغ" أو "حالة البلاغ في النظام" فاضية أو من ضمن القيم المستثناة (حسب فلتر لوحة البلدية).</div>
       <button class="btn" id="loadDataBtn">تحميل البيانات</button>
@@ -1033,14 +1289,13 @@
         </div>
       </div>
       <button class="btn" id="addPeriodBtn">إضافة الفترة للجدول</button>
-      <button class="btn" id="autoWeeklyBtn" style="background:#3d6b8a;">تقسيم أسبوعي تلقائي (من - إلى)</button>
+      <button class="btn hidden" id="autoWeeklyBtn" style="background:#3d6b8a;">تقسيم أسبوعي تلقائي (من - إلى)</button>
       <button class="btn" id="autoQuarterlyBtn" style="background:#6a4f9c;">تقسيم ربع سنوي تلقائي (من - إلى)</button>
       <button class="btn" id="resetPeriodsBtn" style="background:#8a8478;">تصفير الجدول</button>
 
       <div class="row" style="margin-top:18px;border-top:1px dashed var(--line);padding-top:14px;">
         <div class="field">
-          <label>فلترة شهرية: اختر شهرًا واحدًا أو أكثر لعرض تقويمها (كل شهر بجانب الآخر)</label>
-          <div id="monthCheckboxList" class="month-checkbox-list">
+          <div id="monthCheckboxList" class="month-checkbox-list hidden">
             <label style="color:var(--muted);">لا توجد بيانات محمّلة بعد</label>
           </div>
           <div class="month-chip-bar" id="monthChipBar"></div>
@@ -1068,7 +1323,7 @@
 
     <div class="card no-print">
       <h2>الملخص العام</h2>
-      <div class="kpis">
+      <div class="kpis hidden">
         <div class="kpi"><div class="n" id="kTotal">0</div><div class="l">إجمالي البلاغات</div></div>
         <div class="kpi"><div class="n" id="kSatCount">0</div><div class="l">راضي</div></div>
         <div class="kpi bad"><div class="n" id="kUnsatCount">0</div><div class="l">غير راضي</div></div>
@@ -1081,7 +1336,7 @@
         <div class="kpi neutral"><div class="n" id="kParticipPct">—</div><div class="l">نسبة المشاركة (راضي+غير راضي ÷ البلاغات المغلقة)</div></div>
       </div>
 
-      <div class="row no-print" style="margin-top:4px;border-top:1px dashed var(--line);padding-top:14px;">
+      <div class="row no-print hidden" style="margin-top:4px;border-top:1px dashed var(--line);padding-top:14px;">
         <div class="field">
           <label>عدد الراضين الفعلي (يدوي)</label>
           <input type="number" id="manualSatInput" min="0" value="0">
@@ -1095,7 +1350,7 @@
           <input type="number" id="manualClosedInput" min="0" value="0">
         </div>
       </div>
-      <div class="row no-print" style="margin-top:0;">
+      <div class="row no-print hidden" style="margin-top:0;">
         <div class="field">
           <label>عدد الراضين حسب الجدول (الربع الحالي)</label>
           <input type="text" id="fileSatCurrentQ" value="0" readonly disabled style="background:var(--accent-soft);color:var(--ink);font-weight:700;cursor:default;">
@@ -1109,7 +1364,7 @@
           <input type="text" id="fileClosedCurrentQ" value="0" readonly disabled style="background:var(--neutral-soft);color:var(--ink);font-weight:700;cursor:default;">
         </div>
       </div>
-      <button class="btn no-print" id="refreshManualBtn" style="background:#3d6b8a;">🔄 رفرش</button>
+      <button class="btn no-print hidden" id="refreshManualBtn" style="background:#3d6b8a;">🔄 رفرش</button>
       <div class="status" style="margin-top:6px;">بعد تعديل القيم اليدوية الثلاث اضغط "رفرش" لتحديث نسبة الرضا/عدم الرضا ونسبة المشاركة الخاصة بالربع الحالي فقط داخل تقويم الأرباع أدناه (إذا كانت أي قيمة يدوية أكبر من العدد الموجود فعليًا في جدول الربع الحالي، يُضاف الفرق فقط وليس الاستبدال — لكل من راضي، غير راضي، والإغلاقات). بقية الأرباع (الماضية أو القادمة) لا تتأثر بهذه المربعات.</div>
 
       <div class="row no-print" style="margin-top:4px;border-top:1px dashed var(--line);padding-top:14px;align-items:flex-end;">
@@ -1127,6 +1382,8 @@
       <div class="print-bar no-print">
         <button class="btn" id="exportMsgsBtn" style="background:#c9971f;margin-left:8px;">💾 تصدير سجل المرسلات</button>
         <button class="btn print-btn" id="printBtn">🖨️ طباعة الجدول والتقويم</button>
+        <button class="btn print-btn" id="printEmployeeBtn" style="background:#3d6b8a;">🖨️ طباعة تقرير الموظفين</button>
+        <button class="btn print-btn" id="exportEmployeeExcelBtn" style="background:#c9971f;">💾 تصدير تقرير الموظفين (Excel)</button>
       </div>
       <h2>الفترات المضافة</h2>
       <div class="wrap-table" id="periodsTableWrap">
@@ -1215,6 +1472,7 @@
       </div>
       <div class="modal-body">
         <div id="dupInfo" style="font-size:12.5px;color:var(--muted);margin-bottom:10px;"></div>
+        <div id="dupClosedSummary" class="dup-closed-summary hidden"></div>
         <div class="wrap-table">
           <table class="day-table">
             <thead>
@@ -1233,6 +1491,7 @@
       </div>
       <div class="modal-foot" style="flex-wrap:wrap;">
         <button id="dupBlueGroup" class="btn" style="background:#f59e0b;">إرسال الملاحظات</button>
+        <button id="dupPrivateMsg" class="btn" style="background:#6a4f9c;">📩 رسالة خاصة</button>
         <button id="dupSendAll" class="btn" style="background:#25D366;">مراسلة المستفيد</button>
       </div>
     </div>
@@ -1335,6 +1594,8 @@ const effortColSel = document.getElementById('effortCol');
 const timeSatColSel = document.getElementById('timeSatCol');
 const approachColSel = document.getElementById('approachCol');
 const closureReasonColSel = document.getElementById('closureReasonCol');
+const assignedEmployeeColSel = document.getElementById('assignedEmployeeCol');
+const classificationColSel = document.getElementById('classificationCol');
 const loadDataBtn = document.getElementById('loadDataBtn');
 const periodPicker = document.getElementById('periodPicker');
 const fromDateInp = document.getElementById('fromDate');
@@ -1380,6 +1641,32 @@ let hasRatingCol = false;
 // Fixed set of closure-reason ("سبب الإغلاق") categories, in the exact
 // display order requested — counted per quarter in the small summary
 // table next to the survey charts.
+// A report counts as "بانتظار التحقق من إجراء الإغلاق" when its main
+// status (حالة البلاغ) is "قيد التنفيذ" AND its system status (حالة
+// البلاغ في النظام — a separate column) is exactly "بانتظار التحقق من
+// إجراء الإغلاق". These rows get a distinct thick dark-green border in
+// the day-detail table so they stand out among other "قيد التنفيذ" rows.
+// Normalizes Arabic text for comparison: strips diacritics, unifies
+// common letter-form variants (أ/إ/آ → ا, ة → ه, ى → ي), and collapses
+// whitespace. Used so a small difference in the source file (extra
+// space, a hamza written differently, etc.) doesn't silently break an
+// exact-text match.
+function normalizeArabic(str){
+  return String(str || '')
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    .replace(/[إأآا]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isPendingClosureCheck(item){
+  if(!item.status || normalizeArabic(item.status) !== normalizeArabic('قيد التنفيذ')) return false;
+  if(!item.systemStatus) return false;
+  return normalizeArabic(item.systemStatus).includes(normalizeArabic('بانتظار التحقق من إجراء الإغلاق'));
+}
+
 const CLOSURE_REASON_VALUES = [
   'تمت معالجة البلاغ بشكل نهائي',
   'البلاغ يتبع لجهة أخرى (خارج النطاق البلدي)',
@@ -1497,8 +1784,18 @@ function autoDetectDateColumn(){
   return false;
 }
 
-function handleFile(file){
+function handleFile(file, onComplete){
+  const dropTxtEl = document.querySelector('#dropZone .txt');
+  const dropTxt2El = document.querySelector('#dropZone .txt2');
+  const originalTxt = dropTxtEl ? dropTxtEl.textContent : null;
+  const originalTxt2 = dropTxt2El ? dropTxt2El.textContent : null;
+  if(dropTxtEl) dropTxtEl.textContent = '⏳ جاري تحميل الملف...';
+  if(dropTxt2El) dropTxt2El.textContent = 'الرجاء الانتظار';
   setStatus('جاري قراءة الملف...');
+  const restoreDropLabel = () => {
+    if(dropTxtEl && originalTxt !== null) dropTxtEl.textContent = originalTxt;
+    if(dropTxt2El && originalTxt2 !== null) dropTxt2El.textContent = originalTxt2;
+  };
   const reader = new FileReader();
   reader.onload = function(e){
     try{
@@ -1529,6 +1826,8 @@ function handleFile(file){
       timeSatColSel.innerHTML = optionalColHtml;
       approachColSel.innerHTML = optionalColHtml;
       closureReasonColSel.innerHTML = optionalColHtml;
+      assignedEmployeeColSel.innerHTML = optionalColHtml;
+      classificationColSel.innerHTML = optionalColHtml;
 
       autoDetectDateColumn();
       autoSelectByKeyword(ratingColSel, ['التقييم','تقييم البلاغ','الرضا']);
@@ -1536,6 +1835,8 @@ function handleFile(file){
       autoSelectByKeyword(timeSatColSel, ['ما مدى رضاك عن الوقت المستغرق في معالجة البلاغ؟','الوقت المستغرق في معالجة البلاغ','الوقت المستغرق']);
       autoSelectByKeyword(approachColSel, ['ما مدى رضاك عن نهج وطريقة موظف الامانة في محاولة معالجة البلاغ؟','نهج وطريقة موظف الامانة','نهج وطريقة موظف الأمانة','موظف الامانة','موظف الأمانة']);
       autoSelectByKeyword(closureReasonColSel, ['سبب الإغلاق','سبب الاغلاق','سبب غلق البلاغ','سبب غلق']);
+      autoSelectByKeyword(assignedEmployeeColSel, ['اسم الموظف المسند اليه','الموظف المسند اليه','اسم الموظف','الموظف المسؤول']);
+      autoSelectByKeyword(classificationColSel, ['التصنيف التخصصي','التصنيف']);
       autoSelectByKeyword(nameColSel, ['اسم المبلغ','اسم مقدم البلاغ','اسم العميل','الاسم']);
       autoSelectByKeyword(phoneColSel, ['رقم الجوال','الجوال','رقم الهاتف','الهاتف']);
       autoSelectByKeyword(descColSel, ['الوصف','وصف البلاغ']);
@@ -1556,16 +1857,18 @@ function handleFile(file){
       periods = [];
       columnFilters = {};
       calendarStatusFilter = null;
-      ensureValuePickerButtons();
 
       // Data loads automatically now — no manual column mapping step.
       performLoadData();
+      restoreDropLabel();
+      if(typeof onComplete === 'function') onComplete();
     }catch(err){
       console.error(err);
       setStatus('حدث خطأ أثناء قراءة الملف: ' + err.message, true);
+      restoreDropLabel();
     }
   };
-  reader.onerror = () => setStatus('فشل في قراءة الملف.', true);
+  reader.onerror = () => { setStatus('فشل في قراءة الملف.', true); restoreDropLabel(); };
   reader.readAsArrayBuffer(file);
 }
 
@@ -2078,9 +2381,53 @@ function renderQuarterCalendars(){
       </div>
     </div>`;
 
+    // فقط للربع الحالي: عدد الراضين/غير الراضين (كما هو محسوب أصلاً)، ثم
+    // نفس العددين لكن مقتصرين على البلاغات المغلقة فقط (حسب عمود حالة
+    // البلاغ)، بالإضافة لعدد كل من "جديد" و"قيد التنفيذ" و"معاد فتحه".
+    // كله أرقام فقط، ومبني على نفس عمود "حالة البلاغ" بالملف المرفق.
+    let statusBreakdownHtml = '';
+    if(v === getCurrentQuarterValue() && hasStatusCol){
+      const months2 = getQuarterMonths(v);
+      const first2 = months2[0], last2 = months2[months2.length - 1];
+      const rangeStart2 = new Date(first2.y, first2.m - 1, 1, 0, 0, 0);
+      const lastDay2 = new Date(last2.y, last2.m, 0).getDate();
+      const rangeEnd2 = new Date(last2.y, last2.m - 1, lastDay2, 23, 59, 59);
+      const qItems = parsedData.filter(p => p.date >= rangeStart2 && p.date <= rangeEnd2);
+
+      const satClosed = qItems.filter(i => i.rating === 'راضي' && i.status && i.status.trim() === 'مغلق').length;
+      const unsatClosed = qItems.filter(i => i.rating === 'غير راضي' && i.status && i.status.trim() === 'مغلق').length;
+      const newCount = qItems.filter(i => i.status && i.status.trim() === 'جديد').length;
+      const inProgressCount = qItems.filter(i => i.status && i.status.trim() === 'قيد التنفيذ').length;
+      const reopenedCount = qItems.filter(i => i.status && i.status.trim() === 'معاد فتحه').length;
+
+      const makeItem = (label, num) => `<div class="sb-item"><div class="sb-label">${label}</div><div class="sb-num">${num}</div></div>`;
+      const makeGroup = (groupLabel, satVal, unsatVal, pctBadge) => `<div class="sb-group">
+        <div class="sb-pair">
+          ${makeItem('راضي', satVal)}
+          ${makeItem('غيرراضي', unsatVal)}
+          ${pctBadge || ''}
+        </div>
+        <div class="sb-group-label">${groupLabel}</div>
+      </div>`;
+
+      const currentGroup = makeGroup('الحالي', stats.satAdjusted, stats.unsatAdjusted);
+      const closedTotal = satClosed + unsatClosed;
+      const closedPct = closedTotal ? (satClosed / closedTotal * 100) : 0;
+      const closedPctBadge = `<div class="sb-item sb-pct"><div class="sb-label">نسبة</div><div class="sb-num">${closedPct.toFixed(2)}%</div></div>`;
+      const closedGroup = makeGroup('المغلق', satClosed, unsatClosed, closedPctBadge);
+      const otherItems = [
+        ['جديد', newCount],
+        ['قيدالتنفيذ', inProgressCount],
+        ['معادفتحه', reopenedCount]
+      ].map(([label, num]) => makeItem(label, num)).join('');
+
+      statusBreakdownHtml = `<div class="status-breakdown-row">${currentGroup}${closedGroup}${otherItems}</div>`;
+    }
+
     return `<div class="quarter-block qtone-${idx % 4}">
       <div class="quarter-block-title">${quarterValueLabel(v)}</div>
       ${donutHtml}
+      ${statusBreakdownHtml}
       <div class="cal-multi-wrap">${monthBlocksHtml}</div>
     </div>`;
   }).join('');
@@ -2287,6 +2634,9 @@ function refreshCurrentQuarterEffect(){
 
 document.getElementById('refreshManualBtn').addEventListener('click', refreshCurrentQuarterEffect);
 
+
+
+
 // ---- Target satisfaction-percentage calculator (نسبة مطلوبة للرضا) ----
 // Given a target % typed by the person, works out how many MORE "راضي"
 // reports (on top of the current quarter's actual/adjusted count) would be
@@ -2401,6 +2751,8 @@ function performLoadData(){
   const tsIdx = parseInt(timeSatColSel.value,10);
   const apIdx = parseInt(approachColSel.value,10);
   const crIdx = parseInt(closureReasonColSel.value,10);
+  const aeIdx = parseInt(assignedEmployeeColSel.value,10);
+  const clsIdx = parseInt(classificationColSel.value,10);
   hasSourceCol = srcIdx >= 0;
   hasSystemStatusCol = sysStIdx >= 0;
   hasStatusCol = stIdx >= 0;
@@ -2426,6 +2778,8 @@ function performLoadData(){
       timeSat: (tsIdx>=0 && r[tsIdx]!==undefined && String(r[tsIdx]).trim()!=='') ? String(r[tsIdx]).trim() : '',
       approach: (apIdx>=0 && r[apIdx]!==undefined && String(r[apIdx]).trim()!=='') ? String(r[apIdx]).trim() : '',
       closureReason: (crIdx>=0 && r[crIdx]!==undefined) ? String(r[crIdx]).trim() : '',
+      assignedEmployee: (aeIdx>=0 && r[aeIdx]!==undefined) ? String(r[aeIdx]).trim() : '',
+      classification: (clsIdx>=0 && r[clsIdx]!==undefined) ? String(r[clsIdx]).trim() : '',
       name: (nIdx>=0 && r[nIdx]!==undefined) ? String(r[nIdx]).trim() : '',
       phone: (phIdx>=0 && r[phIdx]!==undefined) ? String(r[phIdx]).trim() : '',
       desc: (dsIdx>=0 && r[dsIdx]!==undefined) ? String(r[dsIdx]).trim() : '',
@@ -3074,6 +3428,173 @@ printBtn.addEventListener('click', () => {
   window.print();
 });
 
+// "🖨️ طباعة تقرير الموظفين": builds one printed page per distinct value
+// in "اسم الموظف المسند إليه", listing every phone number assigned to
+// them ONCE (duplicate reports for the same phone merged into a single
+// row), with the report numbers listed together and counts of مغلق /
+// راضي / غير راضي / لا يوجد for that phone.
+function buildEmployeeReportHtml(){
+  // Only these five specific employees, matched by a distinctive
+  // substring of their name so small formatting differences in the
+  // source file (extra spaces, etc.) don't break the match.
+  const TARGET_EMPLOYEE_KEYWORDS = ['ابراهيم بندر', 'محمد ضيف الله', 'ثامر احمد', 'حامد عيظه', 'عبدالرحمن بن عويض'];
+  const employees = [...new Set(parsedData.map(p => (p.assignedEmployee || '').trim()).filter(Boolean))]
+    .filter(name => TARGET_EMPLOYEE_KEYWORDS.some(k => name.includes(k)))
+    .sort((a,b)=>a.localeCompare(b,'ar'));
+
+  if(employees.length === 0){
+    return `<div class="emp-report-page">
+      <div class="emp-report-title">تقرير الموظفين</div>
+      <div class="emp-report-sub">لم يتم العثور على أي من الأسماء المطلوبة ضمن عمود "اسم الموظف المسند إليه" — تأكد من وجود هذا العمود بالملف ومن الأسماء.</div>
+    </div>`;
+  }
+
+  // One combined table for all five employees — the employee name is a
+  // column inside the table (not a separate page/heading per employee).
+  // Only duplicated phone numbers (more than one report) are included,
+  // per request. "حوادث الكوارث الطبيعية والصناعية" is shown in red right
+  // next to حالة البلاغ whenever that report's classification matches,
+  // regardless of what the status text itself is.
+  let allRows = '';
+  let totalReports = 0;
+
+  employees.forEach(name => {
+    const empItems = parsedData.filter(p => (p.assignedEmployee || '').trim() === name);
+    totalReports += empItems.length;
+
+    const byPhone = new Map();
+    empItems.forEach(item => {
+      const key = item.phone ? normalizePhoneForWhatsapp(item.phone) : ('__no_phone_' + item.id);
+      if(!byPhone.has(key)) byPhone.set(key, []);
+      byPhone.get(key).push(item);
+    });
+
+    const dupGroups = Array.from(byPhone.values()).filter(group => group.length > 1); // فقط الأرقام المكررة فعليًا
+    dupGroups.forEach((group, idx) => {
+        const reportNumbers = group
+          .filter(g => g.reportNo && !(g.status && g.status.trim() === 'مغلق'))
+          .map(g => {
+            const isDisaster = g.classification && g.classification.trim() === 'حوادث الكوارث الطبيعية والصناعية';
+            const statusLabel = isDisaster
+              ? `${g.status || '-'} — <span style="color:#dc2626;font-weight:700;">حوادث الكوارث الطبيعية والصناعية</span>`
+              : (g.status || '-');
+            return `${g.reportNo} <span style="color:var(--muted);">(${statusLabel})</span>`;
+          })
+          .join('<br>');
+        const phoneDisplay = group[0].phone || '-';
+        const closedCount = group.filter(g => g.status && g.status.trim() === 'مغلق').length;
+        const satCount = group.filter(g => g.rating === 'راضي').length;
+        const unsatCount = group.filter(g => g.rating === 'غير راضي').length;
+        const noneCount = group.filter(g => g.rating === 'لا يوجد').length;
+        const nameCell = `<td>${name}</td>`;
+        allRows += `<tr>
+          ${nameCell}
+          <td class="emp-reports-cell">${reportNumbers || '-'}</td>
+          <td class="emp-phone-cell">${phoneDisplay}</td>
+          <td>${closedCount}</td>
+          <td>${satCount}</td>
+          <td>${unsatCount}</td>
+          <td>${noneCount}</td>
+        </tr>`;
+      });
+  });
+
+  return `<div class="emp-report-page">
+    <div class="emp-report-title">تقرير الموظفين — الأرقام المكررة</div>
+    <div class="emp-report-sub">إجمالي البلاغات لكل الموظفين: ${totalReports}</div>
+    <table class="emp-report-table">
+      <thead>
+        <tr>
+          <th>اسم الموظف</th>
+          <th>أرقام البلاغات</th>
+          <th>رقم الجوال</th>
+          <th>مغلق</th>
+          <th>راضي</th>
+          <th>غير راضي</th>
+          <th>لا يوجد</th>
+        </tr>
+      </thead>
+      <tbody>${allRows}</tbody>
+    </table>
+  </div>`;
+}
+
+// Same grouping logic as buildEmployeeReportHtml (five target employees,
+// duplicated phone numbers only), but returns plain rows of data instead
+// of HTML — used for the Excel export.
+function buildEmployeeReportRows(){
+  const TARGET_EMPLOYEE_KEYWORDS = ['ابراهيم بندر', 'محمد ضيف الله', 'ثامر احمد', 'حامد عيظه', 'عبدالرحمن بن عويض'];
+  const employees = [...new Set(parsedData.map(p => (p.assignedEmployee || '').trim()).filter(Boolean))]
+    .filter(name => TARGET_EMPLOYEE_KEYWORDS.some(k => name.includes(k)))
+    .sort((a,b)=>a.localeCompare(b,'ar'));
+
+  const data = [['اسم الموظف','أرقام البلاغات','رقم الجوال','مغلق','راضي','غير راضي','لا يوجد']];
+
+  employees.forEach(name => {
+    const empItems = parsedData.filter(p => (p.assignedEmployee || '').trim() === name);
+    const byPhone = new Map();
+    empItems.forEach(item => {
+      const key = item.phone ? normalizePhoneForWhatsapp(item.phone) : ('__no_phone_' + item.id);
+      if(!byPhone.has(key)) byPhone.set(key, []);
+      byPhone.get(key).push(item);
+    });
+
+    Array.from(byPhone.values())
+      .filter(group => group.length > 1)
+      .forEach(group => {
+        const reportNumbers = group
+          .filter(g => g.reportNo && !(g.status && g.status.trim() === 'مغلق'))
+          .map(g => {
+            const isDisaster = g.classification && g.classification.trim() === 'حوادث الكوارث الطبيعية والصناعية';
+            const statusText = isDisaster
+              ? `${g.status || '-'} — حوادث الكوارث الطبيعية والصناعية`
+              : (g.status || '-');
+            return `${g.reportNo} (${statusText})`;
+          })
+          .join('\n');
+        const phoneDisplay = group[0].phone || '-';
+        const closedCount = group.filter(g => g.status && g.status.trim() === 'مغلق').length;
+        const satCount = group.filter(g => g.rating === 'راضي').length;
+        const unsatCount = group.filter(g => g.rating === 'غير راضي').length;
+        const noneCount = group.filter(g => g.rating === 'لا يوجد').length;
+        data.push([name, reportNumbers || '-', phoneDisplay, closedCount, satCount, unsatCount, noneCount]);
+      });
+  });
+
+  return data;
+}
+
+document.getElementById('exportEmployeeExcelBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  const data = buildEmployeeReportRows();
+  if(data.length <= 1){
+    alert('لا توجد بلاغات مكررة لهؤلاء الموظفين.');
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:28},{wch:45},{wch:16},{wch:8},{wch:8},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, 'تقرير الموظفين');
+  XLSX.writeFile(wb, 'تقرير_الموظفين.xlsx');
+});
+
+document.getElementById('printEmployeeBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  document.getElementById('employeeReportPrint').innerHTML = buildEmployeeReportHtml();
+  document.body.classList.add('printing-employee-report');
+  window.print();
+});
+
+window.addEventListener('afterprint', () => {
+  document.body.classList.remove('printing-employee-report');
+});
+
 resetPeriodsBtn.addEventListener('click', () => {
   periods = [];
   renderPeriodsTable();
@@ -3325,8 +3846,23 @@ let activeHighlightRowId = null; // stays set while that day's modal is open, so
 function saveSentMsgs(){ localStorage.setItem('sentMsgs', JSON.stringify(sentMsgs)); }
 function saveSentColors(){ localStorage.setItem('sentColors', JSON.stringify(sentColors)); }
 
-function addSentRecord(type, item, note){
-  sentMsgs.push({
+// Total/راضي/غير راضي/مغلق counts for every report matching a phone
+// number, across the WHOLE loaded file (not just the currently-open day
+// or the currently-checked rows) — used to snapshot "at the time this
+// message was sent, this phone had N total, S راضي, U غير راضي, C مغلق"
+// into the sent-messages log.
+function getPhoneStats(phone){
+  const items = parsedData.filter(p => p.phone && normalizePhoneForWhatsapp(p.phone) === normalizePhoneForWhatsapp(phone));
+  return {
+    total: items.length,
+    sat: items.filter(i => i.rating === 'راضي').length,
+    unsat: items.filter(i => i.rating === 'غير راضي').length,
+    closed: items.filter(i => i.status && i.status.trim() === 'مغلق').length
+  };
+}
+
+function addSentRecord(type, item, note, phoneStats){
+  const rec = {
     النوع: type,
     رقم_البلاغ: item.reportNo || '',
     رقم_الجوال: item.phone || '',
@@ -3334,7 +3870,14 @@ function addSentRecord(type, item, note){
     الحي: item.district || '',
     التاريخ: new Date().toLocaleString('ar-EG'),
     الملاحظة: note || '-'
-  });
+  };
+  if(phoneStats){
+    rec.إجمالي_بلاغات_الرقم = phoneStats.total;
+    rec.راضي = phoneStats.sat;
+    rec.غير_راضي = phoneStats.unsat;
+    rec.مغلق = phoneStats.closed;
+  }
+  sentMsgs.push(rec);
   saveSentMsgs();
 }
 
@@ -3365,7 +3908,7 @@ function copyText(txt){
 // currently-open day.
 function renderDayTable(){
   const allItems = getDayItems(currentDayY, currentDayM, currentDayD);
-  const statuses = [...new Set(allItems.map(i => i.status).filter(Boolean))];
+  const statuses = [...new Set(parsedData.map(i => i.status).filter(Boolean))];
   if(dayStatusFilter && !statuses.includes(dayStatusFilter)) dayStatusFilter = '';
   const items = dayStatusFilter ? allItems.filter(i => i.status === dayStatusFilter) : allItems;
 
@@ -3415,7 +3958,7 @@ function renderDayTable(){
 
   html += `<div class="wrap-table"><table class="day-table"><thead><tr>
     <th>البلدية</th><th>الحي</th><th>الشارع</th><th>الوصف</th><th>رقم البلاغ</th>
-    <th>رقم الجوال</th><th>الحالة</th><th>التاريخ</th><th>المتبقي</th><th>صورة</th><th></th><th></th><th></th>
+    <th>رقم الجوال</th><th>الحالة</th><th>التاريخ</th><th>المتبقي</th><th>صورة</th><th></th><th></th><th></th><th></th>
   </tr></thead><tbody>`;
 
   items.forEach(item => {
@@ -3431,6 +3974,17 @@ function renderDayTable(){
       if(remaining < 48) colorClass = (colorClass ? colorClass + ' ' : '') + 'urgent-row';
     }
 
+    if(isPendingClosureCheck(item)){
+      colorClass = (colorClass ? colorClass + ' ' : '') + 'pending-closure-check';
+    }
+
+    const dupCount = item.phone
+      ? parsedData.filter(p => p.phone && normalizePhoneForWhatsapp(p.phone) === normalizePhoneForWhatsapp(item.phone)).length
+      : 0;
+    if(dupCount > 1){
+      colorClass = (colorClass ? colorClass + ' ' : '') + 'dup-row';
+    }
+
     if(activeHighlightRowId !== null && item.id === activeHighlightRowId){
       colorClass = (colorClass ? colorClass + ' ' : '') + 'row-target';
     }
@@ -3441,11 +3995,12 @@ function renderDayTable(){
       <td>${item.street || '-'}</td>
       <td class="desc-cell">${item.desc || '-'}</td>
       <td>${item.reportNo || '-'} ${item.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${item.reportNo}">نسخ</button>` : ''}</td>
-      <td class="ltr">${item.phone || '-'}</td>
-      <td>${item.status || '-'}</td>
+      <td class="ltr">${dupCount > 1 ? `<span class="dup-count-badge">×${dupCount}</span>` : ''}${item.phone || '-'}</td>
+      <td>${item.status || '-'}${isPendingClosureCheck(item) ? '<br><span style="font-size:9.5px;color:#14532d;font-weight:700;">بانتظار التحقق من إجراء الإغلاق</span>' : ''}</td>
       <td>${fmtDateShort(item.date)}</td>
       <td>${remainingCell}</td>
       <td class="file-cell"><input type="file" accept="image/*" id="img_${safeId}"></td>
+      <td>${item.phone ? `<a href="tel:${item.phone}" class="mini-btn" style="background:#3d6b8a;text-decoration:none;display:inline-block;">📞 اتصال</a>` : ''}</td>
       <td>${item.phone ? `<button type="button" class="mini-btn wa send-img-btn" data-id="${item.id}">إرسال</button>` : ''}</td>
       <td>${item.phone ? `<button type="button" class="mini-btn copy dup-btn" data-id="${item.id}">عرض</button>` : ''}</td>
       <td><button type="button" class="mini-btn del del-btn" data-id="${item.id}">حذف</button></td>
@@ -3578,6 +4133,21 @@ function openDuplicatesModal(phone){
 
   document.getElementById('dupInfo').textContent = `رقم الجوال: ${dupPhone} — عدد البلاغات: ${allRows.length} (غير مغلقة: ${openRows.length} — مغلقة: ${closedRows.length})`;
 
+  const summaryEl = document.getElementById('dupClosedSummary');
+  if(closedRows.length > 0){
+    const closedSat = closedRows.filter(r => r.rating === 'راضي').length;
+    const closedUnsat = closedRows.filter(r => r.rating === 'غير راضي').length;
+    summaryEl.innerHTML = `
+      <span class="dup-summary-item">🔒 مغلق: <b>${closedRows.length}</b></span>
+      <span class="dup-summary-item sat">✅ راضي: <b>${closedSat}</b></span>
+      <span class="dup-summary-item unsat">❌ غير راضي: <b>${closedUnsat}</b></span>
+    `;
+    summaryEl.classList.remove('hidden');
+  } else {
+    summaryEl.innerHTML = '';
+    summaryEl.classList.add('hidden');
+  }
+
   let html = '';
   openRows.forEach((r, idx) => {
     html += `<tr>
@@ -3589,18 +4159,6 @@ function openDuplicatesModal(phone){
       <td class="ltr">${r.phone || '-'}</td>
     </tr>`;
   });
-
-  if(closedRows.length > 0){
-    const closedSat = closedRows.filter(r => r.rating === 'راضي').length;
-    const closedUnsat = closedRows.filter(r => r.rating === 'غير راضي').length;
-    html += `<tr class="hist-row">
-      <td colspan="6" style="text-align:center;">
-        <b>مغلق: ${closedRows.length} بلاغ</b>
-        &nbsp;—&nbsp; راضي: <b style="color:var(--accent);">${closedSat}</b>
-        &nbsp;—&nbsp; غير راضي: <b style="color:var(--bad);">${closedUnsat}</b>
-      </td>
-    </tr>`;
-  }
 
   document.getElementById('dupTableBody').innerHTML = html || `<tr><td colspan="6">لا توجد بلاغات</td></tr>`;
   document.getElementById('dupModalOverlay').classList.remove('hidden');
@@ -3666,9 +4224,44 @@ document.getElementById('dupSendAll').addEventListener('click', () => {
       btn.disabled = false;
       btn.textContent = original;
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+      const phoneStats = getPhoneStats(phone);
       rows.forEach(r => {
         if(r.reportNo) sentColors[r.reportNo] = 'orange';
-        addSentRecord('مراسلة المستفيد', r, '-');
+        addSentRecord('مراسلة المستفيد', r, '-', phoneStats);
+      });
+      saveSentColors();
+      if(currentDayY) renderDayTable();
+    }
+  }, 1000);
+});
+
+// "رسالة خاصة": tells the beneficiary a supervisor will personally reach
+// out about their (possibly multiple) duplicate reports, listing every
+// checked report's number. Same phone, same 30-second cancel window.
+document.getElementById('dupPrivateMsg').addEventListener('click', () => {
+  const rows = getCheckedDupRows();
+  if(rows.length === 0){ alert('اختر بلاغ واحد على الأقل'); return; }
+
+  const phone = normalizePhoneForWhatsapp(rows[0].phone);
+  const text = `السلام عليكم ورحمة الله وبركاته،\n\nعزيزي المستفيد، حرصًا منا على متابعة ومعالجة جميع البلاغات المقدمة من قبلك، نود إفادتكم بأنه سيتم التواصل معكم من قِبل مشرف المنطقة لاستكمال متابعة البلاغات والعمل على إنهائها.\n\nوفي حال تواصل المشرف معكم، نأمل التكرم بتزويده بجميع ملاحظاتكم ومواقع البلاغات وأي تفاصيل ترون أهميتها؛ بما يسهم في سرعة المعالجة وإنهاء جميع البلاغات بالشكل المطلوب.\n\nشاكرين لكم حسن تعاونكم وتفهمكم، ومقدرين لكم مساهمتكم في تحسين مستوى خدمات النظافة. 🌷`;
+
+  const btn = document.getElementById('dupPrivateMsg');
+  const original = btn.textContent;
+  let timeLeft = 30;
+  btn.disabled = true;
+
+  const timer = setInterval(() => {
+    btn.textContent = `الإرسال خلال ${timeLeft} ثانية...`;
+    timeLeft--;
+    if(timeLeft < 0){
+      clearInterval(timer);
+      btn.disabled = false;
+      btn.textContent = original;
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+      const phoneStats = getPhoneStats(phone);
+      rows.forEach(r => {
+        if(r.reportNo) sentColors[r.reportNo] = 'orange';
+        addSentRecord('رسالة خاصة', r, '-', phoneStats);
       });
       saveSentColors();
       if(currentDayY) renderDayTable();
@@ -3745,9 +4338,12 @@ document.getElementById('blueGroupSend').addEventListener('click', () => {
 document.getElementById('exportMsgsBtn').addEventListener('click', () => {
   if(sentMsgs.length === 0){ alert('لا يوجد سجل مرسلات'); return; }
 
-  const data = [['النوع','رقم البلاغ','رقم الجوال','البلدية','الحي','التاريخ','الملاحظة']];
+  const data = [['النوع','رقم البلاغ','رقم الجوال','البلدية','الحي','التاريخ','الملاحظة','إجمالي بلاغات الرقم','راضي','غير راضي','مغلق']];
   sentMsgs.forEach(r => {
-    data.push([r.النوع||'', r.رقم_البلاغ||'', r.رقم_الجوال||'', r.البلدية||'', r.الحي||'', r.التاريخ||'', r.الملاحظة||'']);
+    data.push([
+      r.النوع||'', r.رقم_البلاغ||'', r.رقم_الجوال||'', r.البلدية||'', r.الحي||'', r.التاريخ||'', r.الملاحظة||'',
+      r.إجمالي_بلاغات_الرقم ?? '', r.راضي ?? '', r.غير_راضي ?? '', r.مغلق ?? ''
+    ]);
   });
 
   const wb = XLSX.utils.book_new();
@@ -3756,5 +4352,100 @@ document.getElementById('exportMsgsBtn').addEventListener('click', () => {
   XLSX.writeFile(wb, 'سجل_المرسلات.xlsx');
 });
 </script>
+
+</div>
+<script>
+
+  // ---- EmailJS configuration ----
+  const EMAILJS_PUBLIC_KEY = '3sIpO_opl58nY9IwN';
+  const EMAILJS_SERVICE_ID = 'service_xnqge7q';
+  const EMAILJS_TEMPLATE_ID = 'template_xjrn93o';
+
+  emailjs.init(EMAILJS_PUBLIC_KEY);
+
+  const gateScreen = document.getElementById('gateScreen');
+  const otpScreen = document.getElementById('otpScreen');
+  const sendCodeBtn = document.getElementById('sendCodeBtn');
+  const resendBtn = document.getElementById('resendBtn');
+  const verifyBtn = document.getElementById('verifyBtn');
+  const sendStatus = document.getElementById('sendStatus');
+  const verifyStatus = document.getElementById('verifyStatus');
+  const otpInputs = Array.from(document.querySelectorAll('.otp-digit'));
+
+  let currentCode = null; // the 4-digit code we generated & emailed, kept only in memory
+
+  function generateCode(){
+    return String(Math.floor(1000 + Math.random() * 9000));
+  }
+
+  function setStatus(el, msg, type){
+    el.textContent = msg;
+    el.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  function sendCode(triggerBtn){
+    const code = generateCode();
+    triggerBtn.disabled = true;
+    setStatus(triggerBtn === sendCodeBtn ? sendStatus : verifyStatus, 'جارِ الإرسال...', '');
+
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { passcode: code })
+      .then(() => {
+        currentCode = code;
+        triggerBtn.disabled = false;
+        otpInputs.forEach(i => i.value = '');
+        gateScreen.classList.add('hidden');
+        otpScreen.classList.remove('hidden');
+        setStatus(verifyStatus, 'تم إرسال الكود بنجاح.', 'ok');
+        otpInputs[0].focus();
+      })
+      .catch((err) => {
+        triggerBtn.disabled = false;
+        console.error(err);
+        setStatus(triggerBtn === sendCodeBtn ? sendStatus : verifyStatus, 'تعذّر الإرسال: ' + (err && (err.text || err.message) ? (err.text || err.message) : JSON.stringify(err)), 'err');
+      });
+  }
+
+  sendCodeBtn.addEventListener('click', () => sendCode(sendCodeBtn));
+  resendBtn.addEventListener('click', () => sendCode(resendBtn));
+
+  // Auto-advance between the 4 boxes, and allow backspace to go back
+  otpInputs.forEach((input, idx) => {
+    input.addEventListener('input', () => {
+      input.value = input.value.replace(/[^0-9]/g, '').slice(0, 1);
+      if(input.value && idx < otpInputs.length - 1){
+        otpInputs[idx + 1].focus();
+      }
+    });
+    input.addEventListener('keydown', (e) => {
+      if(e.key === 'Backspace' && !input.value && idx > 0){
+        otpInputs[idx - 1].focus();
+      }
+    });
+  });
+
+  verifyBtn.addEventListener('click', () => {
+    const entered = otpInputs.map(i => i.value).join('');
+    if(entered.length < 4){
+      setStatus(verifyStatus, 'أدخل الأرقام الأربعة كاملة.', 'err');
+      return;
+    }
+    if(!currentCode){
+      setStatus(verifyStatus, 'لم يتم إرسال أي كود بعد.', 'err');
+      return;
+    }
+    if(entered === currentCode){
+      document.getElementById('gateOuter').classList.add('hidden');
+      document.getElementById('mainToolWrap').classList.remove('hidden');
+    } else {
+      setStatus(verifyStatus, '❌ الكود غير صحيح، حاول مرة أخرى.', 'err');
+      otpInputs.forEach(i => i.value = '');
+      otpInputs[0].focus();
+    }
+  });
+
+</script>
+
+<div id="employeeReportPrint"></div>
+
 </body>
 </html>
