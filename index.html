@@ -6,6 +6,7 @@
 <title>تحليل التقييمات الأسبوعي</title>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root{
     --ink:#1b1f23;
@@ -406,6 +407,14 @@
   .mini-btn.del{background:#a3432f;}
   .mini-btn.wa{background:#25D366;}
   .file-cell input[type="file"]{max-width:130px;font-size:11px;}
+  .matched-img-thumb{
+    width:44px;
+    height:44px;
+    object-fit:cover;
+    border-radius:6px;
+    border:1.5px solid var(--accent);
+    cursor:pointer;
+  }
 
   .month-checkbox-list{
     display:flex;
@@ -1162,6 +1171,15 @@
       <div class="txt2">يدعم xlsx, xls, csv</div>
     </label>
 
+    <div class="row no-print" style="margin-top:14px;border-top:1px dashed var(--line);padding-top:14px;align-items:flex-end;">
+      <div class="field" style="max-width:320px;">
+        <label>📷 إرفاق جدول الصور (رقم البلاغ + صورة)</label>
+        <input type="file" id="imageTableInput" accept=".xlsx,.xls,.csv">
+      </div>
+      <button type="button" class="btn" id="insertImagesBtn" style="background:#6a4f9c;margin-top:0;">➕ إدراج الصور بالتقويم</button>
+    </div>
+    <div id="imageTableStatus" class="status" style="margin-top:4px;"></div>
+
     <div id="statusColVisibleRow" class="row no-print hidden" style="margin-top:14px;">
       <div class="field" style="max-width:320px;">
         <label>عمود حالة البلاغ (اختياري)</label>
@@ -1491,8 +1509,8 @@
       </div>
       <div class="modal-foot" style="flex-wrap:wrap;">
         <button id="dupBlueGroup" class="btn" style="background:#f59e0b;">إرسال الملاحظات</button>
-        <button id="dupPrivateMsg" class="btn" style="background:#6a4f9c;">📩 رسالة خاصة</button>
         <button id="dupSendAll" class="btn" style="background:#25D366;">مراسلة المستفيد</button>
+        <button id="dupCopyMsg" class="btn" style="background:#6a4f9c;">📋 نسخ الرسالة</button>
       </div>
     </div>
   </div>
@@ -3837,6 +3855,217 @@ function applyColumnFilters(sourceRows){
 let sentMsgs = JSON.parse(localStorage.getItem('sentMsgs') || '[]');
 let sentColors = JSON.parse(localStorage.getItem('sentColors') || '{}');
 let dupRows = [];
+
+// ---- جدول الصور (رقم البلاغ → صورة) ----
+// Maps a normalized report number to an image URL, parsed from a small
+// reference table the person attaches separately (columns: رقم البلاغ +
+// صورة). "➕ إدراج الصور بالتقويم" re-renders the currently-open day so
+// any matching report shows its image instead of the manual file input.
+let reportImageMap = new Map();
+
+function findColumnIndex(headers, keywords){
+  for(let i=0; i<headers.length; i++){
+    const h = (headers[i] || '').trim();
+    if(h && keywords.some(k => h === k)) return i;
+  }
+  for(let i=0; i<headers.length; i++){
+    const h = (headers[i] || '').trim();
+    if(h && keywords.some(k => h.includes(k))) return i;
+  }
+  return -1;
+}
+
+function normalizeReportNoKey(v){
+  return normalizeDigits(String(v || '').trim());
+}
+
+document.getElementById('imageTableInput').addEventListener('change', (e) => {
+  if(!e.target.files.length) return;
+  const file = e.target.files[0];
+  const statusEl = document.getElementById('imageTableStatus');
+  statusEl.textContent = '⏳ جاري قراءة جدول الصور (استخراج الصور المضمّنة)...';
+  statusEl.className = 'status';
+
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    try{
+      const arrayBuffer = ev.target.result;
+      const data = new Uint8Array(arrayBuffer);
+
+      // 1) Read plain cell values normally (رقم البلاغ column) via SheetJS.
+      const wb = XLSX.read(data, {type:'array', cellDates:true});
+      const firstSheetName = wb.SheetNames[0];
+      const sheet = wb.Sheets[firstSheetName];
+      const json = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+      if(json.length < 2){ statusEl.textContent = 'الملف لا يحتوي بيانات كافية.'; statusEl.className='status err'; return; }
+      const hdrs = json[0].map(h => String(h).trim());
+      const reportIdx = findColumnIndex(hdrs, ['رقم البلاغ']);
+      if(reportIdx < 0){
+        statusEl.textContent = 'تعذّر إيجاد عمود "رقم البلاغ" بالملف.';
+        statusEl.className = 'status err';
+        return;
+      }
+      // row index in the raw sheet (0-based, header excluded) -> رقم البلاغ
+      const reportNoByRow = {};
+      json.slice(1).forEach((r, i) => {
+        const val = normalizeReportNoKey(r[reportIdx]);
+        if(val) reportNoByRow[i] = val; // i = 0-based data row (row 2 in Excel terms)
+      });
+
+      // 2) Unzip the xlsx and pull out embedded images + their anchor row,
+      // via the sheet's drawing relationship → drawing XML → media rels.
+      if(typeof JSZip === 'undefined'){
+        statusEl.textContent = 'تعذّر تحميل مكتبة استخراج الصور (JSZip). تأكد من اتصال الإنترنت وحاول مرة أخرى.';
+        statusEl.className = 'status err';
+        return;
+      }
+      const zip = await JSZip.loadAsync(arrayBuffer);
+      const parser = new DOMParser();
+
+      // Figure out which sheetN.xml corresponds to the first sheet, and
+      // find its drawing relationship (if any).
+      const sheetIndex = wb.SheetNames.indexOf(firstSheetName) + 1; // sheet1.xml, sheet2.xml...
+      const sheetRelsPath = `xl/worksheets/_rels/sheet${sheetIndex}.xml.rels`;
+      const sheetXmlPath = `xl/worksheets/sheet${sheetIndex}.xml`;
+
+      let drawingPath = null;
+      const sheetXmlFile = zip.file(sheetXmlPath);
+      const sheetRelsFile = zip.file(sheetRelsPath);
+      if(sheetXmlFile && sheetRelsFile){
+        const sheetXmlText = await sheetXmlFile.async('text');
+        const sheetXmlDoc = parser.parseFromString(sheetXmlText, 'application/xml');
+        const drawingEl = sheetXmlDoc.getElementsByTagName('drawing')[0];
+        if(drawingEl){
+          const rId = drawingEl.getAttribute('r:id');
+          const sheetRelsText = await sheetRelsFile.async('text');
+          const sheetRelsDoc = parser.parseFromString(sheetRelsText, 'application/xml');
+          const rels = sheetRelsDoc.getElementsByTagName('Relationship');
+          for(let i=0; i<rels.length; i++){
+            if(rels[i].getAttribute('Id') === rId){
+              const target = rels[i].getAttribute('Target'); // e.g. ../drawings/drawing1.xml
+              drawingPath = 'xl/drawings/' + target.split('/').pop();
+              break;
+            }
+          }
+        }
+      }
+
+      reportImageMap = new Map();
+      let extractedCount = 0;
+
+      if(drawingPath && zip.file(drawingPath)){
+        const drawingIndexMatch = drawingPath.match(/drawing(\d+)\.xml$/);
+        const drawingIndex = drawingIndexMatch ? drawingIndexMatch[1] : '1';
+        const drawingRelsPath = `xl/drawings/_rels/drawing${drawingIndex}.xml.rels`;
+
+        const drawingXmlText = await zip.file(drawingPath).async('text');
+        const drawingDoc = parser.parseFromString(drawingXmlText, 'application/xml');
+
+        // Map rId -> media file path, from the drawing's own rels file.
+        const mediaByRid = {};
+        const drawingRelsFile = zip.file(drawingRelsPath);
+        if(drawingRelsFile){
+          const drawingRelsText = await drawingRelsFile.async('text');
+          const drawingRelsDoc = parser.parseFromString(drawingRelsText, 'application/xml');
+          const mrels = drawingRelsDoc.getElementsByTagName('Relationship');
+          for(let i=0; i<mrels.length; i++){
+            const target = mrels[i].getAttribute('Target'); // ../media/imageN.ext
+            mediaByRid[mrels[i].getAttribute('Id')] = 'xl/media/' + target.split('/').pop();
+          }
+        }
+
+        // Each <xdr:twoCellAnchor> / <xdr:oneCellAnchor> holds a <xdr:from><xdr:row>
+        // (0-based sheet row, includes header row) and a <a:blip r:embed="rIdX">.
+        const anchors = [
+          ...drawingDoc.getElementsByTagName('xdr:twoCellAnchor'),
+          ...drawingDoc.getElementsByTagName('xdr:oneCellAnchor')
+        ];
+
+        for(const anchor of anchors){
+          const fromEl = anchor.getElementsByTagName('xdr:from')[0];
+          if(!fromEl) continue;
+          const rowEl = fromEl.getElementsByTagName('xdr:row')[0];
+          if(!rowEl) continue;
+          const excelRow = parseInt(rowEl.textContent, 10); // 0-based, row 0 = header
+          const dataRowIndex = excelRow - 1; // convert to 0-based data row (matches reportNoByRow)
+
+          const blipEls = anchor.getElementsByTagName('a:blip');
+          if(blipEls.length === 0) continue;
+          const rEmbed = blipEls[0].getAttribute('r:embed');
+          const mediaPath = mediaByRid[rEmbed];
+          if(!mediaPath || !zip.file(mediaPath)) continue;
+
+          const reportNo = reportNoByRow[dataRowIndex];
+          if(!reportNo) continue;
+
+          const ext = mediaPath.split('.').pop().toLowerCase();
+          const mime = ext === 'png' ? 'image/png' : (ext === 'gif' ? 'image/gif' : 'image/jpeg');
+          const blob = await zip.file(mediaPath).async('blob');
+          const typedBlob = blob.type ? blob : new Blob([blob], {type: mime});
+          const objectUrl = URL.createObjectURL(typedBlob);
+          reportImageMap.set(reportNo, objectUrl);
+          extractedCount++;
+        }
+      }
+
+      if(extractedCount === 0){
+        statusEl.textContent = 'لم يتم العثور على صور مضمّنة بالملف (أو تعذّر قراءة موقعها). تأكد أن الصور مدرجة فعليًا داخل الخلايا وليست روابط خارجية.';
+        statusEl.className = 'status err';
+        return;
+      }
+
+      statusEl.textContent = `✅ تم استخراج ${extractedCount} صورة وربطها بأرقام بلاغاتها. اضغط "➕ إدراج الصور بالتقويم" لتطبيقها.`;
+      statusEl.className = 'status';
+    }catch(err){
+      console.error(err);
+      statusEl.textContent = 'حدث خطأ أثناء قراءة الملف: ' + err.message;
+      statusEl.className = 'status err';
+    }
+  };
+  reader.onerror = () => { statusEl.textContent = 'فشل في قراءة الملف.'; statusEl.className = 'status err'; };
+  reader.readAsArrayBuffer(file);
+});
+
+document.getElementById('insertImagesBtn').addEventListener('click', () => {
+  const statusEl = document.getElementById('imageTableStatus');
+  if(reportImageMap.size === 0){
+    statusEl.textContent = 'ارفق جدول الصور أولاً.';
+    statusEl.className = 'status err';
+    return;
+  }
+  if(parsedData.length === 0){
+    statusEl.textContent = 'حمّل الجدول الأول (البيانات الرئيسية) أولاً.';
+    statusEl.className = 'status err';
+    return;
+  }
+  const matchedCount = parsedData.filter(p => p.reportNo && reportImageMap.has(normalizeReportNoKey(p.reportNo))).length;
+  statusEl.textContent = `✅ تم العثور على ${matchedCount} تطابق. افتح أي يوم بالتقويم وشوف الصور بعمود "صورة".`;
+  statusEl.className = 'status';
+  // إعادة رسم جدول اليوم المفتوح حاليًا (إن وُجد) عشان تظهر الصور فورًا.
+  if(typeof currentDayY !== 'undefined' && currentDayY !== null){
+    renderDayTable();
+  }
+});
+
+// Copies the actual image (not just its URL) to the clipboard when the
+// person taps the thumbnail. Falls back to copying the image URL as text
+// if the browser/clipboard can't handle image blobs.
+async function copyImageToClipboard(url){
+  try{
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]);
+    alert('تم نسخ الصورة ✅');
+  }catch(err){
+    try{
+      await navigator.clipboard.writeText(url);
+      alert('تعذّر نسخ الصورة نفسها، تم نسخ رابطها بدلاً منها.');
+    }catch(err2){
+      alert('تعذّر النسخ: ' + err.message);
+    }
+  }
+}
+
 let dupPhone = '';
 let currentDayY = null, currentDayM = null, currentDayD = null;
 let dayStatusFilter = '';
@@ -3999,7 +4228,11 @@ function renderDayTable(){
       <td>${item.status || '-'}${isPendingClosureCheck(item) ? '<br><span style="font-size:9.5px;color:#14532d;font-weight:700;">بانتظار التحقق من إجراء الإغلاق</span>' : ''}</td>
       <td>${fmtDateShort(item.date)}</td>
       <td>${remainingCell}</td>
-      <td class="file-cell"><input type="file" accept="image/*" id="img_${safeId}"></td>
+      <td class="file-cell">${
+        (item.reportNo && reportImageMap.has(normalizeReportNoKey(item.reportNo)))
+          ? `<img src="${reportImageMap.get(normalizeReportNoKey(item.reportNo))}" class="matched-img-thumb" title="اضغط للنسخ" data-img-url="${reportImageMap.get(normalizeReportNoKey(item.reportNo))}">`
+          : `<input type="file" accept="image/*" id="img_${safeId}">`
+      }</td>
       <td>${item.phone ? `<a href="tel:${item.phone}" class="mini-btn" style="background:#3d6b8a;text-decoration:none;display:inline-block;">📞 اتصال</a>` : ''}</td>
       <td>${item.phone ? `<button type="button" class="mini-btn wa send-img-btn" data-id="${item.id}">إرسال</button>` : ''}</td>
       <td>${item.phone ? `<button type="button" class="mini-btn copy dup-btn" data-id="${item.id}">عرض</button>` : ''}</td>
@@ -4064,6 +4297,9 @@ dayModalBody.addEventListener('change', (e) => {
 });
 
 dayModalBody.addEventListener('click', (e) => {
+  const imgThumb = e.target.closest('.matched-img-thumb');
+  if(imgThumb){ copyImageToClipboard(imgThumb.getAttribute('data-img-url')); return; }
+
   const copyBtn = e.target.closest('.copy-btn');
   if(copyBtn){ copyText(copyBtn.getAttribute('data-copy')); return; }
 
@@ -4197,9 +4433,34 @@ const closingVariations = [
 // "مراسلة المستفيد": message the beneficiary directly on WhatsApp, with a
 // 30-second countdown (so it's easy to cancel by closing the modal) before
 // the chat actually opens.
+// حد أقصى 30 رسالة "مراسلة المستفيد" بالساعة — يُحسب من عدد الأوقات
+// الفعلية المسجّلة بآخر 60 دقيقة (محفوظة بـ localStorage عشان تصمد حتى
+// لو أعدت فتح الصفحة)، مو مجرد عدّاد بالجلسة.
+const HOURLY_SEND_LIMIT = 30;
+function getSendTimestamps(){
+  return JSON.parse(localStorage.getItem('waSendTimestamps') || '[]');
+}
+function recordSendTimestamp(){
+  const list = getSendTimestamps();
+  list.push(Date.now());
+  localStorage.setItem('waSendTimestamps', JSON.stringify(list));
+}
+function sendsInLastHour(){
+  const cutoff = Date.now() - 60*60*1000;
+  return getSendTimestamps().filter(t => t > cutoff);
+}
+
 document.getElementById('dupSendAll').addEventListener('click', () => {
   const rows = getCheckedDupRows();
   if(rows.length === 0){ alert('اختر بلاغ واحد على الأقل'); return; }
+
+  const recent = sendsInLastHour();
+  if(recent.length >= HOURLY_SEND_LIMIT){
+    const oldestInWindow = Math.min(...recent);
+    const minutesLeft = Math.ceil((oldestInWindow + 60*60*1000 - Date.now()) / 60000);
+    alert(`وصلت الحد الأقصى (${HOURLY_SEND_LIMIT} رسالة/ساعة). انتظر تقريبًا ${minutesLeft} دقيقة قبل إرسال رسالة جديدة، عشان تقلل خطر حظر واتساب.`);
+    return;
+  }
 
   const phone = normalizePhoneForWhatsapp(rows[0].phone);
   let lines = '';
@@ -4217,13 +4478,22 @@ document.getElementById('dupSendAll').addEventListener('click', () => {
   btn.disabled = true;
 
   const timer = setInterval(() => {
-    btn.textContent = `الإرسال خلال ${timeLeft} ثانية...`;
+    btn.textContent = `الإرسال خلال ${timeLeft} ثانية... (${sendsInLastHour().length}/${HOURLY_SEND_LIMIT} بآخر ساعة)`;
     timeLeft--;
     if(timeLeft < 0){
       clearInterval(timer);
       btn.disabled = false;
       btn.textContent = original;
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+      // ينسخ النص للحافظة أولاً، ثم يفتح واتساب على نفس الرقم بدون أي
+      // نص جاهز مسبقًا (بدون معامل ?text=) — الشخص يلصق (ضغط مطول) ويرسل
+      // بنفسه يدويًا داخل واتساب.
+      navigator.clipboard.writeText(text).then(() => {
+        alert('✅ تم نسخ نص الرسالة. الآن الصق (ضغط مطوّل) داخل صندوق الكتابة بواتساب واضغط إرسال.');
+      }).catch(() => {
+        alert('تعذّر النسخ التلقائي — انسخ النص يدويًا قبل الإرسال.');
+      });
+      window.open(`https://wa.me/${phone}`, '_blank');
+      recordSendTimestamp();
       const phoneStats = getPhoneStats(phone);
       rows.forEach(r => {
         if(r.reportNo) sentColors[r.reportNo] = 'orange';
@@ -4235,38 +4505,27 @@ document.getElementById('dupSendAll').addEventListener('click', () => {
   }, 1000);
 });
 
-// "رسالة خاصة": tells the beneficiary a supervisor will personally reach
-// out about their (possibly multiple) duplicate reports, listing every
-// checked report's number. Same phone, same 30-second cancel window.
-document.getElementById('dupPrivateMsg').addEventListener('click', () => {
+// "📋 نسخ الرسالة": copies the same exact beneficiary-message text to the
+// clipboard, with no WhatsApp/Telegram link involved at all — the person
+// pastes and sends it themselves however they prefer.
+document.getElementById('dupCopyMsg').addEventListener('click', () => {
   const rows = getCheckedDupRows();
   if(rows.length === 0){ alert('اختر بلاغ واحد على الأقل'); return; }
 
-  const phone = normalizePhoneForWhatsapp(rows[0].phone);
-  const text = `السلام عليكم ورحمة الله وبركاته،\n\nعزيزي المستفيد، حرصًا منا على متابعة ومعالجة جميع البلاغات المقدمة من قبلك، نود إفادتكم بأنه سيتم التواصل معكم من قِبل مشرف المنطقة لاستكمال متابعة البلاغات والعمل على إنهائها.\n\nوفي حال تواصل المشرف معكم، نأمل التكرم بتزويده بجميع ملاحظاتكم ومواقع البلاغات وأي تفاصيل ترون أهميتها؛ بما يسهم في سرعة المعالجة وإنهاء جميع البلاغات بالشكل المطلوب.\n\nشاكرين لكم حسن تعاونكم وتفهمكم، ومقدرين لكم مساهمتكم في تحسين مستوى خدمات النظافة. 🌷`;
+  let lines = '';
+  rows.forEach(r => {
+    lines += `${r.reportNo || ''}\n`;
+    lines += `${r.desc || '—'}\n\n`;
+  });
 
-  const btn = document.getElementById('dupPrivateMsg');
-  const original = btn.textContent;
-  let timeLeft = 30;
-  btn.disabled = true;
+  const closingLine = closingVariations[Math.floor(Math.random() * closingVariations.length)];
+  const text = `السلام عليكم ورحمة الله وبركاته\n\nلديكم بلاغ:\n\n${lines}\n${closingLine}`;
 
-  const timer = setInterval(() => {
-    btn.textContent = `الإرسال خلال ${timeLeft} ثانية...`;
-    timeLeft--;
-    if(timeLeft < 0){
-      clearInterval(timer);
-      btn.disabled = false;
-      btn.textContent = original;
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
-      const phoneStats = getPhoneStats(phone);
-      rows.forEach(r => {
-        if(r.reportNo) sentColors[r.reportNo] = 'orange';
-        addSentRecord('رسالة خاصة', r, '-', phoneStats);
-      });
-      saveSentColors();
-      if(currentDayY) renderDayTable();
-    }
-  }, 1000);
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ تم نسخ نص الرسالة.');
+  }).catch(() => {
+    alert('تعذّر النسخ التلقائي.');
+  });
 });
 
 // "إرسال الملاحظات": compose and send an internal note (to any destination
