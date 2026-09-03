@@ -4182,7 +4182,7 @@ function renderDayTable(){
 
   html += `<div class="wrap-table"><table class="day-table"><thead><tr>
     <th>البلدية</th><th>الحي</th><th>الشارع</th><th>الوصف</th><th>رقم البلاغ</th>
-    <th>رقم الجوال</th><th>الحالة</th><th>التاريخ</th><th>المتبقي</th><th>صورة</th><th></th><th></th><th></th><th></th><th></th>
+    <th>رقم الجوال</th><th>الحالة</th><th>التاريخ</th><th>المتبقي</th><th>صورة</th><th></th><th></th><th></th><th></th><th></th><th></th>
   </tr></thead><tbody>`;
 
   items.forEach(item => {
@@ -4250,6 +4250,7 @@ function renderDayTable(){
       <td>${item.phone ? `<button type="button" class="mini-btn copy dup-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">عرض</button>` : ''}</td>
       <td><button type="button" class="mini-btn del del-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">حذف</button></td>
       <td>${item.phone ? `<button type="button" class="mini-btn followup-send-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="background:#6a4f9c;${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">📩 تواصل</button>` : ''}</td>
+      <td>${item.phone ? `<button type="button" class="mini-btn followup-copy-btn" data-id="${item.id}" style="background:#c9971f;">📋 نسخ</button>` : ''}</td>
     </tr>`;
   });
 
@@ -4348,7 +4349,32 @@ dayModalBody.addEventListener('click', (e) => {
     sendFollowupMessage(id);
     return;
   }
+
+  const followupCopyBtn = e.target.closest('.followup-copy-btn');
+  if(followupCopyBtn){
+    const id = parseInt(followupCopyBtn.getAttribute('data-id'),10);
+    copyFollowupMessage(id);
+    return;
+  }
 });
+
+function buildFollowupText(item){
+  return `السلام عليكم ورحمه الله وبركاته\nسوف يتم التواصل معكم لمعالجه بلاغكم رقم ${item.reportNo || ''}\nوحال وجود ملاحظات اخرى نامل تزويدنا لنا \nشاكرين حسن تعاونكم معنا`;
+}
+
+// "📋 نسخ" المستقل: ينسخ نص "تواصل" فقط، بدون أي حد ساعي أو عد تنازلي أو
+// فتح واتساب — عشان لو تعذّر النسخ التلقائي جوا زر "📩 تواصل"، يقدر الشخص
+// ينسخ النص يدويًا من هنا مباشرة بدل ما يعلق.
+function copyFollowupMessage(id){
+  const item = parsedData.find(p => p.id === id);
+  if(!item){ alert('البلاغ غير موجود'); return; }
+  const text = buildFollowupText(item);
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ تم نسخ نص الرسالة.');
+  }).catch(() => {
+    alert('تعذّر النسخ التلقائي. جرّب من متصفح آخر أو تأكد إنك فاتح الأداة من رابط https.');
+  });
+}
 
 // "📩 تواصل": نص ثابت عن التواصل بخصوص البلاغ (رقم بلاغ الصف نفسه يُدرج
 // تلقائيًا)، بنفس نمط الأمان المتبع بالأداة كاملة: يخضع لنفس الحد الساعي
@@ -4368,7 +4394,7 @@ function sendFollowupMessage(id){
   }
 
   const phone = normalizePhoneForWhatsapp(item.phone);
-  const text = `السلام عليكم ورحمه الله وبركاته\nسوف يتم التواصل معكم لمعالجه بلاغكم رقم ${item.reportNo || ''}\nوفي حال التواصل معكم نأمل تزويد المقاول جميع الملاحظات الأخرى لديكم إن وجدت\nشاكرين حسن تعاونكم معنا`;
+  const text = buildFollowupText(item);
 
   const btn = document.querySelector(`.followup-send-btn[data-id="${id}"]`);
   const original = btn ? btn.textContent : '📩 تواصل';
