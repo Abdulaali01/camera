@@ -4182,7 +4182,7 @@ function renderDayTable(){
 
   html += `<div class="wrap-table"><table class="day-table"><thead><tr>
     <th>البلدية</th><th>الحي</th><th>الشارع</th><th>الوصف</th><th>رقم البلاغ</th>
-    <th>رقم الجوال</th><th>الحالة</th><th>التاريخ</th><th>المتبقي</th><th>صورة</th><th></th><th></th><th></th><th></th>
+    <th>رقم الجوال</th><th>الحالة</th><th>التاريخ</th><th>المتبقي</th><th>صورة</th><th></th><th></th><th></th><th></th><th></th>
   </tr></thead><tbody>`;
 
   items.forEach(item => {
@@ -4249,6 +4249,7 @@ function renderDayTable(){
       <td>${item.phone ? `<button type="button" class="mini-btn wa send-img-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">إرسال</button>` : ''}</td>
       <td>${item.phone ? `<button type="button" class="mini-btn copy dup-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">عرض</button>` : ''}</td>
       <td><button type="button" class="mini-btn del del-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">حذف</button></td>
+      <td>${item.phone ? `<button type="button" class="mini-btn followup-send-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="background:#6a4f9c;${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">📩 تواصل</button>` : ''}</td>
     </tr>`;
   });
 
@@ -4340,7 +4341,60 @@ dayModalBody.addEventListener('click', (e) => {
     sendTicketImage(id);
     return;
   }
+
+  const followupBtn = e.target.closest('.followup-send-btn');
+  if(followupBtn){
+    const id = parseInt(followupBtn.getAttribute('data-id'),10);
+    sendFollowupMessage(id);
+    return;
+  }
 });
+
+// "📩 تواصل": نص ثابت عن التواصل بخصوص البلاغ (رقم بلاغ الصف نفسه يُدرج
+// تلقائيًا)، بنفس نمط الأمان المتبع بالأداة كاملة: يخضع لنفس الحد الساعي
+// المشترك (30 رسالة/ساعة)، ثم ينسخ النص للحافظة ويفتح واتساب على نفس رقم
+// الجوال بدون نص جاهز مسبقًا — الشخص يلصق ويرسل بنفسه يدويًا.
+function sendFollowupMessage(id){
+  const item = parsedData.find(p => p.id === id);
+  if(!item){ alert('البلاغ غير موجود'); return; }
+  if(!item.phone){ alert('لا يوجد رقم جوال لهذا البلاغ'); return; }
+
+  const recent = sendsInLastHour();
+  if(recent.length >= HOURLY_SEND_LIMIT){
+    const oldestInWindow = Math.min(...recent);
+    const minutesLeft = Math.ceil((oldestInWindow + 60*60*1000 - Date.now()) / 60000);
+    alert(`وصلت الحد الأقصى (${HOURLY_SEND_LIMIT} رسالة/ساعة). انتظر تقريبًا ${minutesLeft} دقيقة قبل إرسال رسالة جديدة.`);
+    return;
+  }
+
+  const phone = normalizePhoneForWhatsapp(item.phone);
+  const text = `السلام عليكم ورحمه الله وبركاته\nسوف يتم التواصل معكم لمعالجه بلاغكم رقم ${item.reportNo || ''}\nوفي حال التواصل معكم نأمل تزويد المقاول جميع الملاحظات الأخرى لديكم إن وجدت\nشاكرين حسن تعاونكم معنا`;
+
+  const btn = document.querySelector(`.followup-send-btn[data-id="${id}"]`);
+  const original = btn ? btn.textContent : '📩 تواصل';
+  let timeLeft = 30;
+  if(btn) btn.disabled = true;
+
+  const timer = setInterval(() => {
+    if(btn) btn.textContent = `الإرسال خلال ${timeLeft} ثانية...`;
+    timeLeft--;
+    if(timeLeft < 0){
+      clearInterval(timer);
+      navigator.clipboard.writeText(text).then(() => {
+        alert('✅ تم نسخ نص الرسالة. الآن الصق (ضغط مطوّل) داخل صندوق الكتابة بواتساب واضغط إرسال.');
+      }).catch(() => {
+        alert('تعذّر النسخ التلقائي — انسخ النص يدويًا قبل الإرسال.');
+      });
+      window.open(`https://wa.me/${phone}`, '_blank');
+      recordSendTimestamp();
+      if(item.reportNo) sentColors[item.reportNo] = 'orange';
+      const phoneStats = getPhoneStats(item.phone);
+      addSentRecord('تواصل', item, '-', phoneStats);
+      saveSentColors();
+      if(currentDayY) renderDayTable();
+    }
+  }, 1000);
+}
 
 async function sendTicketImage(id){
   const item = parsedData.find(p => p.id === id);
@@ -4719,4 +4773,4 @@ document.getElementById('exportMsgsBtn').addEventListener('click', () => {
 <div id="employeeReportPrint"></div>
 
 </body>
-</html
+</html>
