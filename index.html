@@ -4182,7 +4182,7 @@ function renderDayTable(){
 
   html += `<div class="wrap-table"><table class="day-table"><thead><tr>
     <th>البلدية</th><th>الحي</th><th>الشارع</th><th>الوصف</th><th>رقم البلاغ</th>
-    <th>رقم الجوال</th><th>الحالة</th><th>التاريخ</th><th>المتبقي</th><th>صورة</th><th></th><th></th><th></th><th></th><th></th><th></th>
+    <th>رقم الجوال</th><th>الحالة</th><th>التاريخ</th><th>المتبقي</th><th>صورة</th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
   </tr></thead><tbody>`;
 
   items.forEach(item => {
@@ -4251,6 +4251,7 @@ function renderDayTable(){
       <td><button type="button" class="mini-btn del del-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">حذف</button></td>
       <td>${item.phone ? `<button type="button" class="mini-btn followup-send-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="background:#6a4f9c;${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">📩 تواصل</button>` : ''}</td>
       <td>${item.phone ? `<button type="button" class="mini-btn followup-copy-btn" data-id="${item.id}" style="background:#c9971f;">📋 نسخ</button>` : ''}</td>
+      <td>${isSentReport ? `<button type="button" class="mini-btn reactivate-btn" data-id="${item.id}" style="background:#2f6f5e;">🔓 إعادة تفعيل</button>` : ''}</td>
     </tr>`;
   });
 
@@ -4356,10 +4357,22 @@ dayModalBody.addEventListener('click', (e) => {
     copyFollowupMessage(id);
     return;
   }
+
+  const reactivateBtn = e.target.closest('.reactivate-btn');
+  if(reactivateBtn){
+    const id = parseInt(reactivateBtn.getAttribute('data-id'),10);
+    const item = parsedData.find(p => p.id === id);
+    if(item && item.reportNo){
+      delete sentColors[item.reportNo];
+      saveSentColors();
+      if(currentDayY) renderDayTable();
+    }
+    return;
+  }
 });
 
 function buildFollowupText(item){
-  return `السلام عليكم ورحمه الله وبركاته\nسوف يتم التواصل معكم لمعالجه بلاغكم رقم ${item.reportNo || ''}\nوحال وجود ملاحظات اخرى نامل تزويدنا لنا \nشاكرين حسن تعاونكم معنا`;
+  return `السلام عليكم ورحمه الله وبركاته\nسوف يتم التواصل معكم لمعالجه بلاغكم رقم ${item.reportNo || ''}\nوفي حال التواصل معكم نأمل تزويد المقاول جميع الملاحظات الأخرى لديكم إن وجدت\nشاكرين حسن تعاونكم معنا`;
 }
 
 // "📋 نسخ" المستقل: ينسخ نص "تواصل" فقط، بدون أي حد ساعي أو عد تنازلي أو
