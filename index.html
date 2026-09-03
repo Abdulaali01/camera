@@ -4209,6 +4209,23 @@ function renderDayTable(){
       colorClass = (colorClass ? colorClass + ' ' : '') + 'dup-row';
     }
 
+    // إذا رقم الجوال مكرر، اعرض كم مرة أُرسلت رسالة واتساب لأي من بلاغاته
+    // (مو بس هذا البلاغ تحديدًا) — علامة "✓×N".
+    const isSentReport = sentColors[item.reportNo] === 'orange';
+    let sentCheckHtml = '';
+    if(dupCount > 1 && item.phone){
+      const sameNorm = normalizePhoneForWhatsapp(item.phone);
+      const sentCountForPhone = parsedData.filter(p =>
+        p.phone && normalizePhoneForWhatsapp(p.phone) === sameNorm &&
+        p.reportNo && sentColors[p.reportNo] === 'orange'
+      ).length;
+      if(sentCountForPhone > 0){
+        sentCheckHtml = ` <span title="عدد مرات إرسال واتساب لنفس الرقم" style="color:#16a34a;font-weight:900;font-size:13px;">✓×${sentCountForPhone}</span>`;
+      }
+    } else if(sentColors[item.reportNo] === 'orange'){
+      sentCheckHtml = ' <span title="تم إرسال واتساب" style="color:#16a34a;font-weight:900;font-size:14px;">✓</span>';
+    }
+
     if(activeHighlightRowId !== null && item.id === activeHighlightRowId){
       colorClass = (colorClass ? colorClass + ' ' : '') + 'row-target';
     }
@@ -4219,7 +4236,7 @@ function renderDayTable(){
       <td>${item.street || '-'}</td>
       <td class="desc-cell">${item.desc || '-'}</td>
       <td>${item.reportNo || '-'} ${item.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${item.reportNo}">نسخ</button>` : ''}</td>
-      <td class="ltr">${dupCount > 1 ? `<span class="dup-count-badge">×${dupCount}</span>` : ''}${item.phone || '-'}</td>
+      <td class="ltr">${dupCount > 1 ? `<span class="dup-count-badge">×${dupCount}</span>` : ''}${item.phone || '-'}${sentCheckHtml}</td>
       <td>${item.status || '-'}${isPendingClosureCheck(item) ? '<br><span style="font-size:9.5px;color:#14532d;font-weight:700;">بانتظار التحقق من إجراء الإغلاق</span>' : ''}</td>
       <td>${fmtDateShort(item.date)}</td>
       <td>${remainingCell}</td>
@@ -4228,10 +4245,10 @@ function renderDayTable(){
           ? `<img src="${reportImageMap.get(normalizeReportNoKey(item.reportNo))}" class="matched-img-thumb" title="اضغط للنسخ" data-img-url="${reportImageMap.get(normalizeReportNoKey(item.reportNo))}">`
           : `<input type="file" accept="image/*" id="img_${safeId}">`
       }</td>
-      <td>${item.phone ? `<a href="tel:${item.phone}" class="mini-btn" style="background:#3d6b8a;text-decoration:none;display:inline-block;">📞 اتصال</a>` : ''}</td>
-      <td>${item.phone ? `<button type="button" class="mini-btn wa send-img-btn" data-id="${item.id}">إرسال</button>` : ''}</td>
-      <td>${item.phone ? `<button type="button" class="mini-btn copy dup-btn" data-id="${item.id}">عرض</button>` : ''}</td>
-      <td><button type="button" class="mini-btn del del-btn" data-id="${item.id}">حذف</button></td>
+      <td>${item.phone ? (isSentReport ? `<span class="mini-btn" style="background:#c8c3b8;opacity:0.6;cursor:not-allowed;" title="تم الإرسال مسبقًا">📞 اتصال</span>` : `<a href="tel:${item.phone}" class="mini-btn" style="background:#3d6b8a;text-decoration:none;display:inline-block;">📞 اتصال</a>`) : ''}</td>
+      <td>${item.phone ? `<button type="button" class="mini-btn wa send-img-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">إرسال</button>` : ''}</td>
+      <td>${item.phone ? `<button type="button" class="mini-btn copy dup-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">عرض</button>` : ''}</td>
+      <td><button type="button" class="mini-btn del del-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">حذف</button></td>
     </tr>`;
   });
 
@@ -4702,4 +4719,4 @@ document.getElementById('exportMsgsBtn').addEventListener('click', () => {
 <div id="employeeReportPrint"></div>
 
 </body>
-</html>
+</html
