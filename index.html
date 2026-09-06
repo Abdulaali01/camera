@@ -1507,6 +1507,7 @@
                 <th>البلدية</th>
                 <th>حالة النظام</th>
                 <th>رقم الجوال</th>
+                <th>صورة</th>
               </tr>
             </thead>
             <tbody id="dupTableBody"></tbody>
@@ -4523,6 +4524,17 @@ async function sendTicketImage(id){
 // يفتح نفس نافذة "البلاغات المكررة" (بنفس أزرار مراسلة المستفيد / إرسال
 // الملاحظات / نسخ الرسالة) لكن معبّاة ببلاغات هذا اليوم اللي حالتها بالنظام
 // = "قيد المعالجة - تقييم مقدم البلاغ" بدل بلاغات رقم جوال مكرر.
+// خلية الصورة المتطابقة (نفس منطق جدول اليوم) — تُستخدم بنافذة
+// المكررات ونافذة "قيد المعالجة - تقييم مقدم البلاغ" أيضًا، عشان الصور
+// المرفقة تبان بكل مكان يظهر فيه رقم البلاغ، مو بس جدول اليوم الأساسي.
+function buildMatchedImageCellHtml(reportNo){
+  if(!reportNo) return '-';
+  const key = normalizeReportNoKey(reportNo);
+  if(!reportImageMap.has(key)) return '-';
+  const url = reportImageMap.get(key);
+  return `<img src="${url}" class="matched-img-thumb" title="اضغط للنسخ" data-img-url="${url}">`;
+}
+
 function openPendingReviewModal(){
   const allItems = getDayItems(currentDayY, currentDayM, currentDayD);
   const items = allItems.filter(i => (i.systemStatus || '').trim() === 'قيد المعالجة - تقييم مقدم البلاغ');
@@ -4541,10 +4553,11 @@ function openPendingReviewModal(){
       <td>${r.muni || '-'}</td>
       <td>${r.status || '-'}</td>
       <td class="ltr">${r.phone || '-'}</td>
+      <td>${buildMatchedImageCellHtml(r.reportNo)}</td>
     </tr>`;
   });
 
-  document.getElementById('dupTableBody').innerHTML = html || `<tr><td colspan="6">لا توجد بلاغات</td></tr>`;
+  document.getElementById('dupTableBody').innerHTML = html || `<tr><td colspan="7">لا توجد بلاغات</td></tr>`;
   document.getElementById('dupModalOverlay').classList.remove('hidden');
 }
 
@@ -4586,14 +4599,18 @@ function openDuplicatesModal(phone){
       <td>${r.muni || '-'}</td>
       <td>${r.status || '-'}</td>
       <td class="ltr">${r.phone || '-'}</td>
+      <td>${buildMatchedImageCellHtml(r.reportNo)}</td>
     </tr>`;
   });
 
-  document.getElementById('dupTableBody').innerHTML = html || `<tr><td colspan="6">لا توجد بلاغات</td></tr>`;
+  document.getElementById('dupTableBody').innerHTML = html || `<tr><td colspan="7">لا توجد بلاغات</td></tr>`;
   document.getElementById('dupModalOverlay').classList.remove('hidden');
 }
 
 document.getElementById('dupTableBody').addEventListener('click', (e) => {
+  const imgThumb = e.target.closest('.matched-img-thumb');
+  if(imgThumb){ copyImageToClipboard(imgThumb.getAttribute('data-img-url')); return; }
+
   const copyBtn = e.target.closest('.copy-btn');
   if(copyBtn) copyText(copyBtn.getAttribute('data-copy'));
 });
