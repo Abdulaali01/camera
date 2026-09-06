@@ -370,6 +370,16 @@
     margin-top:2px;
   }
   .cal-day.today .cal-final-badge{background:#fff;color:#f59e0b;}
+  .cal-pending-review-badge{
+    font-size:9.5px;
+    font-weight:700;
+    color:#fff;
+    background:#6a4f9c;
+    border-radius:10px;
+    padding:0 6px;
+    margin-top:2px;
+  }
+  .cal-day.today .cal-pending-review-badge{background:#fff;color:#6a4f9c;}
   @keyframes flashHighlight{
     0%,100%{ box-shadow:0 0 0 2px var(--accent-soft); background:var(--neutral-soft); }
     50%{ box-shadow:0 0 0 4px #f59e0b; background:#fef3c7; }
@@ -457,6 +467,23 @@
     margin:0 0 10px;
     color:var(--accent);
   }
+  .dup-day-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .dup-day-chip{
+    background:var(--neutral-soft);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 12px;
+    text-align:center;
+    cursor:pointer;
+    min-width:64px;
+  }
+  .dup-day-chip:hover{background:var(--accent-soft);}
+  .ddc-date{font-size:12.5px;font-weight:700;color:var(--ink);}
+  .ddc-count{font-size:15px;font-weight:800;color:var(--accent);margin-top:2px;}
 
   #quarterMultiWrap{
     display:grid;
@@ -1327,6 +1354,8 @@
         </div>
       </div>
       <button class="btn" id="showQuarterCalendarBtn" style="background:#a35d2f;">🗓️ عرض تقويم الأرباع المحددة</button>
+      <button class="btn" id="showDupDaysBtn" style="background:#a3432f;">📅 تقويم الأيام المكررة</button>
+      <button class="btn" id="showNoDupDaysBtn" style="background:#2f6f5e;">📅 تقويم الأيام غير المكررة</button>
     </div>
 
     <div id="status" class="status"></div>
@@ -1464,6 +1493,18 @@
       <div class="item"><span class="dot unsat"></span> غير راضي</div>
       <div class="item"><span class="dot" style="background:#f59e0b;"></span> ✅ تمت معالجته بشكل نهائي (سبب الإغلاق)</div>
     </div>
+  </div>
+
+  <div id="dupDaysCard" class="card hidden">
+    <h2 style="margin:0 0 4px;">📅 تقويم أيام البلاغات المكررة</h2>
+    <div class="chart-block-sub no-print" style="margin-bottom:14px;">يبيّن كل الأيام اللي فيها بلاغ واحد على الأقل رقم جواله مكرر بأكثر من بلاغ. اضغط على أي يوم عشان يصدّر لك ملف إكسل ببلاغات ذلك اليوم المكررة فقط.</div>
+    <div id="dupDaysWrap" class="cal-multi-wrap"></div>
+  </div>
+
+  <div id="noDupDaysCard" class="card hidden">
+    <h2 style="margin:0 0 4px;">📅 تقويم أيام البلاغات غير المكررة</h2>
+    <div class="chart-block-sub no-print" style="margin-bottom:14px;">يبيّن كل الأيام اللي فيها بلاغ واحد على الأقل رقم جواله غير مكرر بأي بلاغ ثاني. اضغط على أي يوم عشان يصدّر لك ملف إكسل ببلاغات ذلك اليوم غير المكررة فقط.</div>
+    <div id="noDupDaysWrap" class="cal-multi-wrap"></div>
   </div>
   </div>
 
@@ -1641,6 +1682,24 @@ const dayModalClose = document.getElementById('dayModalClose');
 let rows = [];
 let headers = [];
 let parsedData = []; // {date, rating}
+// Precomputed once per file load: normalized phone -> how many reports
+// share it. Using this map (O(1) lookup) instead of re-filtering the
+// whole parsedData array for every single item is what keeps duplicate
+// detection fast even with tens of thousands of rows.
+let phoneCountMap = new Map();
+let phoneItemsMap = new Map();
+function rebuildPhoneCountMap(){
+  phoneCountMap = new Map();
+  phoneItemsMap = new Map();
+  parsedData.forEach(p => {
+    if(!p.phone) return;
+    const key = normalizePhoneForWhatsapp(p.phone);
+    if(!key) return;
+    phoneCountMap.set(key, (phoneCountMap.get(key) || 0) + 1);
+    if(!phoneItemsMap.has(key)) phoneItemsMap.set(key, []);
+    phoneItemsMap.get(key).push(p);
+  });
+}
 let periods = []; // {label, from, to, total, sat, unsat, none, satEligible, unsatEligible}
 let hasSourceCol = false;
 let hasSystemStatusCol = false;
@@ -2131,6 +2190,7 @@ function buildCalendarGridHtml(y, m){
     }).length;
 
     const finalResolvedCount = items.filter(it => (it.closureReason || '').trim() === 'تمت معالجة البلاغ بشكل نهائي').length;
+    const pendingReviewCount = items.filter(it => (it.systemStatus || '').trim() === 'قيد المعالجة - تقييم مقدم البلاغ').length;
 
     let inner = `<div class="cal-daynum">${d}</div>`;
     if(total > 0){
@@ -2145,6 +2205,9 @@ function buildCalendarGridHtml(y, m){
       if(finalResolvedCount > 0){
         inner += `<div class="cal-final-badge" title="بلاغات تمت معالجتها بشكل نهائي (حسب عمود سبب الإغلاق)">✅ ${finalResolvedCount}</div>`;
       }
+      if(pendingReviewCount > 0){
+        inner += `<div class="cal-pending-review-badge" title="قيد المعالجة - تقييم مقدم البلاغ (حسب حالة البلاغ في النظام)">📝 ${pendingReviewCount}</div>`;
+      }
     }
 
     let dayClasses = `cal-day${isToday ? ' today' : ''}${total>0 ? ' has-data' : ''}`;
@@ -2155,6 +2218,51 @@ function buildCalendarGridHtml(y, m){
   }
 
   return html;
+}
+
+// ---- تقويمي "أيام البلاغات المكررة" و"أيام البلاغات غير المكررة" ----
+// ثابتان دائمًا (يظهران تلقائيًا فور تحميل البيانات، بدون حاجة لاختيار
+// شهر). كل يوم يعرض عدد البلاغات المطابقة فقط (مكررة أو غير مكررة حسب
+// التقويم)، والضغط على اليوم يصدّر ملف إكسل ببلاغات ذلك اليوم فقط —
+// البلاغات المغلقة تُختصر لسطر عدد واحد فقط بدون ذكر أرقامها.
+function isDuplicatePhone(item){
+  if(!item.phone) return false;
+  const key = normalizePhoneForWhatsapp(item.phone);
+  return key ? (phoneCountMap.get(key) || 0) > 1 : false;
+}
+
+function renderDupStatusCalendars(){
+  if(parsedData.length === 0) return;
+
+  const dupDayMap = new Map();    // 'Y-M-D' -> count
+  const nonDupDayMap = new Map();
+
+  parsedData.forEach(p => {
+    const key = `${p.date.getFullYear()}-${p.date.getMonth()+1}-${p.date.getDate()}`;
+    const map = isDuplicatePhone(p) ? dupDayMap : nonDupDayMap;
+    map.set(key, (map.get(key) || 0) + 1);
+  });
+
+  const buildListHtml = (dayMap) => {
+    const keys = Array.from(dayMap.keys()).sort((a, b) => {
+      const [ya, ma, da] = a.split('-').map(Number);
+      const [yb, mb, db] = b.split('-').map(Number);
+      return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);
+    });
+    if(keys.length === 0) return '<div style="color:var(--muted);font-size:13px;">لا توجد أيام مطابقة.</div>';
+    return `<div class="dup-day-list">` + keys.map(key => {
+      const [y, m, d] = key.split('-').map(Number);
+      return `<div class="dup-day-chip" data-y="${y}" data-m="${m}" data-d="${d}">
+        <div class="ddc-date">${d}/${m}/${y}</div>
+        <div class="ddc-count">${dayMap.get(key)}</div>
+      </div>`;
+    }).join('') + `</div>`;
+  };
+
+  document.getElementById('dupDaysWrap').innerHTML = buildListHtml(dupDayMap);
+  document.getElementById('noDupDaysWrap').innerHTML = buildListHtml(nonDupDayMap);
+  document.getElementById('dupDaysCard').classList.remove('hidden');
+  document.getElementById('noDupDaysCard').classList.remove('hidden');
 }
 
 // Render every selected month as its own calendar block, side by side
@@ -2452,6 +2560,148 @@ function renderQuarterCalendars(){
 }
 
 showQuarterCalendarBtn.addEventListener('click', renderQuarterCalendars);
+
+// ---- تقويمين ثابتين: أيام البلاغات المكررة / غير المكررة ----
+// "مكرر" = رقم جوال ظهر بأكثر من بلاغ بكل الملف (بغض النظر عن اليوم).
+// كل يوم فيه بلاغ واحد على الأقل بهذا الوصف يظهر مفعّلاً بتقويمه.
+// هذي التقاويم "ثابتة": تغطي كامل مدى تواريخ الملف تلقائيًا، بدون
+// حاجة لاختيار أشهر/أرباع.
+
+function buildDupStatusCalendarGridHtml(y, m, wantDuplicate){
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const firstDayOfWeek = new Date(y, m-1, 1).getDay();
+  const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === y && (today.getMonth()+1) === m;
+  const todayDate = today.getDate();
+
+  let html = dayNames.map(n => `<div class="cal-head">${n}</div>`).join('');
+  for(let i=0; i<firstDayOfWeek; i++) html += `<div class="cal-day empty"></div>`;
+
+  for(let d=1; d<=daysInMonth; d++){
+    const isToday = isCurrentMonth && d === todayDate;
+    const dayStart = new Date(y, m-1, d, 0, 0, 0);
+    const dayEnd = new Date(y, m-1, d, 23, 59, 59);
+    const dayItems = parsedData.filter(p => p.date >= dayStart && p.date <= dayEnd);
+    const matchCount = dayItems.filter(p => isDuplicatePhone(p) === wantDuplicate).length;
+
+    let inner = `<div class="cal-daynum">${d}</div>`;
+    if(matchCount > 0) inner += `<div class="cal-total">${matchCount}</div>`;
+
+    let dayClasses = `cal-day${isToday ? ' today' : ''}${matchCount>0 ? ' has-data' : ''}`;
+    if(matchCount === 0) dayClasses += ' dim';
+
+    html += `<div class="${dayClasses}" data-y="${y}" data-m="${m}" data-d="${d}" data-mode="${wantDuplicate ? 'dup' : 'nodup'}">${inner}</div>`;
+  }
+  return html;
+}
+
+function renderFixedDupCalendars(){
+  if(parsedData.length === 0) return;
+  const times = parsedData.map(p => p.date.getTime());
+  const minD = new Date(Math.min(...times));
+  const maxD = new Date(Math.max(...times));
+
+  const months = [];
+  let y = minD.getFullYear(), m = minD.getMonth();
+  const endY = maxD.getFullYear(), endM = maxD.getMonth();
+  while(y < endY || (y === endY && m <= endM)){
+    months.push({y, m: m+1});
+    m++; if(m > 11){ m = 0; y++; }
+  }
+
+  const dupWrap = document.getElementById('dupDaysWrap');
+  const noDupWrap = document.getElementById('noDupDaysWrap');
+
+  dupWrap.innerHTML = months.map(({y, m}) => {
+    const daysInMonth = new Date(y, m, 0).getDate();
+    return `<div class="month-block">
+      <div class="month-block-title">${ARABIC_MONTHS[m-1]} ${y} (${daysInMonth} يوم)</div>
+      <div class="cal-grid">${buildDupStatusCalendarGridHtml(y, m, true)}</div>
+    </div>`;
+  }).join('');
+
+  noDupWrap.innerHTML = months.map(({y, m}) => {
+    const daysInMonth = new Date(y, m, 0).getDate();
+    return `<div class="month-block">
+      <div class="month-block-title">${ARABIC_MONTHS[m-1]} ${y} (${daysInMonth} يوم)</div>
+      <div class="cal-grid">${buildDupStatusCalendarGridHtml(y, m, false)}</div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('showDupDaysBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){ setStatus('حمّل البيانات أولاً.', true); return; }
+  renderFixedDupCalendars();
+  document.getElementById('dupDaysCard').classList.remove('hidden');
+  document.getElementById('dupDaysCard').scrollIntoView({behavior:'smooth'});
+});
+document.getElementById('showNoDupDaysBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){ setStatus('حمّل البيانات أولاً.', true); return; }
+  renderFixedDupCalendars();
+  document.getElementById('noDupDaysCard').classList.remove('hidden');
+  document.getElementById('noDupDaysCard').scrollIntoView({behavior:'smooth'});
+});
+
+// الضغط على يوم بأي من التقويمين يصدّر إكسل ببلاغات ذلك اليوم فقط،
+// مقتصرة على النوع المطلوب (مكرر/غير مكرر). لكل رقم جوال: البلاغات غير
+// المغلقة تُذكر فرادى (رقم + حالتها)، والمغلقة تُختصر كـ"يوجد بلاغ مغلق
+// عدد كذا" فقط بدون ذكر أرقامها — ونفس الاختصار (عدد فقط) يُطبّق أيضًا
+// حين يكون لنفس الرقم أكثر من بلاغ (مكرر) ضمن نفس اليوم.
+function exportDayByDupMode(y, m, d, wantDuplicate){
+  const dayStart = new Date(y, m-1, d, 0, 0, 0);
+  const dayEnd = new Date(y, m-1, d, 23, 59, 59);
+  const dayItems = parsedData.filter(p => p.date >= dayStart && p.date <= dayEnd && isDuplicatePhone(p) === wantDuplicate);
+
+  if(dayItems.length === 0){
+    alert('لا توجد بلاغات لهذا اليوم ضمن هذا النوع.');
+    return;
+  }
+
+  const byPhone = new Map();
+  dayItems.forEach(item => {
+    const key = item.phone ? normalizePhoneForWhatsapp(item.phone) : ('__no_phone_' + item.id);
+    if(!byPhone.has(key)) byPhone.set(key, []);
+    byPhone.get(key).push(item);
+  });
+
+  const data = [['رقم الجوال','عدد جديد','عدد قيد التنفيذ','عدد معاد فتحه','عدد مغلق','عدد إجمالي (مكرر)']];
+  byPhone.forEach(group => {
+    const phoneDisplay = group[0].phone || '-';
+    const countByStatus = (statusVal) => group.filter(g => g.status && g.status.trim() === statusVal).length;
+    data.push([
+      phoneDisplay,
+      countByStatus('جديد'),
+      countByStatus('قيد التنفيذ'),
+      countByStatus('معاد فتحه'),
+      countByStatus('مغلق'),
+      group.length
+    ]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:16},{wch:10},{wch:14},{wch:14},{wch:10},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws, `${d}-${m}-${y}`);
+  XLSX.writeFile(wb, `بلاغات_${wantDuplicate ? 'مكررة' : 'غير_مكررة'}_${d}-${m}-${y}.xlsx`);
+}
+
+document.getElementById('dupDaysWrap').addEventListener('click', (e) => {
+  const cell = e.target.closest('.dup-day-chip');
+  if(!cell) return;
+  const y = parseInt(cell.getAttribute('data-y'),10);
+  const m = parseInt(cell.getAttribute('data-m'),10);
+  const d = parseInt(cell.getAttribute('data-d'),10);
+  exportDayByDupMode(y, m, d, true);
+});
+document.getElementById('noDupDaysWrap').addEventListener('click', (e) => {
+  const cell = e.target.closest('.dup-day-chip');
+  if(!cell) return;
+  const y = parseInt(cell.getAttribute('data-y'),10);
+  const m = parseInt(cell.getAttribute('data-m'),10);
+  const d = parseInt(cell.getAttribute('data-d'),10);
+  exportDayByDupMode(y, m, d, false);
+});
 
 // Clicking a day cell inside any of the quarter calendars opens the same
 // day-detail popup used by the monthly calendars.
@@ -2812,6 +3062,7 @@ function performLoadData(){
     setStatus('لم أستطع قراءة أي تواريخ صحيحة من عمود التاريخ المكتشف (أو أن الفلاتر المطبقة استبعدت كل الصفوف).', true);
     return;
   }
+  rebuildPhoneCountMap();
 
   const totalAll = parsedData.length;
   const satAll = parsedData.filter(p=>p.rating==='راضي').length;
@@ -2839,6 +3090,7 @@ function performLoadData(){
   toDateInp.value = toInputDate(maxD);
   populateMonthSelect(minD, maxD);
   populateQuarterCheckboxList(minD, maxD);
+  renderDupStatusCalendars();
 
   periods = [];
   document.getElementById('weeklyBody').innerHTML = '';
@@ -4150,12 +4402,17 @@ function renderDayTable(){
   const satCount = items.filter(i => i.rating === 'راضي').length;
   const unsatCount = items.filter(i => i.rating === 'غير راضي').length;
   const noneCount = items.filter(i => i.rating === 'لا يوجد').length;
+  const pendingReviewItems = allItems.filter(i => (i.systemStatus || '').trim() === 'قيد المعالجة - تقييم مقدم البلاغ');
 
   let html = `<div class="day-stats">
     <span class="stat-badge sat">راضي: ${satCount}</span>
     <span class="stat-badge unsat">غير راضي: ${unsatCount}</span>
     <span class="stat-badge">لا يوجد: ${noneCount}</span>
   </div>`;
+
+  if(pendingReviewItems.length > 0){
+    html += `<button type="button" class="btn" id="pendingReviewMsgBtn" style="background:#6a4f9c;margin-top:0;margin-bottom:12px;">📩 مراسلة بلاغات "قيد المعالجة - تقييم مقدم البلاغ" (${pendingReviewItems.length})</button>`;
+  }
 
   if(statuses.length > 0){
     html += `<div class="row" style="margin-top:0;margin-bottom:12px;">
@@ -4203,7 +4460,7 @@ function renderDayTable(){
     }
 
     const dupCount = item.phone
-      ? parsedData.filter(p => p.phone && normalizePhoneForWhatsapp(p.phone) === normalizePhoneForWhatsapp(item.phone)).length
+      ? (phoneCountMap.get(normalizePhoneForWhatsapp(item.phone)) || 0)
       : 0;
     if(dupCount > 1){
       colorClass = (colorClass ? colorClass + ' ' : '') + 'dup-row';
@@ -4215,10 +4472,8 @@ function renderDayTable(){
     let sentCheckHtml = '';
     if(dupCount > 1 && item.phone){
       const sameNorm = normalizePhoneForWhatsapp(item.phone);
-      const sentCountForPhone = parsedData.filter(p =>
-        p.phone && normalizePhoneForWhatsapp(p.phone) === sameNorm &&
-        p.reportNo && sentColors[p.reportNo] === 'orange'
-      ).length;
+      const sameGroup = phoneItemsMap.get(sameNorm) || [];
+      const sentCountForPhone = sameGroup.filter(p => p.reportNo && sentColors[p.reportNo] === 'orange').length;
       if(sentCountForPhone > 0){
         sentCheckHtml = ` <span title="عدد مرات إرسال واتساب لنفس الرقم" style="color:#16a34a;font-weight:900;font-size:13px;">✓×${sentCountForPhone}</span>`;
       }
@@ -4312,6 +4567,12 @@ dayModalBody.addEventListener('change', (e) => {
 });
 
 dayModalBody.addEventListener('click', (e) => {
+  const pendingReviewBtn = e.target.closest('#pendingReviewMsgBtn');
+  if(pendingReviewBtn){
+    openPendingReviewModal();
+    return;
+  }
+
   const imgThumb = e.target.closest('.matched-img-thumb');
   if(imgThumb){ copyImageToClipboard(imgThumb.getAttribute('data-img-url')); return; }
 
@@ -4459,6 +4720,34 @@ async function sendTicketImage(id){
 }
 
 // ---- Duplicates modal: every report across the whole dataset for a phone ----
+
+// يفتح نفس نافذة "البلاغات المكررة" (بنفس أزرار مراسلة المستفيد / إرسال
+// الملاحظات / نسخ الرسالة) لكن معبّاة ببلاغات هذا اليوم اللي حالتها بالنظام
+// = "قيد المعالجة - تقييم مقدم البلاغ" بدل بلاغات رقم جوال مكرر.
+function openPendingReviewModal(){
+  const allItems = getDayItems(currentDayY, currentDayM, currentDayD);
+  const items = allItems.filter(i => (i.systemStatus || '').trim() === 'قيد المعالجة - تقييم مقدم البلاغ');
+  dupRows = items;
+  dupPhone = ''; // متعدد الأرقام هنا، مو رقم واحد
+
+  document.getElementById('dupInfo').textContent = `بلاغات "قيد المعالجة - تقييم مقدم البلاغ" ليوم ${currentDayD}/${currentDayM}/${currentDayY} — العدد: ${items.length}`;
+  document.getElementById('dupClosedSummary').classList.add('hidden');
+
+  let html = '';
+  items.forEach((r, idx) => {
+    html += `<tr>
+      <td><input type="checkbox" class="dup-check" data-idx="${idx}"></td>
+      <td>${r.reportNo || '-'}</td>
+      <td>${r.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.reportNo}">نسخ</button>` : ''}</td>
+      <td>${r.muni || '-'}</td>
+      <td>${r.status || '-'}</td>
+      <td class="ltr">${r.phone || '-'}</td>
+    </tr>`;
+  });
+
+  document.getElementById('dupTableBody').innerHTML = html || `<tr><td colspan="6">لا توجد بلاغات</td></tr>`;
+  document.getElementById('dupModalOverlay').classList.remove('hidden');
+}
 
 function openDuplicatesModal(phone){
   dupPhone = String(phone || '').trim();
