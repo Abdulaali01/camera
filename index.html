@@ -586,46 +586,7 @@
   .quarter-block .cal-counts{font-size:7px;gap:3px;}
   .quarter-block .cal-head{font-size:9px;padding:2px 0 4px;}
 
-  @media print{
-    @page{size:landscape;margin:8mm;}
-    .no-print{display:none !important;}
-    body{padding:0;background:#fff;}
-    .wrap{max-width:100%;}
-    .card{
-      border:1px solid #999;
-      box-shadow:none;
-      margin-bottom:8px;
-      padding:10px 12px;
-      -webkit-print-color-adjust:exact;
-      print-color-adjust:exact;
-      page-break-inside:avoid;
-    }
-    h2{font-size:13px;margin:0 0 6px;}
-    .wrap-table{overflow-x:visible !important;}
-    table{font-size:9.5px;width:100%;table-layout:fixed;}
-    th,td{white-space:normal;padding:3px 2px;word-break:break-word;line-height:1.2;}
-
-    .cal-multi-wrap{gap:8px;}
-    .month-block{border:1px solid #999;padding:6px;page-break-inside:avoid;}
-    .month-block-title{font-size:11px;margin:0 0 4px;}
-    .quarter-block{padding:5px 6px 8px;page-break-inside:avoid;margin-bottom:8px;border-right-width:3px;}
-    .quarter-block-title{font-size:10px;margin:0 0 5px;padding:2px 10px;}
-    .cal-grid{gap:3px;}
-    .cal-head{font-size:9px;padding:2px 0 4px;}
-    .cal-day{
-      min-height:34px;
-      padding:3px 2px;
-      gap:1px;
-      border-radius:4px;
-    }
-    .cal-daynum{font-size:9px;}
-    .cal-total{font-size:7px;}
-    .cal-bar{height:3px;}
-    .cal-counts{font-size:6.5px;gap:3px;}
-    .cal-urgent-badge, .cal-final-badge{font-size:5.5px;padding:0 3px;margin-top:1px;border-radius:6px;line-height:1.4;}
-    .cal-legend{font-size:8px;margin-top:5px;gap:8px;}
-    .cal-legend .dot{width:6px;height:6px;}
-  }
+  
 
   /* ---- Print-only vertical periods summary + print layout ---- */
   .print-only-block{display:none;}
@@ -644,14 +605,7 @@
   #printTargetGaugeBody .target-gauge-labels{width:190px;font-size:9.5px;font-weight:700;color:var(--ink);margin-top:1px;}
   #printTargetGaugeBody .target-gauge-empty{display:none;}
 
-  @media print{
-    #printTargetGaugeBody{
-      display:flex !important;
-      justify-content:center;
-      margin-bottom:10px;
-      page-break-inside:avoid;
-    }
-  }
+  
 
   .pp-card{
     border:1px solid var(--line);
@@ -866,131 +820,9 @@
   }
 
   #chartsCard{page-break-before:always;}
-  @media print{
-    #chartsCard{
-      page-break-before:always;
-      page-break-inside:auto;
-    }
-    .charts-page-inner{
-      display:flex;
-      flex-wrap:nowrap;
-      align-items:flex-start;
-      gap:6px;
-    }
-    .charts-left-col{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      flex:0 0 160px;
-      max-width:160px;
-    }
-    #overallSummaryCard, #closureReasonCard{
-      padding:6px 7px;
-      border-radius:6px;
-    }
-    #overallSummaryCard .ov-title{font-size:8.5px;margin-bottom:2px;}
-    #overallSummaryCard .ov-sub{font-size:6.5px;margin-bottom:5px;}
-    #overallSummaryCard .ov-q-block{margin-bottom:6px;}
-    #overallSummaryCard .ov-q-title{font-size:6.5px;margin-bottom:3px;}
-    #overallSummaryCard .quarter-donut-row{gap:5px;margin:0 0 6px;}
-    #overallSummaryCard .quarter-donut{width:30px;height:30px;}
-    #overallSummaryCard .quarter-donut-legend{font-size:6px;gap:1px;}
-    #overallSummaryCard .qdl-dot{width:5px;height:5px;}
-    #overallSummaryCard .hbar-label{flex-basis:34px;max-width:34px;font-size:5px;}
-    #overallSummaryCard .hbar-track{height:5px;}
-    #overallSummaryCard .hbar-count{flex-basis:10px;font-size:5px;}
-    .cr-title{font-size:8.5px;margin-bottom:4px;}
-    .cr-empty-note{font-size:6px;}
-    .cr-table{font-size:5px;}
-    .cr-table th, .cr-table td{padding:1.5px 1px;}
-    #chartsGrid{
-      display:grid;
-      grid-template-columns:repeat(2, 1fr);
-      gap:8px;
-      align-items:start;
-      flex:1 1 auto;
-      min-width:0;
-    }
-    #chartsGrid .quarter-block{
-      display:block;
-      width:100%;
-      min-width:0;
-      page-break-inside:avoid;
-      margin-bottom:0;
-      padding:4px 5px 6px;
-    }
-    #chartsGrid .quarter-block-title{
-      font-size:8.5px;
-      margin:0 0 4px;
-      padding:1px 8px;
-    }
-    .charts-grid{
-      display:grid;
-      grid-template-columns:repeat(2, 1fr);
-      gap:5px;
-    }
-    .chart-block{
-      padding:4px 5px;
-      page-break-inside:avoid;
-      overflow:hidden;
-      border-radius:6px;
-    }
-    .chart-block-title{font-size:6.8px;line-height:1.25;}
-    .chart-block-sub{font-size:5.6px;margin-bottom:3px;}
-    .hbar-list{gap:2px;}
-    .hbar-row{gap:3px;}
-    .hbar-label{flex-basis:42px;max-width:42px;font-size:5.4px;line-height:1.15;}
-    .hbar-track{height:6px;flex:1 1 auto;min-width:0;border-radius:8px;}
-    .hbar-count{flex-basis:12px;font-size:5.6px;}
-  }
+  
 
-  @media print{
-    .print-only-block{display:block;}
-    #periodsTableWrap{display:none;}
-    #colPicker, #periodPicker{display:none !important;}
-
-    .wrap{display:flex;flex-direction:row;align-items:flex-start;gap:8px;}
-    #results{flex:0 0 175px;max-width:175px;}
-    #results .card{margin-bottom:0;padding:8px 9px;}
-
-    .pp-card{padding:5px 6px;margin-bottom:5px;border-radius:5px;page-break-inside:avoid;}
-    .pp-card-title{font-size:9.5px;margin-bottom:1px;}
-    .pp-card-range{font-size:7.5px;margin-bottom:3px;}
-    .pp-card-table{font-size:8px;}
-    .pp-card-table td{padding:1px 2px;}
-
-    .calendars-print-col{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;gap:6px;}
-
-    #calMultiWrap{display:flex;flex-wrap:wrap;gap:6px;}
-    #calMultiWrap .month-block{flex:1 1 31%;max-width:32%;min-width:0;}
-
-    #quarterMultiWrap{display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:8px;}
-    .quarter-block{min-width:0;}
-    .quarter-block .cal-multi-wrap{flex-direction:column;gap:3px;max-width:100%;}
-    .quarter-block .month-block{width:100%;padding:2px;}
-    .quarter-block .month-block-title{font-size:7px;margin:0 0 1px;}
-    .quarter-block-title{font-size:9px;margin:0 0 3px;padding:1px 8px;}
-    .quarter-block .cal-grid{gap:1.5px;}
-    .quarter-block .cal-head{font-size:5.5px;padding:1px 0 2px;}
-    .quarter-block .cal-day{min-height:14px;padding:0 1px;gap:0;}
-    .quarter-block .cal-daynum{font-size:6px;}
-    .quarter-block .cal-total{font-size:4.5px;}
-    .quarter-block .cal-counts{font-size:4px;gap:1px;}
-    .quarter-block .cal-urgent-badge, .quarter-block .cal-final-badge{font-size:3.5px;padding:0 2px;margin-top:0.5px;border-radius:4px;line-height:1.3;}
-    .quarter-block .cal-bar{height:1.5px;}
-    .quarter-donut-row{gap:5px;margin:0 0 5px;}
-    .quarter-donut{width:26px;height:26px;}
-    .quarter-donut-legend{font-size:6.5px;gap:1px;}
-    .qdl-dot{width:5px;height:5px;}
-    .status-breakdown-row{margin:0 0 5px;}
-    .status-breakdown-row > *{margin-left:3px;margin-bottom:1px;}
-    .sb-item{padding:0.5px 1.5px;border-radius:2px;min-width:18px;}
-    .sb-pair .sb-item{margin-left:1px;}
-    .sb-label{font-size:4px;}
-    .sb-num{font-size:5.5px;}
-    .sb-group{padding:1.5px 2px;border-radius:3px;}
-    .sb-group-label{font-size:4.5px;}
-  }
+  
 
   /* Filter/mapping columns are no longer shown to the user — data loads
      automatically as soon as a file is attached, using auto-detected
@@ -1042,11 +874,7 @@
   }
   .emp-report-table td.emp-reports-cell{text-align:right;max-width:320px;line-height:1.9;padding-top:9px;padding-bottom:9px;}
   .emp-report-table td.emp-phone-cell{direction:ltr;text-align:center;}
-  @media print{
-    @page{size:landscape;margin:10mm;}
-    body.printing-employee-report{background:#fff;}
-    .emp-report-page{padding:0;}
-  }
+  
 
   :root{
     --ink:#1b1f23;
@@ -1130,6 +958,128 @@
 
   .hidden{display:none;}
 
+@media print{
+  @page{size:landscape;margin:8mm;}
+  .no-print{display:none !important;}
+  body{padding:0;background:#fff;}
+  .wrap{max-width:100%;}
+  .card{border:1px solid #999;box-shadow:none;margin-bottom:8px;padding:10px 12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;page-break-inside:avoid;}
+  h2{font-size:13px;margin:0 0 6px;}
+  .wrap-table{overflow-x:visible !important;}
+  table{font-size:9.5px;width:100%;table-layout:fixed;}
+  th,td{white-space:normal;padding:3px 2px;word-break:break-word;line-height:1.2;}
+
+  .cal-multi-wrap{gap:8px;}
+  .month-block{border:1px solid #999;padding:6px;page-break-inside:avoid;}
+  .month-block-title{font-size:11px;margin:0 0 4px;}
+  .quarter-block{padding:5px 6px 8px;page-break-inside:avoid;margin-bottom:8px;border-right-width:3px;}
+  .quarter-block-title{font-size:10px;margin:0 0 5px;padding:2px 10px;}
+  .cal-grid{gap:3px;}
+  .cal-head{font-size:9px;padding:2px 0 4px;}
+  .cal-day{min-height:34px;padding:3px 2px;gap:1px;border-radius:4px;}
+  .cal-daynum{font-size:9px;}
+  .cal-total{font-size:7px;}
+  .cal-bar{height:3px;}
+  .cal-counts{font-size:6.5px;gap:3px;}
+  .cal-urgent-badge,.cal-final-badge{font-size:5.5px;padding:0 3px;margin-top:1px;border-radius:6px;line-height:1.4;}
+  .cal-legend{font-size:8px;margin-top:5px;gap:8px;}
+  .cal-legend .dot{width:6px;height:6px;}
+
+  #printTargetGaugeBody{display:flex !important;justify-content:center;margin-bottom:10px;page-break-inside:avoid;}
+
+  .pp-card{padding:5px 6px;margin-bottom:5px;border-radius:5px;page-break-inside:avoid;}
+  .pp-card-title{font-size:9.5px;margin-bottom:1px;}
+  .pp-card-range{font-size:7.5px;margin-bottom:3px;}
+  .pp-card-table{font-size:8px;}
+  .pp-card-table td{padding:1px 2px;}
+
+  .print-only-block{display:block;}
+  #periodsTableWrap{display:none;}
+  #colPicker,#periodPicker{display:none !important;}
+
+  .wrap{display:block;}
+  #results{width:100%;max-width:100%;}
+  #results .card{margin-bottom:8px;padding:8px 9px;}
+
+  .calendars-print-col{display:block;width:100%;}
+
+  #calMultiWrap{display:flex;flex-wrap:wrap;gap:6px;}
+  #calMultiWrap .month-block{flex:1 1 30%;max-width:33%;min-width:0;}
+
+  #quarterMultiWrap{display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;}
+  .quarter-block{min-width:0;}
+  .quarter-block .cal-multi-wrap{flex-direction:column;gap:3px;max-width:100%;}
+  .quarter-block .month-block{width:100%;padding:2px;}
+  .quarter-block .month-block-title{font-size:7px;margin:0 0 1px;}
+  .quarter-block-title{font-size:9px;margin:0 0 3px;padding:1px 8px;}
+  .quarter-block .cal-grid{gap:1.5px;}
+  .quarter-block .cal-head{font-size:5.5px;padding:1px 0 2px;}
+  .quarter-block .cal-day{min-height:14px;padding:0 1px;gap:0;}
+  .quarter-block .cal-daynum{font-size:6px;}
+  .quarter-block .cal-total{font-size:4.5px;}
+  .quarter-block .cal-counts{font-size:4px;gap:1px;}
+  .quarter-block .cal-urgent-badge,.quarter-block .cal-final-badge{font-size:3.5px;padding:0 2px;margin-top:0.5px;border-radius:4px;line-height:1.3;}
+  .quarter-block .cal-bar{height:1.5px;}
+  .quarter-donut-row{gap:5px;margin:0 0 5px;}
+  .quarter-donut{width:26px;height:26px;}
+  .quarter-donut-legend{font-size:6.5px;gap:1px;}
+  .qdl-dot{width:5px;height:5px;}
+  .status-breakdown-row{margin:0 0 5px;}
+  .status-breakdown-row > *{margin-left:3px;margin-bottom:1px;}
+  .sb-item{padding:0.5px 1.5px;border-radius:2px;min-width:18px;}
+  .sb-pair .sb-item{margin-left:1px;}
+  .sb-label{font-size:4px;}
+  .sb-num{font-size:5.5px;}
+  .sb-group{padding:1.5px 2px;border-radius:3px;}
+  .sb-group-label{font-size:4.5px;}
+
+  #chartsCard{page-break-before:always;page-break-inside:auto;}
+  .charts-page-inner{display:flex;flex-wrap:nowrap;align-items:flex-start;gap:6px;}
+  .charts-left-col{display:flex;flex-direction:column;gap:6px;flex:0 0 160px;max-width:160px;}
+  #overallSummaryCard,#closureReasonCard{padding:6px 7px;border-radius:6px;}
+  #overallSummaryCard .ov-title{font-size:8.5px;margin-bottom:2px;}
+  #overallSummaryCard .ov-sub{font-size:6.5px;margin-bottom:5px;}
+  #overallSummaryCard .ov-q-block{margin-bottom:6px;}
+  #overallSummaryCard .ov-q-title{font-size:6.5px;margin-bottom:3px;}
+  #overallSummaryCard .quarter-donut-row{gap:5px;margin:0 0 6px;}
+  #overallSummaryCard .quarter-donut{width:30px;height:30px;}
+  #overallSummaryCard .quarter-donut-legend{font-size:6px;gap:1px;}
+  #overallSummaryCard .qdl-dot{width:5px;height:5px;}
+  #overallSummaryCard .hbar-label{flex-basis:34px;max-width:34px;font-size:5px;}
+  #overallSummaryCard .hbar-track{height:5px;}
+  #overallSummaryCard .hbar-count{flex-basis:10px;font-size:5px;}
+  .cr-title{font-size:8.5px;margin-bottom:4px;}
+  .cr-empty-note{font-size:6px;}
+  .cr-table{font-size:5px;}
+  .cr-table th,.cr-table td{padding:1.5px 1px;}
+  #chartsGrid{display:grid;grid-template-columns:repeat(2, 1fr);gap:8px;align-items:start;flex:1 1 auto;min-width:0;}
+  #chartsGrid .quarter-block{display:block;width:100%;min-width:0;page-break-inside:avoid;margin-bottom:0;padding:4px 5px 6px;}
+  #chartsGrid .quarter-block-title{font-size:8.5px;margin:0 0 4px;padding:1px 8px;}
+  .charts-grid{display:grid;grid-template-columns:repeat(2, 1fr);gap:5px;}
+  .chart-block{padding:4px 5px;page-break-inside:avoid;overflow:hidden;border-radius:6px;}
+  .chart-block-title{font-size:6.8px;line-height:1.25;}
+  .chart-block-sub{font-size:5.6px;margin-bottom:3px;}
+  .hbar-list{gap:2px;}
+  .hbar-row{gap:3px;}
+  .hbar-label{flex-basis:42px;max-width:42px;font-size:5.4px;line-height:1.15;}
+  .hbar-track{height:6px;flex:1 1 auto;min-width:0;border-radius:8px;}
+  .hbar-count{flex-basis:12px;font-size:5.6px;}
+
+  body.printing-employee-report > *:not(#employeeReportPrint){display:none !important;}
+  body.printing-employee-report #employeeReportPrint{display:block;padding:20px;font-family:"Segoe UI", Tahoma, Arial, sans-serif;color:var(--ink);}
+  .emp-report-page{page-break-after:always;}
+  .emp-report-page:last-child{page-break-after:auto;}
+  .emp-report-title{font-size:20px;font-weight:800;color:var(--accent);margin-bottom:4px;}
+  .emp-report-sub{font-size:12.5px;color:var(--muted);margin-bottom:16px;}
+  .emp-report-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .emp-report-table th,.emp-report-table td{border:1px solid var(--line);padding:7px 8px;text-align:center;}
+  .emp-report-table th{background:var(--accent);color:#fff;font-weight:800;font-size:14px;padding:10px 8px;letter-spacing:0.2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .emp-report-table td.emp-reports-cell{text-align:right;max-width:320px;line-height:1.9;padding-top:9px;padding-bottom:9px;}
+  .emp-report-table td.emp-phone-cell{direction:ltr;text-align:center;}
+  @page{size:landscape;margin:10mm;}
+  body.printing-employee-report{background:#fff;}
+  .emp-report-page{padding:0;}
+}
 </style>
 </head>
 <body>
