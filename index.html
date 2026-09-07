@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>تحليل التقييمات الأسبوعي</title>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -1131,38 +1130,11 @@
 
   .hidden{display:none;}
 
-
-
 </style>
 </head>
 <body>
-<div id="gateOuter" class="gate-outer">
-<div id="gateScreen" class="gate-card">
-  <h1>🔒 تسجيل الدخول</h1>
-  <div class="sub">اضغط الزر لإرسال كود تحقق مكوّن من 4 أرقام إلى الإيميل التالي:</div>
-  <div class="email-box">aq130096z@gmail.com</div>
 
-  <button class="btn" id="sendCodeBtn">📩 إرسال الكود</button>
-  <div class="status" id="sendStatus"></div>
-</div>
-<div id="otpScreen" class="gate-card hidden">
-  <h1>أدخل الكود</h1>
-  <div class="sub">تم إرسال كود مكوّن من 4 أرقام إلى الإيميل. اطلب الكود من المسؤول وأدخله هنا.</div>
-
-  <div class="otp-row">
-    <input type="tel" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="0">
-    <input type="tel" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="1">
-    <input type="tel" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="2">
-    <input type="tel" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="3">
-  </div>
-
-  <button class="btn" id="verifyBtn">✅ تحقق</button>
-  <button class="btn secondary" id="resendBtn">🔄 إعادة إرسال الكود</button>
-  <div class="status" id="verifyStatus"></div>
-</div>
-</div>
-
-<div id="mainToolWrap" class="hidden">
+<div id="mainToolWrap">
 
 <div class="wrap">
   <h1 class="no-print">تحليل التقييمات الأسبوعي</h1>
@@ -2697,9 +2669,6 @@ function refreshCurrentQuarterEffect(){
 }
 
 document.getElementById('refreshManualBtn').addEventListener('click', refreshCurrentQuarterEffect);
-
-
-
 
 // ---- Target satisfaction-percentage calculator (نسبة مطلوبة للرضا) ----
 // Given a target % typed by the person, works out how many MORE "راضي"
@@ -4823,96 +4792,6 @@ document.getElementById('exportMsgsBtn').addEventListener('click', () => {
 </script>
 
 </div>
-<script>
-
-  // ---- EmailJS configuration ----
-  const EMAILJS_PUBLIC_KEY = '3sIpO_opl58nY9IwN';
-  const EMAILJS_SERVICE_ID = 'service_xnqge7q';
-  const EMAILJS_TEMPLATE_ID = 'template_xjrn93o';
-
-  emailjs.init(EMAILJS_PUBLIC_KEY);
-
-  const gateScreen = document.getElementById('gateScreen');
-  const otpScreen = document.getElementById('otpScreen');
-  const sendCodeBtn = document.getElementById('sendCodeBtn');
-  const resendBtn = document.getElementById('resendBtn');
-  const verifyBtn = document.getElementById('verifyBtn');
-  const sendStatus = document.getElementById('sendStatus');
-  const verifyStatus = document.getElementById('verifyStatus');
-  const otpInputs = Array.from(document.querySelectorAll('.otp-digit'));
-
-  let currentCode = null; // the 4-digit code we generated & emailed, kept only in memory
-
-  function generateCode(){
-    return String(Math.floor(1000 + Math.random() * 9000));
-  }
-
-  function setStatus(el, msg, type){
-    el.textContent = msg;
-    el.className = 'status' + (type ? ' ' + type : '');
-  }
-
-  function sendCode(triggerBtn){
-    const code = generateCode();
-    triggerBtn.disabled = true;
-    setStatus(triggerBtn === sendCodeBtn ? sendStatus : verifyStatus, 'جارِ الإرسال...', '');
-
-    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { passcode: code })
-      .then(() => {
-        currentCode = code;
-        triggerBtn.disabled = false;
-        otpInputs.forEach(i => i.value = '');
-        gateScreen.classList.add('hidden');
-        otpScreen.classList.remove('hidden');
-        setStatus(verifyStatus, 'تم إرسال الكود بنجاح.', 'ok');
-        otpInputs[0].focus();
-      })
-      .catch((err) => {
-        triggerBtn.disabled = false;
-        console.error(err);
-        setStatus(triggerBtn === sendCodeBtn ? sendStatus : verifyStatus, 'تعذّر الإرسال: ' + (err && (err.text || err.message) ? (err.text || err.message) : JSON.stringify(err)), 'err');
-      });
-  }
-
-  sendCodeBtn.addEventListener('click', () => sendCode(sendCodeBtn));
-  resendBtn.addEventListener('click', () => sendCode(resendBtn));
-
-  // Auto-advance between the 4 boxes, and allow backspace to go back
-  otpInputs.forEach((input, idx) => {
-    input.addEventListener('input', () => {
-      input.value = input.value.replace(/[^0-9]/g, '').slice(0, 1);
-      if(input.value && idx < otpInputs.length - 1){
-        otpInputs[idx + 1].focus();
-      }
-    });
-    input.addEventListener('keydown', (e) => {
-      if(e.key === 'Backspace' && !input.value && idx > 0){
-        otpInputs[idx - 1].focus();
-      }
-    });
-  });
-
-  verifyBtn.addEventListener('click', () => {
-    const entered = otpInputs.map(i => i.value).join('');
-    if(entered.length < 4){
-      setStatus(verifyStatus, 'أدخل الأرقام الأربعة كاملة.', 'err');
-      return;
-    }
-    if(!currentCode){
-      setStatus(verifyStatus, 'لم يتم إرسال أي كود بعد.', 'err');
-      return;
-    }
-    if(entered === currentCode){
-      document.getElementById('gateOuter').classList.add('hidden');
-      document.getElementById('mainToolWrap').classList.remove('hidden');
-    } else {
-      setStatus(verifyStatus, '❌ الكود غير صحيح، حاول مرة أخرى.', 'err');
-      otpInputs.forEach(i => i.value = '');
-      otpInputs[0].focus();
-    }
-  });
-
-</script>
 
 <div id="employeeReportPrint"></div>
 
