@@ -622,7 +622,7 @@
     .cal-total{font-size:7px;}
     .cal-bar{height:3px;}
     .cal-counts{font-size:6.5px;gap:3px;}
-    .cal-urgent-badge, .cal-final-badge{font-size:5.5px;padding:0 3px;margin-top:1px;border-radius:6px;line-height:1.4;}
+    .cal-urgent-badge, .cal-final-badge, .cal-pending-review-badge{font-size:5.5px;padding:0 3px;margin-top:1px;border-radius:6px;line-height:1.4;}
     .cal-legend{font-size:8px;margin-top:5px;gap:8px;}
     .cal-legend .dot{width:6px;height:6px;}
   }
@@ -961,6 +961,17 @@
 
     .calendars-print-col{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;gap:6px;}
 
+    /* هذي الإضافات الأحدث (صناديق الحالي/المغلق/جديد، وشارة "قيد
+       المعالجة") تاخذ مساحة رأسية زيادة وتدفع التقويم لصفحة ثانية بدل ما
+       يبقى بجانب جدول الفترات بصفحة واحدة زي الأصل — فتُخفى من الطباعة
+       فقط (تبقى ظاهرة عادي على الشاشة). */
+    .status-breakdown-row{display:none !important;}
+    .cal-pending-review-badge{display:none !important;}
+    /* سطر مفتاح الألوان (اليوم الحالي/راضي/غير راضي...) كان يفيض لسطر
+       وحيد بصفحة شبه فاضية (لأن صفحة الرسوم البيانية تُجبر دائمًا على
+       صفحة جديدة بعده) — يُخفى من الطباعة فقط، يبقى ظاهر بالشاشة. */
+    .cal-legend{display:none !important;}
+
     #calMultiWrap{display:flex;flex-wrap:wrap;gap:6px;}
     #calMultiWrap .month-block{flex:1 1 31%;max-width:32%;min-width:0;}
 
@@ -976,7 +987,7 @@
     .quarter-block .cal-daynum{font-size:6px;}
     .quarter-block .cal-total{font-size:4.5px;}
     .quarter-block .cal-counts{font-size:4px;gap:1px;}
-    .quarter-block .cal-urgent-badge, .quarter-block .cal-final-badge{font-size:3.5px;padding:0 2px;margin-top:0.5px;border-radius:4px;line-height:1.3;}
+    .quarter-block .cal-urgent-badge, .quarter-block .cal-final-badge, .quarter-block .cal-pending-review-badge{font-size:3.5px;padding:0 2px;margin-top:0.5px;border-radius:4px;line-height:1.3;}
     .quarter-block .cal-bar{height:1.5px;}
     .quarter-donut-row{gap:5px;margin:0 0 5px;}
     .quarter-donut{width:26px;height:26px;}
@@ -1130,10 +1141,11 @@
 
   .hidden{display:none;}
 
+
+
 </style>
 </head>
 <body>
-
 <div id="mainToolWrap">
 
 <div class="wrap">
@@ -1682,6 +1694,19 @@ function isPendingClosureCheck(item){
   return normalizeArabic(item.systemStatus).includes(normalizeArabic('بانتظار التحقق من إجراء الإغلاق'));
 }
 
+// "قيد المعالجة - تقييم مقدم البلاغ" — مطابقة متسامحة (مو نص حرفي مطابق
+// 100%) عشان أي اختلاف بسيط بصياغة الملف الفعلي (كلمة زيادة زي "انتظار"،
+// مسافات، تشكيل...) ما يخلي الميزة تختفي بصمت. تشترط وجود الأجزاء
+// الأساسية الثلاثة: "قيد المعالجة" و"تقييم" و"مقدم البلاغ" بنفس الترتيب
+// تقريبًا داخل نص حالة البلاغ بالنظام.
+function isPendingReviewStatus(item){
+  if(!item.systemStatus) return false;
+  const norm = normalizeArabic(item.systemStatus);
+  return norm.includes(normalizeArabic('قيد المعالجة')) &&
+         norm.includes(normalizeArabic('تقييم')) &&
+         norm.includes(normalizeArabic('مقدم البلاغ'));
+}
+
 const CLOSURE_REASON_VALUES = [
   'تمت معالجة البلاغ بشكل نهائي',
   'البلاغ يتبع لجهة أخرى (خارج النطاق البلدي)',
@@ -2133,7 +2158,7 @@ function buildCalendarGridHtml(y, m){
     }).length;
 
     const finalResolvedCount = items.filter(it => (it.closureReason || '').trim() === 'تمت معالجة البلاغ بشكل نهائي').length;
-    const pendingReviewCount = items.filter(it => (it.systemStatus || '').trim() === 'قيد المعالجة - تقييم مقدم البلاغ').length;
+    const pendingReviewCount = items.filter(it => isPendingReviewStatus(it)).length;
 
     let inner = `<div class="cal-daynum">${d}</div>`;
     if(total > 0){
@@ -2670,6 +2695,9 @@ function refreshCurrentQuarterEffect(){
 
 document.getElementById('refreshManualBtn').addEventListener('click', refreshCurrentQuarterEffect);
 
+
+
+
 // ---- Target satisfaction-percentage calculator (نسبة مطلوبة للرضا) ----
 // Given a target % typed by the person, works out how many MORE "راضي"
 // reports (on top of the current quarter's actual/adjusted count) would be
@@ -2799,9 +2827,21 @@ function performLoadData(){
 
   parsedData = [];
   let badDates = 0;
+  let outlierDates = 0;
+  const currentYearNow = new Date().getFullYear();
+  const MIN_SANE_YEAR = currentYearNow - 12;
+  const MAX_SANE_YEAR = currentYearNow + 2;
   filteredRows.forEach((r, rowIdx) => {
     const date = parseDate(r[dIdx]);
     if(!date){ badDates++; return; }
+    // Guard against a single misparsed cell (e.g. a big number in the date
+    // column read as an Excel serial date, or a garbled string) silently
+    // stretching the whole file's min/max range and generating fake
+    // years/quarters in the month/quarter pickers that don't really exist
+    // in the data. Anything with a wildly implausible year is treated the
+    // same as an unparseable date — excluded, and counted separately so
+    // the person can see it happened.
+    if(date.getFullYear() < MIN_SANE_YEAR || date.getFullYear() > MAX_SANE_YEAR){ outlierDates++; return; }
     parsedData.push({
       id: rowIdx,
       date,
@@ -2832,6 +2872,22 @@ function performLoadData(){
     setStatus('لم أستطع قراءة أي تواريخ صحيحة من عمود التاريخ المكتشف (أو أن الفلاتر المطبقة استبعدت كل الصفوف).', true);
     return;
   }
+
+  // Safeguard against a single misparsed cell producing a wildly wrong
+  // date (e.g. year 1900 or 2099) — this used to silently blow up the
+  // whole month/quarter picker range with years/quarters that don't
+  // actually exist in the real data. Anything more than 3 years away
+  // from the MEDIAN date in the file is treated as a bad date and
+  // excluded, same as an unparseable one.
+  let outlierDatesExcluded = 0;
+  {
+    const sortedTimes = parsedData.map(p => p.date.getTime()).sort((a,b) => a-b);
+    const medianTime = sortedTimes[Math.floor(sortedTimes.length / 2)];
+    const THREE_YEARS_MS = 3 * 365 * 24 * 60 * 60 * 1000;
+    const beforeCount = parsedData.length;
+    parsedData = parsedData.filter(p => Math.abs(p.date.getTime() - medianTime) <= THREE_YEARS_MS);
+    outlierDatesExcluded = beforeCount - parsedData.length;
+  }
   rebuildPhoneCountMap();
 
   const totalAll = parsedData.length;
@@ -2858,8 +2914,33 @@ function performLoadData(){
   const maxD = new Date(Math.max(...times));
   fromDateInp.value = toInputDate(minD);
   toDateInp.value = toInputDate(maxD);
-  populateMonthSelect(minD, maxD);
-  populateQuarterCheckboxList(minD, maxD);
+
+  // For the month/quarter QUICK-PICK checkboxes specifically, use a
+  // density-based range instead of the raw min/max: a handful of stray
+  // rows with valid-but-sparse dates (a couple of reports months away
+  // from where the real data actually is) shouldn't stretch these lists
+  // into a bunch of mostly-empty fake quarters. The full raw range above
+  // is still used for the manual "من - إلى" period inputs, so nothing is
+  // ever hidden from the actual data — this only affects which
+  // months/quarters get auto-offered as checkboxes.
+  const monthCounts = new Map();
+  parsedData.forEach(p => {
+    const key = `${p.date.getFullYear()}-${p.date.getMonth()}`;
+    monthCounts.set(key, (monthCounts.get(key) || 0) + 1);
+  });
+  const densityThreshold = Math.max(3, totalAll * 0.01);
+  const denseMonthKeys = Array.from(monthCounts.entries())
+    .filter(([, count]) => count >= densityThreshold)
+    .map(([key]) => key);
+  let pickerMinD = minD, pickerMaxD = maxD;
+  if(denseMonthKeys.length > 0){
+    const denseDates = parsedData.filter(p => denseMonthKeys.includes(`${p.date.getFullYear()}-${p.date.getMonth()}`));
+    const denseTimes = denseDates.map(p=>p.date.getTime());
+    pickerMinD = new Date(Math.min(...denseTimes));
+    pickerMaxD = new Date(Math.max(...denseTimes));
+  }
+  populateMonthSelect(pickerMinD, pickerMaxD);
+  populateQuarterCheckboxList(pickerMinD, pickerMaxD);
 
   periods = [];
   document.getElementById('weeklyBody').innerHTML = '';
@@ -2871,6 +2952,7 @@ function performLoadData(){
 
   let msg = `تم تحميل وتحليل ${totalAll} بلاغ تلقائيًا. الآن حدد "من - إلى" واضغط "إضافة الفترة للجدول" لكل فترة تحتاجها.`;
   if(badDates > 0) msg += ` (تم تجاهل ${badDates} صف بسبب تاريخ غير صالح)`;
+  if(outlierDates > 0) msg += ` ⚠️ (تم تجاهل ${outlierDates} صف بتاريخ غير منطقي/بعيد جدًا — تحقق من عمود التاريخ لهذه الصفوف في الملف الأصلي)`;
   if(rIdx < 0) msg += ` ملاحظة: لم يتم العثور على عمود تقييم في الملف، سيتم اعتبار كل البلاغات "لا يوجد" في إحصاءات الرضا.`;
 
   // Diagnostic for the "⏰ أقل من 48 ساعة" / "متأخر" feature: tell the
@@ -4171,7 +4253,7 @@ function renderDayTable(){
   const satCount = items.filter(i => i.rating === 'راضي').length;
   const unsatCount = items.filter(i => i.rating === 'غير راضي').length;
   const noneCount = items.filter(i => i.rating === 'لا يوجد').length;
-  const pendingReviewItems = allItems.filter(i => (i.systemStatus || '').trim() === 'قيد المعالجة - تقييم مقدم البلاغ');
+  const pendingReviewItems = allItems.filter(i => isPendingReviewStatus(i));
 
   let html = `<div class="day-stats">
     <span class="stat-badge sat">راضي: ${satCount}</span>
@@ -4506,7 +4588,7 @@ function buildMatchedImageCellHtml(reportNo){
 
 function openPendingReviewModal(){
   const allItems = getDayItems(currentDayY, currentDayM, currentDayD);
-  const items = allItems.filter(i => (i.systemStatus || '').trim() === 'قيد المعالجة - تقييم مقدم البلاغ');
+  const items = allItems.filter(i => isPendingReviewStatus(i));
   dupRows = items;
   dupPhone = ''; // متعدد الأرقام هنا، مو رقم واحد
 
