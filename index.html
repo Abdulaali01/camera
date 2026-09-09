@@ -4342,7 +4342,7 @@ function renderDayTable(){
       <td>${item.street || '-'}</td>
       <td class="desc-cell">${item.desc || '-'}</td>
       <td>${item.reportNo || '-'} ${item.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${item.reportNo}">نسخ</button>` : ''}</td>
-      <td class="ltr">${dupCount > 1 ? `<span class="dup-count-badge">×${dupCount}</span>` : ''}${item.phone || '-'}${sentCheckHtml}</td>
+      <td class="ltr">${dupCount > 1 ? `<span class="dup-count-badge">×${dupCount}</span>` : ''}${item.phone || '-'}${item.phone ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${item.phone}">نسخ</button>` : ''}${sentCheckHtml}</td>
       <td>${item.status || '-'}${isPendingClosureCheck(item) ? '<br><span style="font-size:9.5px;color:#14532d;font-weight:700;">بانتظار التحقق من إجراء الإغلاق</span>' : ''}</td>
       <td>${fmtDateShort(item.date)}</td>
       <td>${remainingCell}</td>
@@ -4603,7 +4603,7 @@ function openPendingReviewModal(){
       <td>${r.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.reportNo}">نسخ</button>` : ''}</td>
       <td>${r.muni || '-'}</td>
       <td>${r.status || '-'}</td>
-      <td class="ltr">${r.phone || '-'}</td>
+      <td class="ltr">${r.phone || '-'}${r.phone ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.phone}">نسخ</button>` : ''}</td>
       <td>${buildMatchedImageCellHtml(r.reportNo)}</td>
     </tr>`;
   });
@@ -4649,7 +4649,7 @@ function openDuplicatesModal(phone){
       <td>${r.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.reportNo}">نسخ</button>` : ''}</td>
       <td>${r.muni || '-'}</td>
       <td>${r.status || '-'}</td>
-      <td class="ltr">${r.phone || '-'}</td>
+      <td class="ltr">${r.phone || '-'}${r.phone ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.phone}">نسخ</button>` : ''}</td>
       <td>${buildMatchedImageCellHtml(r.reportNo)}</td>
     </tr>`;
   });
