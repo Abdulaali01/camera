@@ -4787,6 +4787,16 @@ document.getElementById('dupCopyMsg').addEventListener('click', () => {
   }).catch(() => {
     alert('تعذّر النسخ التلقائي.');
   });
+
+  // نفس تجميد الصف اللي يصير بعد "مراسلة المستفيد" — بما إنك خلاص نسخت
+  // رسالة هذا البلاغ ونويت ترسلها، يصير معطّل مثل باقي البلاغات المُرسلة.
+  const phoneStats = rows[0] && rows[0].phone ? getPhoneStats(rows[0].phone) : null;
+  rows.forEach(r => {
+    if(r.reportNo) sentColors[r.reportNo] = 'orange';
+    addSentRecord('نسخ الرسالة', r, '-', phoneStats);
+  });
+  saveSentColors();
+  if(currentDayY) renderDayTable();
 });
 
 // "إرسال الملاحظات": compose and send an internal note (to any destination
@@ -4878,4 +4888,4 @@ document.getElementById('exportMsgsBtn').addEventListener('click', () => {
 <div id="employeeReportPrint"></div>
 
 </body>
-</html>
+</html
