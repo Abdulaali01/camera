@@ -4597,7 +4597,9 @@ function openPendingReviewModal(){
 
   let html = '';
   items.forEach((r, idx) => {
-    html += `<tr>
+    const rowColorClass = sentColors[r.reportNo] === 'orange' ? 'sent-orange' : (sentColors[r.reportNo] === 'blue' ? 'sent-blue' : '');
+    const normPhone = r.phone ? normalizePhoneForWhatsapp(r.phone) : '';
+    html += `<tr class="${rowColorClass}" data-phone="${normPhone}">
       <td><input type="checkbox" class="dup-check" data-idx="${idx}"></td>
       <td>${r.reportNo || '-'}</td>
       <td>${r.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.reportNo}">نسخ</button>` : ''}</td>
@@ -4643,7 +4645,9 @@ function openDuplicatesModal(phone){
 
   let html = '';
   openRows.forEach((r, idx) => {
-    html += `<tr>
+    const rowColorClass = sentColors[r.reportNo] === 'orange' ? 'sent-orange' : (sentColors[r.reportNo] === 'blue' ? 'sent-blue' : '');
+    const normPhone = r.phone ? normalizePhoneForWhatsapp(r.phone) : '';
+    html += `<tr class="${rowColorClass}" data-phone="${normPhone}">
       <td><input type="checkbox" class="dup-check" data-idx="${idx}"></td>
       <td>${r.reportNo || '-'}</td>
       <td>${r.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.reportNo}">نسخ</button>` : ''}</td>
@@ -4657,6 +4661,21 @@ function openDuplicatesModal(phone){
   document.getElementById('dupTableBody').innerHTML = html || `<tr><td colspan="7">لا توجد بلاغات</td></tr>`;
   document.getElementById('dupModalOverlay').classList.remove('hidden');
 }
+
+// إذا رقم الجوال مكرر داخل نفس النافذة (مثل نفس المستفيد له أكثر من بلاغ
+// بنفس اليوم)، تحديد أي بلاغ منها يعلّم تلقائيًا كل البلاغات الثانية
+// اللي لها نفس رقم الجوال بالضبط.
+document.getElementById('dupTableBody').addEventListener('change', (e) => {
+  const chk = e.target.closest('.dup-check');
+  if(!chk) return;
+  const row = chk.closest('tr');
+  const phone = row ? row.getAttribute('data-phone') : '';
+  if(!phone) return;
+  document.querySelectorAll(`#dupTableBody tr[data-phone="${phone}"]`).forEach(r => {
+    const c = r.querySelector('.dup-check');
+    if(c) c.checked = chk.checked;
+  });
+});
 
 document.getElementById('dupTableBody').addEventListener('click', (e) => {
   const imgThumb = e.target.closest('.matched-img-thumb');
@@ -4888,4 +4907,4 @@ document.getElementById('exportMsgsBtn').addEventListener('click', () => {
 <div id="employeeReportPrint"></div>
 
 </body>
-</html
+</html>
