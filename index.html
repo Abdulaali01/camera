@@ -587,7 +587,7 @@
   .quarter-block .cal-head{font-size:9px;padding:2px 0 4px;}
 
   @media print{
-    @page{size:landscape;margin:8mm;}
+    @page{size:landscape;margin:6mm;}
     .no-print{display:none !important;}
     body{padding:0;background:#fff;}
     .wrap{max-width:100%;}
@@ -700,6 +700,8 @@
   .cr-empty-note{font-size:12px;color:var(--muted);}
   .cr-table{width:100%;border-collapse:collapse;font-size:11px;}
   .cr-table th, .cr-table td{padding:5px 3px;border-bottom:1px solid var(--line);text-align:center;}
+  .cr-table tr.cr-subrow td:first-child{color:var(--muted);font-size:11px;font-weight:400;padding-right:14px;}
+  .cr-table tr.cr-subrow td{color:var(--muted);}
   .cr-table th:first-child, .cr-table td:first-child{text-align:right;}
   .cr-table thead th{background:#f2efe9;font-weight:700;}
   #chartsGrid{
@@ -866,6 +868,45 @@
   }
 
   #chartsCard{page-break-before:always;}
+
+  /* ---- كروت "ربع × سبب إغلاق" (تظهر فقط بالطباعة) ---- */
+  .qr-page-title{font-size:16px;font-weight:700;color:var(--accent);margin-bottom:12px;}
+  .qr-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:14px;
+  }
+  .qr-card{
+    border:2px solid #4a4038;
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .qr-title{
+    background:var(--accent);
+    color:#fff;
+    text-align:center;
+    font-size:18px;
+    font-weight:800;
+    padding:8px;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .qr-subtitle{
+    background:#eee;
+    text-align:center;
+    font-size:13px;
+    font-weight:600;
+    padding:8px;
+    border-bottom:2px solid #4a4038;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .qr-table{width:100%;border-collapse:collapse;font-size:11.5px;}
+  .qr-table th, .qr-table td{border:1px solid #4a4038;padding:6px 4px;text-align:center;}
+  .qr-table th{background:#f2efe9;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .qr-table td.qr-label{text-align:center;font-weight:700;}
+  .qr-table th.qr-subhead{font-size:9px;font-weight:600;background:#fdfcfa;}
+  .qr-table td.qr-reason-cell{text-align:right;font-size:10.5px;}
   @media print{
     #chartsCard{
       page-break-before:always;
@@ -901,7 +942,7 @@
     #overallSummaryCard .hbar-count{flex-basis:10px;font-size:5px;}
     .cr-title{font-size:8.5px;margin-bottom:4px;}
     .cr-empty-note{font-size:6px;}
-    .cr-table{font-size:5px;}
+    .cr-table{font-size:7.5px;}
     .cr-table th, .cr-table td{padding:1.5px 1px;}
     #chartsGrid{
       display:grid;
@@ -942,6 +983,36 @@
     .hbar-label{flex-basis:42px;max-width:42px;font-size:5.4px;line-height:1.15;}
     .hbar-track{height:6px;flex:1 1 auto;min-width:0;border-radius:8px;}
     .hbar-count{flex-basis:12px;font-size:5.6px;}
+
+    #quarterSummaryCardsPage{
+      display:none;
+    }
+    body.printing-quarter-summary #quarterSummaryCardsPage{
+      page-break-before:auto;
+      display:block;
+      width:100%;
+    }
+    #quarterSummaryCardsPage .qr-page-title{font-size:13px;margin-bottom:8px;}
+    #quarterSummaryCardsPage .qr-grid{
+      grid-template-columns:1fr;
+      gap:8px;
+    }
+    #quarterSummaryCardsPage .qr-card{page-break-inside:avoid;margin-bottom:4px;}
+    #quarterSummaryCardsPage .qr-title{font-size:13px;padding:5px;}
+    #quarterSummaryCardsPage .qr-subtitle{font-size:10px;padding:5px;}
+    #quarterSummaryCardsPage .qr-table{
+      font-size:8px;
+      table-layout:fixed;
+      width:100%;
+    }
+    #quarterSummaryCardsPage .qr-table th, #quarterSummaryCardsPage .qr-table td{
+      padding:4px 2px;
+      overflow-wrap:break-word;
+      word-break:break-word;
+    }
+    #quarterSummaryCardsPage .qr-table th.qr-subhead{font-size:7.5px;}
+    #quarterSummaryCardsPage .qr-table td.qr-reason-cell{font-size:8px;}
+    #quarterSummaryCardsPage:empty{page-break-before:auto;display:none;}
   }
 
   @media print{
@@ -975,24 +1046,24 @@
     #calMultiWrap{display:flex;flex-wrap:wrap;gap:6px;}
     #calMultiWrap .month-block{flex:1 1 31%;max-width:32%;min-width:0;}
 
-    #quarterMultiWrap{display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:8px;}
+    #quarterMultiWrap{display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:6px;}
     .quarter-block{min-width:0;}
-    .quarter-block .cal-multi-wrap{flex-direction:column;gap:3px;max-width:100%;}
-    .quarter-block .month-block{width:100%;padding:2px;}
-    .quarter-block .month-block-title{font-size:7px;margin:0 0 1px;}
-    .quarter-block-title{font-size:9px;margin:0 0 3px;padding:1px 8px;}
-    .quarter-block .cal-grid{gap:1.5px;}
-    .quarter-block .cal-head{font-size:5.5px;padding:1px 0 2px;}
-    .quarter-block .cal-day{min-height:14px;padding:0 1px;gap:0;}
-    .quarter-block .cal-daynum{font-size:6px;}
-    .quarter-block .cal-total{font-size:4.5px;}
-    .quarter-block .cal-counts{font-size:4px;gap:1px;}
-    .quarter-block .cal-urgent-badge, .quarter-block .cal-final-badge, .quarter-block .cal-pending-review-badge{font-size:3.5px;padding:0 2px;margin-top:0.5px;border-radius:4px;line-height:1.3;}
-    .quarter-block .cal-bar{height:1.5px;}
-    .quarter-donut-row{gap:5px;margin:0 0 5px;}
-    .quarter-donut{width:26px;height:26px;}
-    .quarter-donut-legend{font-size:6.5px;gap:1px;}
-    .qdl-dot{width:5px;height:5px;}
+    .quarter-block .cal-multi-wrap{flex-direction:column;gap:2px;max-width:100%;}
+    .quarter-block .month-block{width:100%;padding:1px;}
+    .quarter-block .month-block-title{font-size:6px;margin:0 0 1px;}
+    .quarter-block-title{font-size:8px;margin:0 0 2px;padding:1px 7px;}
+    .quarter-block .cal-grid{gap:1px;}
+    .quarter-block .cal-head{font-size:5px;padding:0.5px 0 1.5px;}
+    .quarter-block .cal-day{min-height:11px;padding:0 1px;gap:0;}
+    .quarter-block .cal-daynum{font-size:5.5px;}
+    .quarter-block .cal-total{font-size:4px;}
+    .quarter-block .cal-counts{font-size:3.5px;gap:1px;}
+    .quarter-block .cal-urgent-badge, .quarter-block .cal-final-badge, .quarter-block .cal-pending-review-badge{font-size:3px;padding:0 1px;margin-top:0.3px;border-radius:3px;line-height:1.2;}
+    .quarter-block .cal-bar{height:1px;}
+    .quarter-donut-row{gap:4px;margin:0 0 3px;}
+    .quarter-donut{width:20px;height:20px;}
+    .quarter-donut-legend{font-size:5.5px;gap:0.5px;}
+    .qdl-dot{width:4px;height:4px;}
     .status-breakdown-row{margin:0 0 5px;}
     .status-breakdown-row > *{margin-left:3px;margin-bottom:1px;}
     .sb-item{padding:0.5px 1.5px;border-radius:2px;min-width:18px;}
@@ -1011,7 +1082,9 @@
 
   /* ---- Per-employee print report (طباعة تقرير الموظفين) ---- */
   #employeeReportPrint{display:none;}
+  #quarterSummaryCardsPage{display:none;}
   body.printing-employee-report > *:not(#employeeReportPrint){display:none !important;}
+  body.printing-quarter-summary > *:not(#quarterSummaryCardsPage){display:none !important;}
   body.printing-employee-report #employeeReportPrint{
     display:block;
     padding:20px;
@@ -1261,6 +1334,10 @@
           <label>عمود: نهج وطريقة موظف الأمانة (اختياري)</label>
           <select id="approachCol"></select>
         </div>
+        <div class="field">
+          <label>عمود: الرضا عن جودة الإغلاق (اختياري)</label>
+          <select id="closureQualityCol"></select>
+        </div>
       </div>
       <div class="row" style="margin-top:18px;border-top:1px dashed var(--line);padding-top:14px;">
         <div class="field">
@@ -1391,6 +1468,7 @@
         <button class="btn print-btn" id="printBtn">🖨️ طباعة الجدول والتقويم</button>
         <button class="btn print-btn" id="printEmployeeBtn" style="background:#3d6b8a;">🖨️ طباعة تقرير الموظفين</button>
         <button class="btn print-btn" id="exportEmployeeExcelBtn" style="background:#c9971f;">💾 تصدير تقرير الموظفين (Excel)</button>
+        <button class="btn print-btn" id="printQuarterSummaryBtn" style="background:#6a4f9c;">🖨️ طباعة جداول الأرباع</button>
       </div>
       <h2>الفترات المضافة</h2>
       <div class="wrap-table" id="periodsTableWrap">
@@ -1602,6 +1680,7 @@ const systemStatusColSel = document.getElementById('systemStatusCol');
 const effortColSel = document.getElementById('effortCol');
 const timeSatColSel = document.getElementById('timeSatCol');
 const approachColSel = document.getElementById('approachCol');
+const closureQualityColSel = document.getElementById('closureQualityCol');
 const closureReasonColSel = document.getElementById('closureReasonCol');
 const assignedEmployeeColSel = document.getElementById('assignedEmployeeCol');
 const classificationColSel = document.getElementById('classificationCol');
@@ -1662,6 +1741,7 @@ let hasStatusCol = false;
 let hasEffortCol = false;
 let hasTimeSatCol = false;
 let hasApproachCol = false;
+let hasClosureQualityCol = false;
 let hasClosureReasonCol = false;
 let hasRatingCol = false;
 
@@ -1713,7 +1793,8 @@ const CLOSURE_REASON_VALUES = [
   'عدم استدلال – المبلغ لا يرد',
   'البلاغ غير صحيح / خاطئ',
   'تمت معالجة البلاغ بشكل جزئي',
-  'تم تطبيق الغرامات والعقوبات اللازمة'
+  'تم تطبيق الغرامات والعقوبات اللازمة',
+  'تم انشاء طلب خدمة بلدية'
 ];
 
 // Exact "حالة البلاغ في النظام" / "مصدر البلاغ" values that are excluded
@@ -1865,6 +1946,7 @@ function handleFile(file, onComplete){
       effortColSel.innerHTML = optionalColHtml;
       timeSatColSel.innerHTML = optionalColHtml;
       approachColSel.innerHTML = optionalColHtml;
+      closureQualityColSel.innerHTML = optionalColHtml;
       closureReasonColSel.innerHTML = optionalColHtml;
       assignedEmployeeColSel.innerHTML = optionalColHtml;
       classificationColSel.innerHTML = optionalColHtml;
@@ -1874,6 +1956,7 @@ function handleFile(file, onComplete){
       autoSelectByKeyword(effortColSel, ['ما مقدار الجهد الذي بذلته لمتابعة حالة البلاغ؟','مقدار الجهد','الجهد الذي بذلته','الجهد']);
       autoSelectByKeyword(timeSatColSel, ['ما مدى رضاك عن الوقت المستغرق في معالجة البلاغ؟','الوقت المستغرق في معالجة البلاغ','الوقت المستغرق']);
       autoSelectByKeyword(approachColSel, ['ما مدى رضاك عن نهج وطريقة موظف الامانة في محاولة معالجة البلاغ؟','نهج وطريقة موظف الامانة','نهج وطريقة موظف الأمانة','موظف الامانة','موظف الأمانة']);
+      autoSelectByKeyword(closureQualityColSel, ['ما مدى رضاك عن جودة الإغلاق؟','ما مدى رضاك عن جودة الاغلاق؟','جودة الإغلاق','جودة الاغلاق']);
       autoSelectByKeyword(closureReasonColSel, ['سبب الإغلاق','سبب الاغلاق','سبب غلق البلاغ','سبب غلق']);
       autoSelectByKeyword(assignedEmployeeColSel, ['اسم الموظف المسند اليه','الموظف المسند اليه','اسم الموظف','الموظف المسؤول']);
       autoSelectByKeyword(classificationColSel, ['التصنيف التخصصي','التصنيف']);
@@ -2811,6 +2894,7 @@ function performLoadData(){
   const effIdx = parseInt(effortColSel.value,10);
   const tsIdx = parseInt(timeSatColSel.value,10);
   const apIdx = parseInt(approachColSel.value,10);
+  const cqIdx = parseInt(closureQualityColSel.value,10);
   const crIdx = parseInt(closureReasonColSel.value,10);
   const aeIdx = parseInt(assignedEmployeeColSel.value,10);
   const clsIdx = parseInt(classificationColSel.value,10);
@@ -2820,6 +2904,7 @@ function performLoadData(){
   hasEffortCol = effIdx >= 0;
   hasTimeSatCol = tsIdx >= 0;
   hasApproachCol = apIdx >= 0;
+  hasClosureQualityCol = cqIdx >= 0;
   hasClosureReasonCol = crIdx >= 0;
   hasRatingCol = rIdx >= 0;
 
@@ -2850,6 +2935,7 @@ function performLoadData(){
       effort: (effIdx>=0 && r[effIdx]!==undefined && String(r[effIdx]).trim()!=='') ? String(r[effIdx]).trim() : '',
       timeSat: (tsIdx>=0 && r[tsIdx]!==undefined && String(r[tsIdx]).trim()!=='') ? String(r[tsIdx]).trim() : '',
       approach: (apIdx>=0 && r[apIdx]!==undefined && String(r[apIdx]).trim()!=='') ? String(r[apIdx]).trim() : '',
+      closureQuality: (cqIdx>=0 && r[cqIdx]!==undefined && String(r[cqIdx]).trim()!=='') ? String(r[cqIdx]).trim() : '',
       closureReason: (crIdx>=0 && r[crIdx]!==undefined) ? String(r[crIdx]).trim() : '',
       assignedEmployee: (aeIdx>=0 && r[aeIdx]!==undefined) ? String(r[aeIdx]).trim() : '',
       classification: (clsIdx>=0 && r[clsIdx]!==undefined) ? String(r[clsIdx]).trim() : '',
@@ -3349,6 +3435,10 @@ function renderOverallSummary(){
 // raw column value). Values that don't match any of the fixed categories
 // are simply not counted in this table (it's a fixed-category summary,
 // not a full breakdown).
+function normalizeDashes(str){
+  return String(str || '').replace(/[\u2010-\u2015]/g, '-');
+}
+
 function countClosureReasonForQuarter(value){
   const months = getQuarterMonths(value);
   const first = months[0];
@@ -3360,9 +3450,11 @@ function countClosureReasonForQuarter(value){
 
   const counts = {};
   CLOSURE_REASON_VALUES.forEach(v => counts[v] = 0);
+  const normalizedTargets = CLOSURE_REASON_VALUES.map(v => normalizeDashes(v));
   items.forEach(it => {
-    const v = (it.closureReason || '').trim();
-    if(counts.hasOwnProperty(v)) counts[v]++;
+    const v = normalizeDashes((it.closureReason || '').trim());
+    const idx = normalizedTargets.indexOf(v);
+    if(idx >= 0) counts[CLOSURE_REASON_VALUES[idx]]++;
   });
   return counts;
 }
@@ -3370,6 +3462,66 @@ function countClosureReasonForQuarter(value){
 // Builds the small "سبب الإغلاق" table: one row per fixed category, one
 // column per selected quarter (labelled Q1..Q4, in the same order as the
 // quarter checkboxes were selected — up to 4 quarters).
+// عدّاد عام مقيّد بسبب إغلاق معيّن: لأي عمود استبيان، يرجّع خريطة
+// "القيمة → عددها" ضمن ربع معيّن، لكن فقط للبلاغات اللي سبب إغلاقها
+// يطابق reasonFilter بالضبط — عشان كل سبب إغلاق يطلع ومعه تفصيل
+// الاستبيان الخاص فيه هو بس، مو كل البلاغات.
+function countColumnValuesForQuarterByReason(quarterValue, fieldKey, reasonFilter){
+  const months = getQuarterMonths(quarterValue);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  const normReason = normalizeDashes(reasonFilter);
+  const items = parsedData.filter(p =>
+    p.date >= rangeStart && p.date <= rangeEnd &&
+    normalizeDashes((p.closureReason || '').trim()) === normReason
+  );
+
+  const map = new Map();
+  items.forEach(it => {
+    const v = (it[fieldKey] || '').toString().trim() || 'لا يوجد';
+    map.set(v, (map.get(v) || 0) + 1);
+  });
+  return map;
+}
+
+// أسئلة الاستبيان الأربعة المطلوب اختصار اسمها وإدراج كونت قيمها داخل
+// نفس جدول "أسباب الإغلاق" (أعمدة Q1..Q4)، كل قيمة بصف مستقل، متداخلة
+// تحت كل سبب إغلاق مباشرة (مقتصرة على بلاغات ذلك السبب تحديدًا).
+const QTABLE_SURVEY_DEFS = [
+  {key:'timeSat', hasFn:()=>hasTimeSatCol, shortLabel:'الوقت المستغرق'},
+  {key:'closureQuality', hasFn:()=>hasClosureQualityCol, shortLabel:'رضا الإغلاق'},
+  {key:'effort', hasFn:()=>hasEffortCol, shortLabel:'الجهد المبذول'},
+  {key:'approach', hasFn:()=>hasApproachCol, shortLabel:'نهج الموظف'}
+];
+
+// يبني صفوف تفصيل الاستبيان الخاصة بسبب إغلاق واحد بعينه، متداخلة (بمسافة
+// بادئة "↳") مباشرة تحت صف ذلك السبب بالجدول.
+function buildSurveyRowsForReason(quarters, reasonValue){
+  let rowsHtml = '';
+  QTABLE_SURVEY_DEFS.forEach(def => {
+    if(!def.hasFn()) return;
+    const perQuarterMaps = quarters.map(v => countColumnValuesForQuarterByReason(v, def.key, reasonValue));
+    const totals = new Map();
+    perQuarterMaps.forEach(map => {
+      map.forEach((count, val) => totals.set(val, (totals.get(val) || 0) + count));
+    });
+    // يتجاهل هذا السؤال كليًا لهذا السبب لو ما فيه ولا بلاغ واحد يطابقه
+    // بأي ربع (يمنع صفوف فاضية بكل أصفار).
+    const sortedValues = Array.from(totals.entries())
+      .filter(([, total]) => total > 0)
+      .sort((a,b) => b[1]-a[1])
+      .map(([v]) => v);
+    sortedValues.forEach(val => {
+      const cells = perQuarterMaps.map(map => `<td>${map.get(val) || 0}</td>`).join('');
+      rowsHtml += `<tr class="cr-subrow"><td>↳ ${def.shortLabel}: ${val}</td>${cells}</tr>`;
+    });
+  });
+  return rowsHtml;
+}
+
 function buildClosureReasonTableHtml(){
   if(selectedQuarters.length === 0){
     return '<div class="cr-empty-note">اختر ربعًا واحدًا على الأقل من قائمة "فلترة ربع سنوية" لعرض الجدول.</div>';
@@ -3377,8 +3529,13 @@ function buildClosureReasonTableHtml(){
 
   const quarters = selectedQuarters.slice(0, 4);
   const perQuarterCounts = quarters.map(v => countClosureReasonForQuarter(v));
+  const perQuarterStats = quarters.map(v => computeQuarterStats(v));
 
   const headCells = perQuarterCounts.map((_, i) => `<th>Q${i+1}</th>`).join('');
+
+  const satRow = `<tr><td>راضي</td>${perQuarterStats.map(s => `<td>${s.satAdjusted}</td>`).join('')}</tr>`;
+  const unsatRow = `<tr><td>غير راضي</td>${perQuarterStats.map(s => `<td>${s.unsatAdjusted}</td>`).join('')}</tr>`;
+
   const bodyRows = CLOSURE_REASON_VALUES.map(val => {
     const cells = perQuarterCounts.map(c => `<td>${c[val]}</td>`).join('');
     return `<tr><td>${val}</td>${cells}</tr>`;
@@ -3386,14 +3543,15 @@ function buildClosureReasonTableHtml(){
 
   return `<table class="cr-table">
     <thead><tr><th>سبب الإغلاق</th>${headCells}</tr></thead>
-    <tbody>${bodyRows}</tbody>
+    <tbody>${satRow}${unsatRow}${bodyRows}</tbody>
   </table>`;
 }
 
 function renderClosureReasonCard(){
   const el = document.getElementById('closureReasonCard');
   if(!el) return;
-  if(!hasClosureReasonCol || parsedData.length === 0){
+  const anySurveyMapped = QTABLE_SURVEY_DEFS.some(d => d.hasFn());
+  if((!hasClosureReasonCol && !anySurveyMapped) || parsedData.length === 0){
     el.classList.add('hidden');
     return;
   }
@@ -3406,6 +3564,131 @@ function renderClosureReasonCard(){
 // scoped to its own data only. Requires quarters to be selected via the
 // "فلترة ربع سنوية" checkboxes first. Also renders the combined
 // all-quarters summary card and the closure-reason table alongside it.
+// ---- كروت طباعة "ربع × سبب إغلاق" ----
+// لكل ربع مُحدد، ولكل سبب إغلاق فيه بلاغات فعلية (>0)، يُبنى كرت مستقل
+// بنفس القالب المطلوب، لكن مجمّعة: كرت واحد فقط لكل ربع (بدل كرت لكل
+// سبب إغلاق لحاله) — أسباب الإغلاق تصير صفوف داخل جدول واحد، وتحت
+// الجدول إجمالي الربع ونسبه ومكرراته كاملة.
+function getQuarterReasonItems(quarterValue, reasonValue){
+  const months = getQuarterMonths(quarterValue);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  const normReason = normalizeDashes(reasonValue);
+  return parsedData.filter(p =>
+    p.date >= rangeStart && p.date <= rangeEnd &&
+    normalizeDashes((p.closureReason || '').trim()) === normReason
+  );
+}
+
+function getQuarterAllItems(quarterValue){
+  const months = getQuarterMonths(quarterValue);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  return parsedData.filter(p => p.date >= rangeStart && p.date <= rangeEnd);
+}
+
+function buildQuarterCardHtml(qIdx, quarterValue){
+  // لكل سؤال استبيان ممسوح: يجمع كل القيم المختلفة اللي فعليًا ظهرت (بأي
+  // سبب إغلاق) بهذا الربع، مرتبة تنازليًا حسب مجموع تكرارها — هذي تصير
+  // أعمدة أفقية فرعية تحت اسم السؤال (بدون أي تكرار للقيمة نفسها).
+  const questionValueSets = QTABLE_SURVEY_DEFS.filter(d => d.hasFn()).map(def => {
+    const valueTotals = new Map();
+    CLOSURE_REASON_VALUES.forEach(reasonValue => {
+      const valMap = countColumnValuesForQuarterByReason(quarterValue, def.key, reasonValue);
+      valMap.forEach((count, val) => valueTotals.set(val, (valueTotals.get(val) || 0) + count));
+    });
+    const values = Array.from(valueTotals.entries())
+      .filter(([, c]) => c > 0)
+      .sort((a,b) => b[1]-a[1])
+      .map(([v]) => v);
+    return {def, values};
+  }).filter(qs => qs.values.length > 0);
+
+  const totalValueCols = questionValueSets.reduce((s, qs) => s + qs.values.length, 0);
+  const totalCols = 1 + totalValueCols + 2; // سبب الإغلاق + كل قيم الأسئلة + راضي + غير راضي
+
+  const topHeaderCells = questionValueSets.map(qs => `<th colspan="${qs.values.length}">${qs.def.shortLabel}</th>`).join('');
+  const subHeaderCells = questionValueSets.map(qs => qs.values.map(v => `<th class="qr-subhead">${v}</th>`).join('')).join('');
+  const headerRow1 = `<tr><th rowspan="2">سبب الإغلاق</th>${topHeaderCells}<th colspan="2">التقييم العام</th></tr>`;
+  const headerRow2 = `<tr>${subHeaderCells}<th>راضي</th><th>غير راضي</th></tr>`;
+
+  // صف أفقي واحد لكل سبب إغلاق فيه بلاغات فعلية — كل قيمة بعمودها الخاص،
+  // بدون أي صفوف متكررة.
+  const reasonRows = CLOSURE_REASON_VALUES.map(reasonValue => {
+    const items = getQuarterReasonItems(quarterValue, reasonValue);
+    if(items.length === 0) return '';
+    const sat = items.filter(i => i.rating === 'راضي').length;
+    const unsat = items.filter(i => i.rating === 'غير راضي').length;
+
+    const questionCells = questionValueSets.map(qs => {
+      const valMap = countColumnValuesForQuarterByReason(quarterValue, qs.def.key, reasonValue);
+      return qs.values.map(v => `<td>${valMap.get(v) || 0}</td>`).join('');
+    }).join('');
+
+    return `<tr><td class="qr-reason-cell">${reasonValue}</td>${questionCells}<td>${sat}</td><td>${unsat}</td></tr>`;
+  }).join('');
+
+  // إجمالي/نسب/مكررات — مقتصرة على نفس مجموعة البلاغات المستخدمة بصفوف
+  // أسباب الإغلاق أعلاه (بلاغات لها سبب إغلاق من ضمن الأسباب المتابَعة)،
+  // مو كل بلاغات الربع (اللي فيها بلاغات مفتوحة/بحالات ثانية بعدد أكبر
+  // بكثير — هذا هو سبب "الفرق الشاسع" اللي لوحظ).
+  const allItems = CLOSURE_REASON_VALUES.flatMap(reasonValue => getQuarterReasonItems(quarterValue, reasonValue));
+  const total = allItems.length;
+  const sat = allItems.filter(i => i.rating === 'راضي').length;
+  const unsat = allItems.filter(i => i.rating === 'غير راضي').length;
+  const particip = sat + unsat;
+  const satPct = particip ? (sat/particip*100) : 0;
+  const unsatPct = particip ? (unsat/particip*100) : 0;
+  const participPct = total ? (particip/total*100) : 0;
+  const dupCount = allItems.filter(i => isDuplicatePhone(i)).length;
+  const nonDupCount = total - dupCount;
+
+  const thirdA = Math.max(1, Math.floor(totalCols/3));
+  const thirdB = Math.max(1, Math.floor(totalCols/3));
+  const thirdC = Math.max(1, totalCols - thirdA - thirdB);
+  const halfA = Math.max(1, Math.ceil(totalCols/2));
+  const halfB = Math.max(1, totalCols - halfA);
+
+  return `<div class="qr-card">
+    <div class="qr-title">${'Q' + quarterValue.split('-Q')[1]}</div>
+    <div class="qr-subtitle">${quarterValueLabel(quarterValue)}</div>
+    <table class="qr-table">
+      ${headerRow1}
+      ${headerRow2}
+      ${reasonRows || `<tr><td colspan="${totalCols}">لا توجد بلاغات مغلقة بهذا الربع</td></tr>`}
+      <tr><td colspan="${totalCols-1}" class="qr-label">الاجمالي</td><td>${total}</td></tr>
+      <tr><th colspan="${thirdA}">غير الرضاء</th><th colspan="${thirdB}">الرضى</th><th colspan="${thirdC}">نسبه المشاركة</th></tr>
+      <tr><td colspan="${thirdA}">${unsatPct.toFixed(1)}%</td><td colspan="${thirdB}">${satPct.toFixed(1)}%</td><td colspan="${thirdC}">${participPct.toFixed(1)}%</td></tr>
+      <tr><td colspan="${thirdA}">${unsat}</td><td colspan="${thirdB}">${sat}</td><td colspan="${thirdC}">${particip}</td></tr>
+      <tr><th colspan="${halfA}">بلاغات مكرره حسب الجوال</th><th colspan="${halfB}">بلاغات غير مكرره حسب الجوال</th></tr>
+      <tr><td colspan="${halfA}">${dupCount}</td><td colspan="${halfB}">${nonDupCount}</td></tr>
+    </table>
+  </div>`;
+}
+
+
+// صفحة طباعة كاملة: كرت واحد لكل ربع مُحدد (حتى 4 أرباع)، تترتب شبكة
+// 2×2 بنفس الصفحة تلقائيًا.
+function renderQuarterSummaryCardsPage(){
+  const el = document.getElementById('quarterSummaryCardsPage');
+  if(!el) return;
+  if(!hasClosureReasonCol || parsedData.length === 0 || selectedQuarters.length === 0){
+    el.innerHTML = '';
+    return;
+  }
+
+  const quarters = selectedQuarters.slice(0, 4);
+  const cardsHtml = quarters.map((v, qIdx) => buildQuarterCardHtml(qIdx, v)).join('');
+
+  el.innerHTML = `<div class="qr-page-title">ملخص كل ربع حسب سبب الإغلاق</div><div class="qr-grid">${cardsHtml}</div>`;
+}
+
 function renderQuarterValueCharts(){
   const chartsCard = document.getElementById('chartsCard');
   const grid = document.getElementById('chartsGrid');
@@ -3419,6 +3702,7 @@ function renderQuarterValueCharts(){
   grid.innerHTML = selectedQuarters.map((v, idx) => buildQuarterChartsBlockHtml(v, idx)).join('');
   renderOverallSummary();
   renderClosureReasonCard();
+  renderQuarterSummaryCardsPage();
   chartsCard.classList.remove('hidden');
 }
 
@@ -3707,8 +3991,23 @@ document.getElementById('printEmployeeBtn').addEventListener('click', () => {
   window.print();
 });
 
+document.getElementById('printQuarterSummaryBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  if(!hasClosureReasonCol || selectedQuarters.length === 0){
+    setStatus('اختر ربعًا واحدًا على الأقل من قائمة "فلترة ربع سنوية"، وتأكد من وجود عمود "سبب الإغلاق" بالملف.', true);
+    return;
+  }
+  renderQuarterSummaryCardsPage();
+  document.body.classList.add('printing-quarter-summary');
+  window.print();
+});
+
 window.addEventListener('afterprint', () => {
   document.body.classList.remove('printing-employee-report');
+  document.body.classList.remove('printing-quarter-summary');
 });
 
 resetPeriodsBtn.addEventListener('click', () => {
@@ -4682,7 +4981,20 @@ document.getElementById('dupTableBody').addEventListener('click', (e) => {
   if(imgThumb){ copyImageToClipboard(imgThumb.getAttribute('data-img-url')); return; }
 
   const copyBtn = e.target.closest('.copy-btn');
-  if(copyBtn) copyText(copyBtn.getAttribute('data-copy'));
+  if(copyBtn){
+    // إذا فيه أي تحديد شغّال بالنافذة، ما يسمح بالنسخ إلا من صف محدد
+    // (معلّم) — عشان ما تنسخ رقم غلط بالغلط وانت مركّز على المحدد.
+    const anyChecked = document.querySelectorAll('#dupTableBody .dup-check:checked').length > 0;
+    if(anyChecked){
+      const row = copyBtn.closest('tr');
+      const rowChecked = row ? row.querySelector('.dup-check')?.checked : false;
+      if(!rowChecked){
+        alert('عندك بلاغات محدّدة (معلّمة) بالنافذة — النسخ متاح بس من الصفوف المحدّدة.');
+        return;
+      }
+    }
+    copyText(copyBtn.getAttribute('data-copy'));
+  }
 });
 
 document.getElementById('dupModalClose').addEventListener('click', () => {
@@ -4905,6 +5217,7 @@ document.getElementById('exportMsgsBtn').addEventListener('click', () => {
 </div>
 
 <div id="employeeReportPrint"></div>
+<div id="quarterSummaryCardsPage"></div>
 
 </body>
-</html>
+</html
