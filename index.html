@@ -2613,4 +2613,2691 @@ function performReportSearch(raw){
     setStatus('اكتب رقم البلاغ أو رقم الجوال للبحث.', true);
     return;
   }
-  if(parsedData.length ===
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+
+  const normalizedQuery = normalizeDigits(raw);
+  const queryPhone = normalizePhoneForWhatsapp(raw);
+
+  const match = parsedData.find(p => {
+    if(p.reportNo && normalizeDigits(p.reportNo).includes(normalizedQuery)) return true;
+    if(p.phone){
+      if(normalizeDigits(p.phone).includes(normalizedQuery)) return true;
+      if(queryPhone && normalizePhoneForWhatsapp(p.phone) === queryPhone) return true;
+    }
+    return false;
+  });
+
+  if(!match){
+    setStatus(`لم يتم العثور على بلاغ يطابق "${raw}".`, true);
+    return;
+  }
+
+  const y = match.date.getFullYear();
+  const m = match.date.getMonth() + 1;
+  const d = match.date.getDate();
+  const monthValue = `${y}-${String(m).padStart(2,'0')}`;
+
+  pendingHighlightId = match.id;
+
+  if(!selectedMonths.includes(monthValue)){
+    selectedMonths.push(monthValue);
+    renderMonthCheckboxList();
+    renderMonthChipBar();
+    onSelectedMonthsChanged();
+  } else if(monthCalendarCard.classList.contains('hidden')){
+    renderMonthCalendars();
+  }
+
+  setTimeout(() => {
+    const cell = calMultiWrap.querySelector(`.cal-day[data-y="${y}"][data-m="${m}"][data-d="${d}"]`);
+    if(cell){
+      monthCalendarCard.scrollIntoView({behavior:'smooth', block:'center'});
+      cell.classList.add('flash-highlight');
+      setTimeout(() => cell.classList.remove('flash-highlight'), 4200);
+    }
+  }, 60);
+
+  setStatus(`تم العثور على البلاغ ${match.reportNo || ''} — يوم ${d}/${m}/${y}. اضغط على اليوم الوامض بالتقويم لعرض تفاصيله.`);
+}
+
+function searchReportOnCalendar(){
+  performReportSearch(document.getElementById('reportSearchInput').value);
+}
+
+document.getElementById('reportSearchBtn').addEventListener('click', searchReportOnCalendar);
+document.getElementById('reportSearchInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){ e.preventDefault(); searchReportOnCalendar(); }
+});
+
+// Second search box (inside the quarter-calendar card) — same logic, so
+// search works even when only quarters (no months) have been selected.
+document.getElementById('reportSearchBtn2').addEventListener('click', () => {
+  performReportSearch(document.getElementById('reportSearchInput2').value);
+});
+document.getElementById('reportSearchInput2').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){ e.preventDefault(); performReportSearch(document.getElementById('reportSearchInput2').value); }
+});
+
+// Recomputes and redraws the راضي/غير راضي counts, نسبة الرضا/عدم الرضا,
+// and نسبة المشاركة KPI boxes from the currently-loaded parsedData. These
+// are plain file-derived totals across the WHOLE loaded file — the manual
+// "عدد الراضين / عدد غير الراضين" boxes do NOT affect this card; their
+// effect is scoped only to the current quarter's block inside the quarter
+// calendar (see computeQuarterStats / refreshCurrentQuarterEffect below).
+function updateSummaryKpis(){
+  const kSatCountEl = document.getElementById('kSatCount');
+  const kUnsatCountEl = document.getElementById('kUnsatCount');
+  const kSatPctEl = document.getElementById('kSatPct');
+  const kUnsatPctEl = document.getElementById('kUnsatPct');
+  const kParticipPctEl = document.getElementById('kParticipPct');
+  if(!kSatCountEl) return;
+
+  if(parsedData.length === 0){
+    kSatCountEl.textContent = '0';
+    kUnsatCountEl.textContent = '0';
+    kSatPctEl.textContent = '0%';
+    kUnsatPctEl.textContent = '0%';
+    if(kParticipPctEl) kParticipPctEl.textContent = '—';
+    return;
+  }
+
+  const satAll = parsedData.filter(p=>p.rating==='راضي').length;
+  const unsatAll = parsedData.filter(p=>p.rating==='غير راضي').length;
+
+  // Percentage-only: exclude rows with an empty "مصدر البلاغ" / "حالة البلاغ
+  // في النظام" (when those columns are mapped) from the sat/unsat percentage.
+  const satEligibleAll = parsedData.filter(p=>p.rating==='راضي' && isSatEligible(p)).length;
+  const unsatEligibleAll = parsedData.filter(p=>p.rating==='غير راضي' && isSatEligible(p)).length;
+  const denom = satEligibleAll + unsatEligibleAll;
+
+  kSatCountEl.textContent = satAll;
+  kUnsatCountEl.textContent = unsatAll;
+  kSatPctEl.textContent = denom ? ((satEligibleAll/denom)*100).toFixed(1)+'%' : '—';
+  kUnsatPctEl.textContent = denom ? ((unsatEligibleAll/denom)*100).toFixed(1)+'%' : '—';
+
+  // نسبة المشاركة = (راضي + غير راضي) ÷ (عدد البلاغات المغلقة فقط، حسب
+  // عمود "حالة البلاغ"). بدون هذا العمود لا يمكن معرفة البلاغات المغلقة،
+  // فتُعرض "—".
+  const closedCountAll = hasStatusCol ? parsedData.filter(p => p.status && p.status.trim() === 'مغلق').length : 0;
+  const participAll = satAll + unsatAll;
+  if(kParticipPctEl){
+    kParticipPctEl.textContent = (hasStatusCol && closedCountAll)
+      ? ((participAll/closedCountAll)*100).toFixed(1)+'%'
+      : '—';
+  }
+}
+
+// Fills the three read-only reference boxes ("عدد الراضين / غير الراضين /
+// الإغلاقات حسب الجدول (الربع الحالي)") with the raw, file-derived counts
+// for whatever the real current quarter is (today's date) — so the person
+// can see exactly what number the manual boxes above are being compared
+// against, and how many reports are actually closed this quarter.
+function updateFileCurrentQuarterBoxes(){
+  const satEl = document.getElementById('fileSatCurrentQ');
+  const unsatEl = document.getElementById('fileUnsatCurrentQ');
+  const closedEl = document.getElementById('fileClosedCurrentQ');
+  if(!satEl || !unsatEl) return;
+
+  if(parsedData.length === 0){
+    satEl.value = '0';
+    unsatEl.value = '0';
+    if(closedEl) closedEl.value = '0';
+    return;
+  }
+
+  const value = getCurrentQuarterValue();
+  const months = getQuarterMonths(value);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  const items = parsedData.filter(p => p.date >= rangeStart && p.date <= rangeEnd);
+
+  satEl.value = items.filter(i => i.rating === 'راضي').length;
+  unsatEl.value = items.filter(i => i.rating === 'غير راضي').length;
+  if(closedEl){
+    closedEl.value = hasStatusCol
+      ? items.filter(i => i.status && i.status.trim() === 'مغلق').length
+      : '—';
+  }
+}
+
+// Refreshes everything that depends on the three manual boxes ("عدد
+// الراضين / عدد غير الراضين / عدد الإغلاقات"): the reference boxes, and —
+// since their effect only applies to the REAL current quarter (see
+// computeQuarterStats) — the quarter calendar/donut section, if it's
+// currently on screen and the current quarter happens to be among the
+// selected ones. Triggered only by pressing the "🔄 رفرش" button (no live
+// auto-update while typing), so the person can finish entering all three
+// numbers before anything recalculates.
+function refreshCurrentQuarterEffect(){
+  updateFileCurrentQuarterBoxes();
+  if(!quarterCalendarCard.classList.contains('hidden') && selectedQuarters.includes(getCurrentQuarterValue())){
+    renderQuarterCalendars();
+    setStatus('تم تحديث بيانات الربع الحالي.');
+  } else {
+    setStatus('تم تحديث المربعات المرجعية. لعرض تأثير القيم على النسب، فعّل الربع الحالي من قائمة "فلترة ربع سنوية" واضغط "عرض تقويم الأرباع المحددة".');
+  }
+}
+
+document.getElementById('refreshManualBtn').addEventListener('click', refreshCurrentQuarterEffect);
+
+
+
+
+// ---- Target satisfaction-percentage calculator (نسبة مطلوبة للرضا) ----
+// Given a target % typed by the person, works out how many MORE "راضي"
+// reports (on top of the current quarter's actual/adjusted count) would be
+// needed — holding "غير راضي" fixed — so that راضي ÷ (راضي + غير راضي)
+// equals that target. Also draws a speedometer-style gauge: the filled
+// arc shows the CURRENT percentage, a needle marks the TARGET percentage,
+// and the center shows exactly how many percentage points remain to close
+// that gap.
+function buildTargetGaugeMarkup(currentPct, targetPct){
+  const currentDeg = Math.max(0, Math.min(180, (currentPct/100)*180));
+  const needleDeg = Math.max(0, Math.min(180, (targetPct/100)*180)) - 90;
+  const remaining = targetPct - currentPct;
+  const remainingText = remaining > 0.05
+    ? `باقي ${remaining.toFixed(1)}%`
+    : '✅ تم بلوغ الهدف';
+
+  return `
+    <div class="target-gauge-outer">
+      <div class="target-gauge">
+        <div class="target-gauge-circle" style="background:conic-gradient(from -90deg, var(--accent) 0deg ${currentDeg}deg, #e4e0d8 ${currentDeg}deg 180deg, transparent 180deg 360deg);"></div>
+        <div class="target-gauge-needle" style="transform:rotate(${needleDeg}deg);" title="الهدف: ${targetPct}%"></div>
+        <div class="target-gauge-needle-label-pivot" style="transform:rotate(${needleDeg}deg);">
+          <span class="target-gauge-needle-label" style="transform:translateX(-50%) rotate(${-needleDeg}deg);">${remainingText}</span>
+        </div>
+        <div class="target-gauge-pivot"></div>
+        <div class="target-gauge-center">
+          <div class="target-gauge-sub">الحالي ${currentPct.toFixed(1)}% ← الهدف ${targetPct.toFixed(1)}%</div>
+        </div>
+      </div>
+      <div class="target-gauge-labels"><span>0%</span><span>50%</span><span>100%</span></div>
+    </div>
+  `;
+}
+
+function renderTargetGauge(currentPct, targetPct, resultLineHtml){
+  const wrap = document.getElementById('targetGaugeWrap');
+  wrap.innerHTML = buildTargetGaugeMarkup(currentPct, targetPct);
+  wrap.classList.remove('hidden');
+
+  // Mirrors the same gauge onto the print-only slot that lives inside the
+  // charts card, so it shares page 2 with the survey charts on print
+  // instead of taking its own separate page. No title/result text here —
+  // just the gauge, per request (the "باقي X%" figure is already the
+  // center label inside the gauge itself).
+  const printBody = document.getElementById('printTargetGaugeBody');
+  if(printBody){
+    printBody.innerHTML = buildTargetGaugeMarkup(currentPct, targetPct);
+  }
+}
+
+document.getElementById('calcTargetBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  const targetInput = document.getElementById('targetSatPctInput');
+  const targetPct = parseFloat(targetInput.value);
+  if(isNaN(targetPct) || targetPct <= 0 || targetPct >= 100){
+    setStatus('أدخل نسبة صحيحة بين 0.1 و99.9.', true);
+    return;
+  }
+
+  // Uses the SAME current-quarter + manual-topup counts as everywhere else
+  // (عدد الراضين/غير الراضين/الإغلاقات حسب المربعات اليدوية إن وُجدت).
+  const stats = computeQuarterStats(getCurrentQuarterValue());
+  const S = stats.satAdjusted, U = stats.unsatAdjusted, C = stats.closedAdjusted;
+  const P = targetPct / 100;
+
+  // Solve for x (extra راضي to add, غير راضي fixed) in:
+  // (S + x) / (S + x + U) = P  =>  x = (P*(S+U) - S) / (1 - P)
+  const rawExtra = (P*(S+U) - S) / (1 - P);
+  const neededExtra = Math.max(0, Math.ceil(rawExtra));
+  const newSat = S + neededExtra;
+  const newTotal = newSat + U;
+  const achievedPct = newTotal ? (newSat/newTotal*100) : 0;
+
+  const resultEl = document.getElementById('targetCalcResult');
+  let resultHtml;
+  if(neededExtra === 0){
+    resultHtml = `عدد الراضين الحالي: <b>${S}</b> — عدد غير الراضين: <b>${U}</b> — عدد الإغلاقات: <b>${C}</b><br>النسبة الحالية (${stats.satPct.toFixed(1)}%) أعلى من أو تساوي الهدف (${targetPct}%) بالفعل — لا حاجة لأي زيادة.`;
+  } else {
+    resultHtml = `عدد الراضين الحالي: <b>${S}</b> — عدد غير الراضين: <b>${U}</b> — عدد الإغلاقات: <b>${C}</b><br>الزيادة المطلوبة على عدد الراضين (وغير الراضين ثابت) للوصول لـ ${targetPct}%: <b style="color:var(--accent);font-size:15px;">${neededExtra}</b> (يعني ${S} + ${neededExtra} = ${newSat}، فتصير النسبة ${achievedPct.toFixed(1)}%)`;
+  }
+  resultEl.innerHTML = resultHtml;
+
+  renderTargetGauge(stats.satPct, targetPct, resultHtml);
+});
+
+// Step 1: load & parse the whole file using the auto-detected columns, and
+// show the overall summary. Runs automatically right after a file is
+// attached — no manual column mapping step required from the user.
+function performLoadData(){
+  if(dateColSel.value === ''){
+    setStatus('تعذّر التعرف تلقائيًا على عمود التاريخ في هذا الملف. تأكد أن الملف يحتوي عمود تاريخ صالح.', true);
+    return;
+  }
+  const dIdx = parseInt(dateColSel.value,10);
+  const rIdx = parseInt(ratingColSel.value,10);
+  const nIdx = parseInt(nameColSel.value,10);
+  const phIdx = parseInt(phoneColSel.value,10);
+  const dsIdx = parseInt(descColSel.value,10);
+  const stIdx = parseInt(statusColSel.value,10);
+  const rnIdx = parseInt(reportNoColSel.value,10);
+  const muIdx = parseInt(muniColSel.value,10);
+  const diIdx = parseInt(districtColSel.value,10);
+  const srIdx = parseInt(streetColSel.value,10);
+  const lkIdx = parseInt(linkColSel.value,10);
+  const ttIdx = parseInt(targetTimeColSel.value,10);
+  const srcIdx = parseInt(sourceColSel.value,10);
+  const sysStIdx = parseInt(systemStatusColSel.value,10);
+  const effIdx = parseInt(effortColSel.value,10);
+  const tsIdx = parseInt(timeSatColSel.value,10);
+  const apIdx = parseInt(approachColSel.value,10);
+  const cqIdx = parseInt(closureQualityColSel.value,10);
+  const crIdx = parseInt(closureReasonColSel.value,10);
+  const aeIdx = parseInt(assignedEmployeeColSel.value,10);
+  const clsIdx = parseInt(classificationColSel.value,10);
+  hasSourceCol = srcIdx >= 0;
+  hasSystemStatusCol = sysStIdx >= 0;
+  hasStatusCol = stIdx >= 0;
+  hasEffortCol = effIdx >= 0;
+  hasTimeSatCol = tsIdx >= 0;
+  hasApproachCol = apIdx >= 0;
+  hasClosureQualityCol = cqIdx >= 0;
+  hasClosureReasonCol = crIdx >= 0;
+  hasRatingCol = rIdx >= 0;
+
+  const filteredRows = applyColumnFilters(rows);
+
+  parsedData = [];
+  let badDates = 0;
+  let outlierDates = 0;
+  const currentYearNow = new Date().getFullYear();
+  const MIN_SANE_YEAR = currentYearNow - 12;
+  const MAX_SANE_YEAR = currentYearNow + 2;
+  filteredRows.forEach((r, rowIdx) => {
+    const date = parseDate(r[dIdx]);
+    if(!date){ badDates++; return; }
+    // Guard against a single misparsed cell (e.g. a big number in the date
+    // column read as an Excel serial date, or a garbled string) silently
+    // stretching the whole file's min/max range and generating fake
+    // years/quarters in the month/quarter pickers that don't really exist
+    // in the data. Anything with a wildly implausible year is treated the
+    // same as an unparseable date — excluded, and counted separately so
+    // the person can see it happened.
+    if(date.getFullYear() < MIN_SANE_YEAR || date.getFullYear() > MAX_SANE_YEAR){ outlierDates++; return; }
+    parsedData.push({
+      id: rowIdx,
+      date,
+      rating: (rIdx>=0 && r[rIdx]!==undefined) ? normalizeRating(r[rIdx]) : 'لا يوجد',
+      ratingRaw: (rIdx>=0 && r[rIdx]!==undefined && String(r[rIdx]).trim()!=='') ? String(r[rIdx]).trim() : 'لا يوجد',
+      effort: (effIdx>=0 && r[effIdx]!==undefined && String(r[effIdx]).trim()!=='') ? String(r[effIdx]).trim() : '',
+      timeSat: (tsIdx>=0 && r[tsIdx]!==undefined && String(r[tsIdx]).trim()!=='') ? String(r[tsIdx]).trim() : '',
+      approach: (apIdx>=0 && r[apIdx]!==undefined && String(r[apIdx]).trim()!=='') ? String(r[apIdx]).trim() : '',
+      closureQuality: (cqIdx>=0 && r[cqIdx]!==undefined && String(r[cqIdx]).trim()!=='') ? String(r[cqIdx]).trim() : '',
+      closureReason: (crIdx>=0 && r[crIdx]!==undefined) ? String(r[crIdx]).trim() : '',
+      assignedEmployee: (aeIdx>=0 && r[aeIdx]!==undefined) ? String(r[aeIdx]).trim() : '',
+      classification: (clsIdx>=0 && r[clsIdx]!==undefined) ? String(r[clsIdx]).trim() : '',
+      name: (nIdx>=0 && r[nIdx]!==undefined) ? String(r[nIdx]).trim() : '',
+      phone: (phIdx>=0 && r[phIdx]!==undefined) ? String(r[phIdx]).trim() : '',
+      desc: (dsIdx>=0 && r[dsIdx]!==undefined) ? String(r[dsIdx]).trim() : '',
+      status: (stIdx>=0 && r[stIdx]!==undefined) ? String(r[stIdx]).trim() : '',
+      reportNo: (rnIdx>=0 && r[rnIdx]!==undefined) ? String(r[rnIdx]).trim() : '',
+      muni: (muIdx>=0 && r[muIdx]!==undefined) ? String(r[muIdx]).trim() : '',
+      district: (diIdx>=0 && r[diIdx]!==undefined) ? String(r[diIdx]).trim() : '',
+      street: (srIdx>=0 && r[srIdx]!==undefined) ? String(r[srIdx]).trim() : '',
+      link: (lkIdx>=0 && r[lkIdx]!==undefined) ? String(r[lkIdx]).trim() : '',
+      targetTime: (ttIdx>=0 && r[ttIdx]!==undefined && r[ttIdx]!=='') ? parseDate(r[ttIdx]) : null,
+      source: (srcIdx>=0 && r[srcIdx]!==undefined) ? String(r[srcIdx]).trim() : '',
+      systemStatus: (sysStIdx>=0 && r[sysStIdx]!==undefined) ? String(r[sysStIdx]).trim() : ''
+    });
+  });
+
+  if(parsedData.length === 0){
+    setStatus('لم أستطع قراءة أي تواريخ صحيحة من عمود التاريخ المكتشف (أو أن الفلاتر المطبقة استبعدت كل الصفوف).', true);
+    return;
+  }
+
+  // Safeguard against a single misparsed cell producing a wildly wrong
+  // date (e.g. year 1900 or 2099) — this used to silently blow up the
+  // whole month/quarter picker range with years/quarters that don't
+  // actually exist in the real data. Anything more than 3 years away
+  // from the MEDIAN date in the file is treated as a bad date and
+  // excluded, same as an unparseable one.
+  let outlierDatesExcluded = 0;
+  {
+    const sortedTimes = parsedData.map(p => p.date.getTime()).sort((a,b) => a-b);
+    const medianTime = sortedTimes[Math.floor(sortedTimes.length / 2)];
+    const THREE_YEARS_MS = 3 * 365 * 24 * 60 * 60 * 1000;
+    const beforeCount = parsedData.length;
+    parsedData = parsedData.filter(p => Math.abs(p.date.getTime() - medianTime) <= THREE_YEARS_MS);
+    outlierDatesExcluded = beforeCount - parsedData.length;
+  }
+  rebuildPhoneCountMap();
+
+  const totalAll = parsedData.length;
+  const satAll = parsedData.filter(p=>p.rating==='راضي').length;
+  const unsatAll = parsedData.filter(p=>p.rating==='غير راضي').length;
+  const noneAll = parsedData.filter(p=>p.rating==='لا يوجد').length;
+  const otherAll = totalAll - satAll - unsatAll - noneAll;
+  const kOtherWrap = document.getElementById('kOtherWrap');
+  if(otherAll > 0){
+    kOtherWrap.style.display = '';
+    document.getElementById('kOtherCount').textContent = otherAll;
+  } else {
+    kOtherWrap.style.display = 'none';
+  }
+
+  document.getElementById('kTotal').textContent = totalAll;
+  document.getElementById('kNoneCount').textContent = noneAll;
+  updateSummaryKpis();
+  updateFileCurrentQuarterBoxes();
+
+  // pre-fill date inputs with min/max range found in data
+  const times = parsedData.map(p=>p.date.getTime());
+  const minD = new Date(Math.min(...times));
+  const maxD = new Date(Math.max(...times));
+  fromDateInp.value = toInputDate(minD);
+  toDateInp.value = toInputDate(maxD);
+
+  // For the month/quarter QUICK-PICK checkboxes specifically, use a
+  // density-based range instead of the raw min/max: a handful of stray
+  // rows with valid-but-sparse dates (a couple of reports months away
+  // from where the real data actually is) shouldn't stretch these lists
+  // into a bunch of mostly-empty fake quarters. The full raw range above
+  // is still used for the manual "من - إلى" period inputs, so nothing is
+  // ever hidden from the actual data — this only affects which
+  // months/quarters get auto-offered as checkboxes.
+  const monthCounts = new Map();
+  parsedData.forEach(p => {
+    const key = `${p.date.getFullYear()}-${p.date.getMonth()}`;
+    monthCounts.set(key, (monthCounts.get(key) || 0) + 1);
+  });
+  const densityThreshold = Math.max(3, totalAll * 0.01);
+  const denseMonthKeys = Array.from(monthCounts.entries())
+    .filter(([, count]) => count >= densityThreshold)
+    .map(([key]) => key);
+  let pickerMinD = minD, pickerMaxD = maxD;
+  if(denseMonthKeys.length > 0){
+    const denseDates = parsedData.filter(p => denseMonthKeys.includes(`${p.date.getFullYear()}-${p.date.getMonth()}`));
+    const denseTimes = denseDates.map(p=>p.date.getTime());
+    pickerMinD = new Date(Math.min(...denseTimes));
+    pickerMaxD = new Date(Math.max(...denseTimes));
+  }
+  populateMonthSelect(pickerMinD, pickerMaxD);
+  populateQuarterCheckboxList(pickerMinD, pickerMaxD);
+
+  periods = [];
+  document.getElementById('weeklyBody').innerHTML = '';
+  document.getElementById('weeklyFoot').innerHTML = '';
+  buildPrintPeriodsCards();
+  resultsEl.classList.remove('hidden');
+  periodPicker.classList.remove('hidden');
+  document.getElementById('chartsCard').classList.add('hidden');
+
+  let msg = `تم تحميل وتحليل ${totalAll} بلاغ تلقائيًا. الآن حدد "من - إلى" واضغط "إضافة الفترة للجدول" لكل فترة تحتاجها.`;
+  if(badDates > 0) msg += ` (تم تجاهل ${badDates} صف بسبب تاريخ غير صالح)`;
+  if(outlierDates > 0) msg += ` ⚠️ (تم تجاهل ${outlierDates} صف بتاريخ غير منطقي/بعيد جدًا — تحقق من عمود التاريخ لهذه الصفوف في الملف الأصلي)`;
+  if(rIdx < 0) msg += ` ملاحظة: لم يتم العثور على عمود تقييم في الملف، سيتم اعتبار كل البلاغات "لا يوجد" في إحصاءات الرضا.`;
+
+  // Diagnostic for the "⏰ أقل من 48 ساعة" / "متأخر" feature: tell the
+  // user right away whether there's any usable data for it.
+  if(ttIdx >= 0){
+    const withTarget = parsedData.filter(p => getRemainingHours(p) !== null).length;
+    if(withTarget === 0){
+      msg += ` ⚠️ ملاحظة: لم أستطع قراءة "الوقت المستهدف لمعالجة البلاغ" كتاريخ صالح لأي بلاغ — تأكد أن العمود يحتوي تواريخ/أوقات فعلية.`;
+    } else {
+      msg += ` (تم احتساب حالة التأخير لـ ${withTarget} بلاغ)`;
+    }
+  }
+
+  if(otherAll > 0){
+    const samples = [...new Set(parsedData.filter(p=>!['راضي','غير راضي','لا يوجد'].includes(p.rating)).map(p=>p.rating))].slice(0,5);
+    msg += ` ⚠️ تنبيه: ${otherAll} صف لم يتم التعرف على تقييمها. أمثلة على القيم غير المعروفة: ${samples.join(' / ')}`;
+    setStatus(msg, true);
+  } else {
+    setStatus(msg);
+  }
+  resultsEl.scrollIntoView({behavior:'smooth'});
+}
+
+loadDataBtn.addEventListener('click', performLoadData);
+
+// The "عمود حالة البلاغ" dropdown is the one column mapping still shown to
+// the user (everything else auto-detects silently). If they change it
+// after a file is already loaded, immediately re-run the analysis with the
+// new mapping instead of requiring a separate load step.
+statusColSel.addEventListener('change', () => {
+  calendarStatusFilter = null;
+  updateCalStatusBadge();
+  if(rows.length > 0){
+    performLoadData();
+  }
+});
+
+// ---- Calendar-only "حالة البلاغ" display filter ----
+// Lets the person pick one or more status values and, after pressing
+// "🔄 تحديث", re-draws only the month/quarter calendars (and their
+// day-detail popups) to show just those reports. Nothing else in the
+// report — الملخص العام، جدول الفترات، نسب الأرباع — is touched.
+
+function getStatusUniqueValues(){
+  const map = new Map();
+  parsedData.forEach(p => {
+    const key = statusKeyOf(p);
+    map.set(key, (map.get(key)||0)+1);
+  });
+  return Array.from(map.entries()).sort((a,b)=> b[1]-a[1]);
+}
+
+function updateCalStatusBadge(){
+  const badge = document.getElementById('calStatusFilterBadge');
+  if(!badge) return;
+  badge.textContent = calendarStatusFilter
+    ? `فلتر التقويم مفعّل (${calendarStatusFilter.size} قيمة) — اضغط "تحديث" لتطبيقه`
+    : '';
+}
+
+document.getElementById('calStatusPickBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  const values = getStatusUniqueValues();
+  const body = document.getElementById('calStatusPickerBody');
+  body.innerHTML = values.map(([val,count])=>{
+    const checked = calendarStatusFilter ? calendarStatusFilter.has(val) : false;
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--line);font-size:13px;">
+      <input type="checkbox" class="calStatusCheck" value="${val.replace(/"/g,'&quot;')}" ${checked?'checked':''}>
+      <span style="flex:1;">${val}</span>
+      <span style="color:var(--muted);font-size:11.5px;">${count}</span>
+    </label>`;
+  }).join('') || '<div style="color:var(--muted);font-size:13px;">لا توجد قيم.</div>';
+  document.getElementById('calStatusPickerOverlay').classList.remove('hidden');
+});
+
+document.getElementById('calStatusPickerClose').addEventListener('click', () => {
+  document.getElementById('calStatusPickerOverlay').classList.add('hidden');
+});
+document.getElementById('calStatusPickerOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'calStatusPickerOverlay') e.target.classList.add('hidden');
+});
+document.getElementById('calStatusPickerSelectAll').addEventListener('click', () => {
+  document.querySelectorAll('.calStatusCheck').forEach(c => c.checked = true);
+});
+document.getElementById('calStatusPickerDeselectAll').addEventListener('click', () => {
+  document.querySelectorAll('.calStatusCheck').forEach(c => c.checked = false);
+});
+document.getElementById('calStatusPickerApply').addEventListener('click', () => {
+  const checked = Array.from(document.querySelectorAll('.calStatusCheck:checked')).map(c => c.value);
+  calendarStatusFilter = checked.length > 0 ? new Set(checked) : null;
+  document.getElementById('calStatusPickerOverlay').classList.add('hidden');
+  updateCalStatusBadge();
+  setStatus('تم حفظ اختيارك. اضغط "🔄 تحديث" لتطبيقه على التقويم.');
+});
+document.getElementById('calStatusPickerClear').addEventListener('click', () => {
+  calendarStatusFilter = null;
+  document.getElementById('calStatusPickerOverlay').classList.add('hidden');
+  updateCalStatusBadge();
+  setStatus('تمت إزالة فلتر التقويم. اضغط "🔄 تحديث" لتطبيق ذلك.');
+});
+
+// The only place calendarStatusFilter actually takes visual effect: simply
+// re-render whichever calendars are currently on screen. Percentages/KPIs
+// are never recalculated here — they aren't affected by this filter at all.
+document.getElementById('calStatusRefreshBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  let did = false;
+  if(selectedMonths.length > 0){ renderMonthCalendars(); did = true; }
+  if(selectedQuarters.length > 0){ renderQuarterCalendars(); did = true; }
+  if(!did){
+    setStatus('اختر شهرًا أو ربعًا أولاً من الفلترة أدناه لعرض التقويم.', true);
+    return;
+  }
+  setStatus(calendarStatusFilter
+    ? `تم تحديث التقويم ليعرض فقط: ${[...calendarStatusFilter].join('، ')}`
+    : 'تم تحديث التقويم لعرض كل الحالات.');
+});
+
+// A period row is treated as "the current quarter" for percentage display
+// only if it was created by the quarterly-split button (isQuarterly) AND
+// its start date falls within the real current quarter. Matching by which
+// quarter the start date belongs to — rather than requiring the end date
+// to exactly equal the quarter's calendar end — means this still works
+// correctly even when the row's end got clamped to the data's last
+// available date instead of the full quarter's last day.
+function quarterValueOfDate(d){
+  return `${d.getFullYear()}-Q${Math.floor(d.getMonth()/3) + 1}`;
+}
+function periodMatchesCurrentQuarter(p){
+  return !!p.isQuarterly && quarterValueOfDate(p.from) === getCurrentQuarterValue();
+}
+
+function renderPeriodsTable(){
+  const tbody = document.getElementById('weeklyBody');
+  const foot = document.getElementById('weeklyFoot');
+  tbody.innerHTML = '';
+  let totSat=0, totUnsat=0, totNone=0, totAll=0, totSatEligible=0, totUnsatEligible=0;
+
+  periods.forEach((p, idx) => {
+    const satE = typeof p.satEligible === 'number' ? p.satEligible : p.sat;
+    const unsatE = typeof p.unsatEligible === 'number' ? p.unsatEligible : p.unsat;
+    const eligibleParticipants = satE + unsatE;
+    const participants = p.sat + p.unsat;
+    let satPct = eligibleParticipants ? (satE/eligibleParticipants*100) : 0;
+    let unsatPct = eligibleParticipants ? (unsatE/eligibleParticipants*100) : 0;
+    let participPct = p.total ? ((p.sat+p.unsat)/p.total*100) : 0;
+    const nonParticipPct = p.total ? (p.none/p.total*100) : 0;
+
+    if(hasStatusCol && periodMatchesCurrentQuarter(p)){
+      const cq = computeQuarterStats(getCurrentQuarterValue());
+      satPct = cq.satPct;
+      unsatPct = cq.unsatPct;
+      participPct = cq.participPct;
+    }
+
+    totSat+=p.sat; totUnsat+=p.unsat; totNone+=p.none; totAll+=p.total;
+    totSatEligible+=satE; totUnsatEligible+=unsatE;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${p.label} <span style="cursor:pointer;color:var(--bad);font-weight:700;" data-idx="${idx}" class="delBtn" title="حذف">✕</span></td>
+      <td>${fmtDateShort(p.from)} إلى ${fmtDateShort(p.to)}</td>
+      <td>${p.total}</td>
+      <td>${p.sat}</td>
+      <td>${p.unsat}</td>
+      <td>${p.none}</td>
+      <td>${participants}</td>
+      <td>${satPct.toFixed(1)}%</td>
+      <td>${unsatPct.toFixed(1)}%</td>
+      <td>${participPct.toFixed(1)}%</td>
+      <td>${nonParticipPct.toFixed(1)}%</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.delBtn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const i = parseInt(e.target.getAttribute('data-idx'),10);
+      periods.splice(i,1);
+      renderPeriodsTable();
+    });
+  });
+
+  foot.innerHTML = '';
+
+  buildPrintPeriodsCards();
+}
+
+// Build the print-only, vertically-stacked "card" version of the periods
+// table (one compact card per period, metrics listed top-to-bottom instead
+// of as wide table columns). This is what actually shows up when printing —
+// the regular wide table is hidden on print via #periodsTableWrap — so the
+// summary reads as a narrow professional column instead of a huge table
+// that would push the calendars off the page.
+function buildPrintPeriodsCards(){
+  const el = document.getElementById('printPeriodsCards');
+  if(!el) return;
+
+  if(periods.length === 0){
+    el.innerHTML = '<div style="font-size:11px;color:var(--muted);">لا توجد فترات مضافة</div>';
+    return;
+  }
+
+  function pctRow(p){
+    const satE = typeof p.satEligible === 'number' ? p.satEligible : p.sat;
+    const unsatE = typeof p.unsatEligible === 'number' ? p.unsatEligible : p.unsat;
+    const elig = satE + unsatE;
+    if(hasStatusCol && periodMatchesCurrentQuarter(p)){
+      const cq = computeQuarterStats(getCurrentQuarterValue());
+      return {
+        satPct: cq.satPct.toFixed(1)+'%',
+        unsatPct: cq.unsatPct.toFixed(1)+'%',
+        partPct: cq.participPct.toFixed(1)+'%'
+      };
+    }
+    return {
+      satPct: elig ? (satE/elig*100).toFixed(1)+'%' : '—',
+      unsatPct: elig ? (unsatE/elig*100).toFixed(1)+'%' : '—',
+      partPct: p.total ? ((p.sat+p.unsat)/p.total*100).toFixed(1)+'%' : '—'
+    };
+  }
+
+  let html = periods.map(p => {
+    const pr = pctRow(p);
+    return `<div class="pp-card">
+      <div class="pp-card-title">${p.label}</div>
+      <div class="pp-card-range">${fmtDateShort(p.from)} — ${fmtDateShort(p.to)}</div>
+      <table class="pp-card-table">
+        <tr><td>إجمالي</td><td>${p.total}</td></tr>
+        <tr><td>راضي</td><td>${p.sat}</td></tr>
+        <tr><td>غير راضي</td><td>${p.unsat}</td></tr>
+        <tr><td>لا يوجد</td><td>${p.none}</td></tr>
+        <tr><td>نسبة الرضا</td><td>${pr.satPct}</td></tr>
+        <tr><td>نسبة عدم الرضا</td><td>${pr.unsatPct}</td></tr>
+        <tr><td>نسبة المشاركة</td><td>${pr.partPct}</td></tr>
+      </table>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = html;
+}
+
+// ---- Value-count charts: عدد تكرار كل قيمة ضمن كل عمود من أعمدة الاستبيان ----
+// Renders one horizontal bar-chart per mapped column (الجهد / الوقت
+// المستغرق / نهج الموظف / التقييم العام), counting the raw text values
+// exactly as they appear in the file. Built with plain HTML/CSS (no
+// external chart library) so it always renders reliably and prints
+// cleanly. Shown on screen in its own card, and forced onto its own
+// printed page (below the periods+calendars page) via CSS.
+
+const CHART_PALETTE = ['#2f6f5e','#4fa483','#7fbfa4','#c9971f','#a3432f','#3d6b8a','#6a4f9c','#b5762f','#8a8478','#1a4d3e'];
+
+function countRawValues(items, field){
+  const map = new Map();
+  items.forEach(it => {
+    const v = (it[field] || '').toString().trim();
+    const key = v === '' ? 'لا يوجد' : v;
+    map.set(key, (map.get(key)||0)+1);
+  });
+  return Array.from(map.entries()).sort((a,b)=> b[1]-a[1]);
+}
+
+function buildHbarChartHtml(entries){
+  if(entries.length === 0){
+    return '<div class="chart-empty-note">لا توجد بيانات لعرضها</div>';
+  }
+  const maxCount = Math.max(...entries.map(e=>e[1]));
+  const rows = entries.map(([label, count], i) => {
+    const pct = maxCount ? (count / maxCount * 100) : 0;
+    const color = CHART_PALETTE[i % CHART_PALETTE.length];
+    return `<div class="hbar-row">
+      <div class="hbar-label">${label}</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%;background:${color};"></div></div>
+      <div class="hbar-count">${count}</div>
+    </div>`;
+  }).join('');
+  return `<div class="hbar-list">${rows}</div>`;
+}
+
+const CHART_COLUMN_DEFS = [
+  {key:'effort', hasFn:()=>hasEffortCol, title:'مقدار الجهد الذي بذله لمتابعة حالة البلاغ'},
+  {key:'timeSat', hasFn:()=>hasTimeSatCol, title:'الرضا عن الوقت المستغرق في معالجة البلاغ'},
+  {key:'approach', hasFn:()=>hasApproachCol, title:'نهج وطريقة موظف الأمانة في المعالجة'},
+  {key:'ratingRaw', hasFn:()=>hasRatingCol, title:'التقييم العام'}
+];
+
+// One quarter's set of 4 question-charts, computed only from that
+// quarter's own date range — mirrors buildQuarterCalendarBlock's approach
+// of scoping everything to the quarter, and reuses the same
+// "quarter-block qtone-N" styling so the two sections read as one system.
+function buildQuarterChartsBlockHtml(value, idx){
+  const months = getQuarterMonths(value);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  const items = parsedData.filter(p => p.date >= rangeStart && p.date <= rangeEnd);
+
+  const blocksHtml = CHART_COLUMN_DEFS.map(c => {
+    if(!c.hasFn()){
+      return `<div class="chart-block">
+        <div class="chart-block-title">${c.title}</div>
+        <div class="chart-block-sub">لم يتم اختيار عمود لهذا السؤال</div>
+      </div>`;
+    }
+    const entries = countRawValues(items, c.key);
+    return `<div class="chart-block">
+      <div class="chart-block-title">${c.title}</div>
+      <div class="chart-block-sub">عدد التكرارات لهذا الربع (${items.length} بلاغ)</div>
+      ${buildHbarChartHtml(entries)}
+    </div>`;
+  }).join('');
+
+  return `<div class="quarter-block qtone-${idx % 4}">
+    <div class="quarter-block-title">${quarterValueLabel(value)}</div>
+    <div class="charts-grid">${blocksHtml}</div>
+  </div>`;
+}
+
+// Overall stats across the ENTIRE loaded dataset (not limited to the
+// selected quarters / any date range) — used for the combined summary card
+// so the reader gets one clear professional overview of all the surveys
+// together, alongside the per-quarter breakdown.
+function computeOverallStats(){
+  const items = parsedData;
+  const total = items.length;
+  const sat = items.filter(i => i.rating === 'راضي').length;
+  const unsat = items.filter(i => i.rating === 'غير راضي').length;
+  const satEligible = items.filter(i => i.rating === 'راضي' && isSatEligible(i)).length;
+  const unsatEligible = items.filter(i => i.rating === 'غير راضي' && isSatEligible(i)).length;
+  const eligTotal = satEligible + unsatEligible;
+
+  return {
+    total, sat, unsat,
+    satPct: eligTotal ? (satEligible / eligTotal * 100) : 0,
+    participPct: total ? ((sat + unsat) / total * 100) : 0
+  };
+}
+
+// Builds the combined "كل الفترات" summary: an overall رضا/مشاركة donut,
+// plus a compact top-values bar list for each mapped survey question,
+// computed over ALL the data at once (as opposed to the quarter blocks
+// which are each scoped to their own quarter only).
+function buildOverallSummaryHtml(){
+  const stats = computeOverallStats();
+  const satDeg = (stats.satPct / 100) * 180;
+  const partDeg = (stats.participPct / 100) * 180;
+
+  const donutHtml = `<div class="quarter-donut-row">
+    <div class="quarter-donut" style="background:conic-gradient(var(--accent) 0deg ${satDeg}deg, #e4e0d8 ${satDeg}deg 180deg, #c9971f 180deg ${180+partDeg}deg, #e4e0d8 ${180+partDeg}deg 360deg);"></div>
+    <div class="quarter-donut-legend">
+      <div class="qdl-item sat"><span class="qdl-dot"></span>رضا عام <b>${stats.satPct.toFixed(1)}%</b></div>
+      <div class="qdl-item part"><span class="qdl-dot"></span>مشاركة عامة <b>${stats.participPct.toFixed(1)}%</b></div>
+    </div>
+  </div>`;
+
+  const questionsHtml = CHART_COLUMN_DEFS.map(c => {
+    if(!c.hasFn()) return '';
+    const entries = countRawValues(parsedData, c.key).slice(0, 5); // top values only, to stay compact in the narrow column
+    return `<div class="ov-q-block">
+      <div class="ov-q-title">${c.title}</div>
+      ${buildHbarChartHtml(entries)}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  return `
+    <div class="ov-title">📊 الملخص العام لكل الفترات</div>
+    <div class="ov-sub">إجمالي البلاغات: ${stats.total}</div>
+    ${donutHtml}
+    ${questionsHtml}
+  `;
+}
+
+function renderOverallSummary(){
+  const el = document.getElementById('overallSummaryCard');
+  if(!el) return;
+  if(parsedData.length === 0){
+    el.classList.add('hidden');
+    return;
+  }
+  el.innerHTML = buildOverallSummaryHtml();
+  el.classList.remove('hidden');
+}
+
+// Counts, for one quarter's date range, how many rows fall under each of
+// the fixed CLOSURE_REASON_VALUES categories (exact match on the trimmed
+// raw column value). Values that don't match any of the fixed categories
+// are simply not counted in this table (it's a fixed-category summary,
+// not a full breakdown).
+function normalizeDashes(str){
+  return String(str || '').replace(/[\u2010-\u2015]/g, '-');
+}
+
+function countClosureReasonForQuarter(value){
+  const months = getQuarterMonths(value);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  const items = parsedData.filter(p => p.date >= rangeStart && p.date <= rangeEnd);
+
+  const counts = {};
+  CLOSURE_REASON_VALUES.forEach(v => counts[v] = 0);
+  const normalizedTargets = CLOSURE_REASON_VALUES.map(v => normalizeDashes(v));
+  items.forEach(it => {
+    const v = normalizeDashes((it.closureReason || '').trim());
+    const idx = normalizedTargets.indexOf(v);
+    if(idx >= 0) counts[CLOSURE_REASON_VALUES[idx]]++;
+  });
+  return counts;
+}
+
+// Builds the small "سبب الإغلاق" table: one row per fixed category, one
+// column per selected quarter (labelled Q1..Q4, in the same order as the
+// quarter checkboxes were selected — up to 4 quarters).
+// عدّاد عام مقيّد بسبب إغلاق معيّن: لأي عمود استبيان، يرجّع خريطة
+// "القيمة → عددها" ضمن ربع معيّن، لكن فقط للبلاغات اللي سبب إغلاقها
+// يطابق reasonFilter بالضبط — عشان كل سبب إغلاق يطلع ومعه تفصيل
+// الاستبيان الخاص فيه هو بس، مو كل البلاغات.
+function countColumnValuesForQuarterByReason(quarterValue, fieldKey, reasonFilter){
+  const months = getQuarterMonths(quarterValue);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  const normReason = normalizeDashes(reasonFilter);
+  const items = parsedData.filter(p =>
+    p.date >= rangeStart && p.date <= rangeEnd &&
+    normalizeDashes((p.closureReason || '').trim()) === normReason
+  );
+
+  const map = new Map();
+  items.forEach(it => {
+    const v = (it[fieldKey] || '').toString().trim() || 'لا يوجد';
+    map.set(v, (map.get(v) || 0) + 1);
+  });
+  return map;
+}
+
+// أسئلة الاستبيان الأربعة المطلوب اختصار اسمها وإدراج كونت قيمها داخل
+// نفس جدول "أسباب الإغلاق" (أعمدة Q1..Q4)، كل قيمة بصف مستقل، متداخلة
+// تحت كل سبب إغلاق مباشرة (مقتصرة على بلاغات ذلك السبب تحديدًا).
+const QTABLE_SURVEY_DEFS = [
+  {key:'timeSat', hasFn:()=>hasTimeSatCol, shortLabel:'الوقت المستغرق'},
+  {key:'closureQuality', hasFn:()=>hasClosureQualityCol, shortLabel:'رضا الإغلاق'},
+  {key:'effort', hasFn:()=>hasEffortCol, shortLabel:'الجهد المبذول'},
+  {key:'approach', hasFn:()=>hasApproachCol, shortLabel:'نهج الموظف'}
+];
+
+// يبني صفوف تفصيل الاستبيان الخاصة بسبب إغلاق واحد بعينه، متداخلة (بمسافة
+// بادئة "↳") مباشرة تحت صف ذلك السبب بالجدول.
+function buildSurveyRowsForReason(quarters, reasonValue){
+  let rowsHtml = '';
+  QTABLE_SURVEY_DEFS.forEach(def => {
+    if(!def.hasFn()) return;
+    const perQuarterMaps = quarters.map(v => countColumnValuesForQuarterByReason(v, def.key, reasonValue));
+    const totals = new Map();
+    perQuarterMaps.forEach(map => {
+      map.forEach((count, val) => totals.set(val, (totals.get(val) || 0) + count));
+    });
+    // يتجاهل هذا السؤال كليًا لهذا السبب لو ما فيه ولا بلاغ واحد يطابقه
+    // بأي ربع (يمنع صفوف فاضية بكل أصفار).
+    const sortedValues = Array.from(totals.entries())
+      .filter(([, total]) => total > 0)
+      .sort((a,b) => b[1]-a[1])
+      .map(([v]) => v);
+    sortedValues.forEach(val => {
+      const cells = perQuarterMaps.map(map => `<td>${map.get(val) || 0}</td>`).join('');
+      rowsHtml += `<tr class="cr-subrow"><td>↳ ${def.shortLabel}: ${val}</td>${cells}</tr>`;
+    });
+  });
+  return rowsHtml;
+}
+
+function buildClosureReasonTableHtml(){
+  if(selectedQuarters.length === 0){
+    return '<div class="cr-empty-note">اختر ربعًا واحدًا على الأقل من قائمة "فلترة ربع سنوية" لعرض الجدول.</div>';
+  }
+
+  const quarters = selectedQuarters.slice(0, 4);
+  const perQuarterCounts = quarters.map(v => countClosureReasonForQuarter(v));
+  const perQuarterStats = quarters.map(v => computeQuarterStats(v));
+
+  const headCells = perQuarterCounts.map((_, i) => `<th>Q${i+1}</th>`).join('');
+
+  const satRow = `<tr><td>راضي</td>${perQuarterStats.map(s => `<td>${s.satAdjusted}</td>`).join('')}</tr>`;
+  const unsatRow = `<tr><td>غير راضي</td>${perQuarterStats.map(s => `<td>${s.unsatAdjusted}</td>`).join('')}</tr>`;
+
+  const bodyRows = CLOSURE_REASON_VALUES.map(val => {
+    const cells = perQuarterCounts.map(c => `<td>${c[val]}</td>`).join('');
+    return `<tr><td>${val}</td>${cells}</tr>`;
+  }).join('');
+
+  return `<table class="cr-table">
+    <thead><tr><th>سبب الإغلاق</th>${headCells}</tr></thead>
+    <tbody>${satRow}${unsatRow}${bodyRows}</tbody>
+  </table>`;
+}
+
+function renderClosureReasonCard(){
+  const el = document.getElementById('closureReasonCard');
+  if(!el) return;
+  const anySurveyMapped = QTABLE_SURVEY_DEFS.some(d => d.hasFn());
+  if((!hasClosureReasonCol && !anySurveyMapped) || parsedData.length === 0){
+    el.classList.add('hidden');
+    return;
+  }
+  el.innerHTML = `<div class="cr-title">📋 أسباب إغلاق البلاغات (حسب الربع)</div>${buildClosureReasonTableHtml()}`;
+  el.classList.remove('hidden');
+}
+
+// Renders the value-count charts split per selected quarter — same idea as
+// the quarter calendars: one titled, color-coded block per quarter, each
+// scoped to its own data only. Requires quarters to be selected via the
+// "فلترة ربع سنوية" checkboxes first. Also renders the combined
+// all-quarters summary card and the closure-reason table alongside it.
+// ---- كروت طباعة "ربع × سبب إغلاق" ----
+// لكل ربع مُحدد، ولكل سبب إغلاق فيه بلاغات فعلية (>0)، يُبنى كرت مستقل
+// بنفس القالب المطلوب، لكن مجمّعة: كرت واحد فقط لكل ربع (بدل كرت لكل
+// سبب إغلاق لحاله) — أسباب الإغلاق تصير صفوف داخل جدول واحد، وتحت
+// الجدول إجمالي الربع ونسبه ومكرراته كاملة.
+function getQuarterReasonItems(quarterValue, reasonValue){
+  const months = getQuarterMonths(quarterValue);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  const normReason = normalizeDashes(reasonValue);
+  return parsedData.filter(p =>
+    p.date >= rangeStart && p.date <= rangeEnd &&
+    normalizeDashes((p.closureReason || '').trim()) === normReason
+  );
+}
+
+function getQuarterAllItems(quarterValue){
+  const months = getQuarterMonths(quarterValue);
+  const first = months[0];
+  const last = months[months.length - 1];
+  const rangeStart = new Date(first.y, first.m - 1, 1, 0, 0, 0);
+  const lastDay = new Date(last.y, last.m, 0).getDate();
+  const rangeEnd = new Date(last.y, last.m - 1, lastDay, 23, 59, 59);
+  return parsedData.filter(p => p.date >= rangeStart && p.date <= rangeEnd);
+}
+
+function buildQuarterCardHtml(qIdx, quarterValue){
+  // لكل سؤال استبيان ممسوح: يجمع كل القيم المختلفة اللي فعليًا ظهرت (بأي
+  // سبب إغلاق) بهذا الربع، مرتبة تنازليًا حسب مجموع تكرارها — هذي تصير
+  // أعمدة أفقية فرعية تحت اسم السؤال (بدون أي تكرار للقيمة نفسها).
+  const questionValueSets = QTABLE_SURVEY_DEFS.filter(d => d.hasFn()).map(def => {
+    const valueTotals = new Map();
+    CLOSURE_REASON_VALUES.forEach(reasonValue => {
+      const valMap = countColumnValuesForQuarterByReason(quarterValue, def.key, reasonValue);
+      valMap.forEach((count, val) => valueTotals.set(val, (valueTotals.get(val) || 0) + count));
+    });
+    const values = Array.from(valueTotals.entries())
+      .filter(([, c]) => c > 0)
+      .sort((a,b) => b[1]-a[1])
+      .map(([v]) => v);
+    return {def, values};
+  }).filter(qs => qs.values.length > 0);
+
+  const totalValueCols = questionValueSets.reduce((s, qs) => s + qs.values.length, 0);
+  const totalCols = 1 + totalValueCols + 2; // سبب الإغلاق + كل قيم الأسئلة + راضي + غير راضي
+
+  const topHeaderCells = questionValueSets.map(qs => `<th colspan="${qs.values.length}">${qs.def.shortLabel}</th>`).join('');
+  const subHeaderCells = questionValueSets.map(qs => qs.values.map(v => `<th class="qr-subhead">${v}</th>`).join('')).join('');
+  const headerRow1 = `<tr><th rowspan="2">سبب الإغلاق</th>${topHeaderCells}<th colspan="2">التقييم العام</th></tr>`;
+  const headerRow2 = `<tr>${subHeaderCells}<th>راضي</th><th>غير راضي</th></tr>`;
+
+  // صف أفقي واحد لكل سبب إغلاق فيه بلاغات فعلية — كل قيمة بعمودها الخاص،
+  // بدون أي صفوف متكررة.
+  const reasonRows = CLOSURE_REASON_VALUES.map(reasonValue => {
+    const items = getQuarterReasonItems(quarterValue, reasonValue);
+    if(items.length === 0) return '';
+    const sat = items.filter(i => i.rating === 'راضي').length;
+    const unsat = items.filter(i => i.rating === 'غير راضي').length;
+
+    const questionCells = questionValueSets.map(qs => {
+      const valMap = countColumnValuesForQuarterByReason(quarterValue, qs.def.key, reasonValue);
+      return qs.values.map(v => `<td>${valMap.get(v) || 0}</td>`).join('');
+    }).join('');
+
+    return `<tr><td class="qr-reason-cell">${reasonValue}</td>${questionCells}<td>${sat}</td><td>${unsat}</td></tr>`;
+  }).join('');
+
+  // إجمالي/نسب/مكررات — مقتصرة على نفس مجموعة البلاغات المستخدمة بصفوف
+  // أسباب الإغلاق أعلاه (بلاغات لها سبب إغلاق من ضمن الأسباب المتابَعة)،
+  // مو كل بلاغات الربع (اللي فيها بلاغات مفتوحة/بحالات ثانية بعدد أكبر
+  // بكثير — هذا هو سبب "الفرق الشاسع" اللي لوحظ).
+  const allItems = CLOSURE_REASON_VALUES.flatMap(reasonValue => getQuarterReasonItems(quarterValue, reasonValue));
+  const total = allItems.length;
+  const sat = allItems.filter(i => i.rating === 'راضي').length;
+  const unsat = allItems.filter(i => i.rating === 'غير راضي').length;
+  const particip = sat + unsat;
+  const satPct = particip ? (sat/particip*100) : 0;
+  const unsatPct = particip ? (unsat/particip*100) : 0;
+  const participPct = total ? (particip/total*100) : 0;
+  const dupCount = allItems.filter(i => isDuplicatePhone(i)).length;
+  const nonDupCount = total - dupCount;
+
+  const thirdA = Math.max(1, Math.floor(totalCols/3));
+  const thirdB = Math.max(1, Math.floor(totalCols/3));
+  const thirdC = Math.max(1, totalCols - thirdA - thirdB);
+  const halfA = Math.max(1, Math.ceil(totalCols/2));
+  const halfB = Math.max(1, totalCols - halfA);
+
+  return `<div class="qr-card">
+    <div class="qr-title">${'Q' + quarterValue.split('-Q')[1]}</div>
+    <div class="qr-subtitle">${quarterValueLabel(quarterValue)}</div>
+    <table class="qr-table">
+      ${headerRow1}
+      ${headerRow2}
+      ${reasonRows || `<tr><td colspan="${totalCols}">لا توجد بلاغات مغلقة بهذا الربع</td></tr>`}
+      <tr><td colspan="${totalCols-1}" class="qr-label">الاجمالي</td><td>${total}</td></tr>
+      <tr><th colspan="${thirdA}">غير الرضاء</th><th colspan="${thirdB}">الرضى</th><th colspan="${thirdC}">نسبه المشاركة</th></tr>
+      <tr><td colspan="${thirdA}">${unsatPct.toFixed(1)}%</td><td colspan="${thirdB}">${satPct.toFixed(1)}%</td><td colspan="${thirdC}">${participPct.toFixed(1)}%</td></tr>
+      <tr><td colspan="${thirdA}">${unsat}</td><td colspan="${thirdB}">${sat}</td><td colspan="${thirdC}">${particip}</td></tr>
+      <tr><th colspan="${halfA}">بلاغات مكرره حسب الجوال</th><th colspan="${halfB}">بلاغات غير مكرره حسب الجوال</th></tr>
+      <tr><td colspan="${halfA}">${dupCount}</td><td colspan="${halfB}">${nonDupCount}</td></tr>
+    </table>
+  </div>`;
+}
+
+
+// صفحة طباعة كاملة: كرت واحد لكل ربع مُحدد (حتى 4 أرباع)، تترتب شبكة
+// 2×2 بنفس الصفحة تلقائيًا.
+function renderQuarterSummaryCardsPage(){
+  const el = document.getElementById('quarterSummaryCardsPage');
+  if(!el) return;
+  if(!hasClosureReasonCol || parsedData.length === 0 || selectedQuarters.length === 0){
+    el.innerHTML = '';
+    return;
+  }
+
+  const quarters = selectedQuarters.slice(0, 4);
+  const cardsHtml = quarters.map((v, qIdx) => buildQuarterCardHtml(qIdx, v)).join('');
+
+  el.innerHTML = `<div class="qr-page-title">ملخص كل ربع حسب سبب الإغلاق</div><div class="qr-grid">${cardsHtml}</div>`;
+}
+
+function renderQuarterValueCharts(){
+  const chartsCard = document.getElementById('chartsCard');
+  const grid = document.getElementById('chartsGrid');
+
+  const anyMapped = CHART_COLUMN_DEFS.some(c=>c.hasFn()) || hasClosureReasonCol;
+  if(!anyMapped || parsedData.length === 0 || selectedQuarters.length === 0){
+    chartsCard.classList.add('hidden');
+    return;
+  }
+
+  grid.innerHTML = selectedQuarters.map((v, idx) => buildQuarterChartsBlockHtml(v, idx)).join('');
+  renderOverallSummary();
+  renderClosureReasonCard();
+  renderQuarterSummaryCardsPage();
+  chartsCard.classList.remove('hidden');
+}
+
+addPeriodBtn.addEventListener('click', () => {
+  if(!fromDateInp.value || !toDateInp.value){
+    setStatus('حدد تاريخ البداية والنهاية أولاً.', true);
+    return;
+  }
+  const from = new Date(fromDateInp.value);
+  const to = new Date(toDateInp.value);
+  if(isNaN(from) || isNaN(to)){
+    setStatus('صيغة التاريخ/الوقت غير صحيحة، تأكد من تعبئة الحقلين كاملين (تاريخ ووقت).', true);
+    return;
+  }
+  if(from > to){
+    setStatus('تاريخ البداية يجب أن يكون قبل تاريخ النهاية.', true);
+    return;
+  }
+
+  const items = parsedData.filter(p => p.date >= from && p.date <= to);
+  const total = items.length;
+  const sat = items.filter(i=>i.rating==='راضي').length;
+  const unsat = items.filter(i=>i.rating==='غير راضي').length;
+  const none = items.filter(i=>i.rating==='لا يوجد').length;
+  const satEligible = items.filter(i=>i.rating==='راضي' && isSatEligible(i)).length;
+  const unsatEligible = items.filter(i=>i.rating==='غير راضي' && isSatEligible(i)).length;
+
+  const label = periodLabelInp.value.trim() || `فترة ${periods.length+1}`;
+  periods.push({label, from, to, total, sat, unsat, none, satEligible, unsatEligible});
+  renderPeriodsTable();
+  periodLabelInp.value = '';
+  setStatus(`تمت إضافة "${label}": ${total} بلاغ.`);
+});
+
+autoWeeklyBtn.addEventListener('click', () => {
+  if(!fromDateInp.value || !toDateInp.value){
+    setStatus('حدد تاريخ ووقت البداية والنهاية أولاً.', true);
+    return;
+  }
+  const rangeFrom = new Date(fromDateInp.value);
+  const rangeTo = new Date(toDateInp.value);
+  if(isNaN(rangeFrom) || isNaN(rangeTo)){
+    setStatus('صيغة التاريخ/الوقت غير صحيحة.', true);
+    return;
+  }
+  if(rangeFrom > rangeTo){
+    setStatus('تاريخ البداية يجب أن يكون قبل تاريخ النهاية.', true);
+    return;
+  }
+
+  periods = [];
+  let weekStart = new Date(rangeFrom);
+  let weekNum = 1;
+  while(weekStart < rangeTo){
+    let weekEnd = new Date(weekStart.getTime() + 7*24*60*60*1000 - 1000); // 7 days minus 1 second
+    if(weekEnd > rangeTo) weekEnd = new Date(rangeTo);
+
+    const items = parsedData.filter(p => p.date >= weekStart && p.date <= weekEnd);
+    const total = items.length;
+    const sat = items.filter(i=>i.rating==='راضي').length;
+    const unsat = items.filter(i=>i.rating==='غير راضي').length;
+    const none = items.filter(i=>i.rating==='لا يوجد').length;
+    const satEligible = items.filter(i=>i.rating==='راضي' && isSatEligible(i)).length;
+    const unsatEligible = items.filter(i=>i.rating==='غير راضي' && isSatEligible(i)).length;
+
+    periods.push({label: `الأسبوع ${weekNum}`, from: new Date(weekStart), to: new Date(weekEnd), total, sat, unsat, none, satEligible, unsatEligible});
+
+    weekStart = new Date(weekStart.getTime() + 7*24*60*60*1000);
+    weekNum++;
+  }
+
+  renderPeriodsTable();
+  setStatus(`تم تقسيم الفترة إلى ${periods.length} أسبوع تلقائيًا.`);
+});
+
+autoQuarterlyBtn.addEventListener('click', () => {
+  if(!fromDateInp.value || !toDateInp.value){
+    setStatus('حدد تاريخ ووقت البداية والنهاية أولاً.', true);
+    return;
+  }
+  const rangeFrom = new Date(fromDateInp.value);
+  const rangeTo = new Date(toDateInp.value);
+  if(isNaN(rangeFrom) || isNaN(rangeTo)){
+    setStatus('صيغة التاريخ/الوقت غير صحيحة.', true);
+    return;
+  }
+  if(rangeFrom > rangeTo){
+    setStatus('تاريخ البداية يجب أن يكون قبل تاريخ النهاية.', true);
+    return;
+  }
+
+  periods = [];
+  let qStart = new Date(rangeFrom);
+  let qNum = 1;
+  while(qStart < rangeTo){
+    // add 3 calendar months, then step back 1 second for the end boundary
+    let qEnd = new Date(qStart);
+    qEnd.setMonth(qEnd.getMonth() + 3);
+    qEnd = new Date(qEnd.getTime() - 1000);
+    if(qEnd > rangeTo) qEnd = new Date(rangeTo);
+
+    const items = parsedData.filter(p => p.date >= qStart && p.date <= qEnd);
+    const total = items.length;
+    const sat = items.filter(i=>i.rating==='راضي').length;
+    const unsat = items.filter(i=>i.rating==='غير راضي').length;
+    const none = items.filter(i=>i.rating==='لا يوجد').length;
+    const satEligible = items.filter(i=>i.rating==='راضي' && isSatEligible(i)).length;
+    const unsatEligible = items.filter(i=>i.rating==='غير راضي' && isSatEligible(i)).length;
+
+    periods.push({label: `الربع ${qNum}`, from: new Date(qStart), to: new Date(qEnd), total, sat, unsat, none, satEligible, unsatEligible, isQuarterly: true});
+
+    const nextStart = new Date(qStart);
+    nextStart.setMonth(nextStart.getMonth() + 3);
+    qStart = nextStart;
+    qNum++;
+  }
+
+  renderPeriodsTable();
+  setStatus(`تم تقسيم الفترة إلى ${periods.length} ربع سنوي تلقائيًا.`);
+});
+
+printBtn.addEventListener('click', () => {
+  window.print();
+});
+
+// "🖨️ طباعة تقرير الموظفين": builds one printed page per distinct value
+// in "اسم الموظف المسند إليه", listing every phone number assigned to
+// them ONCE (duplicate reports for the same phone merged into a single
+// row), with the report numbers listed together and counts of مغلق /
+// راضي / غير راضي / لا يوجد for that phone.
+function buildEmployeeReportHtml(){
+  // Only these five specific employees, matched by a distinctive
+  // substring of their name so small formatting differences in the
+  // source file (extra spaces, etc.) don't break the match.
+  const TARGET_EMPLOYEE_KEYWORDS = ['ابراهيم بندر', 'محمد ضيف الله', 'ثامر احمد', 'حامد عيظه', 'عبدالرحمن بن عويض'];
+  const employees = [...new Set(parsedData.map(p => (p.assignedEmployee || '').trim()).filter(Boolean))]
+    .filter(name => TARGET_EMPLOYEE_KEYWORDS.some(k => name.includes(k)))
+    .sort((a,b)=>a.localeCompare(b,'ar'));
+
+  if(employees.length === 0){
+    return `<div class="emp-report-page">
+      <div class="emp-report-title">تقرير الموظفين</div>
+      <div class="emp-report-sub">لم يتم العثور على أي من الأسماء المطلوبة ضمن عمود "اسم الموظف المسند إليه" — تأكد من وجود هذا العمود بالملف ومن الأسماء.</div>
+    </div>`;
+  }
+
+  // One combined table for all five employees — the employee name is a
+  // column inside the table (not a separate page/heading per employee).
+  // Only duplicated phone numbers (more than one report) are included,
+  // per request. "حوادث الكوارث الطبيعية والصناعية" is shown in red right
+  // next to حالة البلاغ whenever that report's classification matches,
+  // regardless of what the status text itself is.
+  let allRows = '';
+  let totalReports = 0;
+
+  employees.forEach(name => {
+    const empItems = parsedData.filter(p => (p.assignedEmployee || '').trim() === name);
+    totalReports += empItems.length;
+
+    const byPhone = new Map();
+    empItems.forEach(item => {
+      const key = item.phone ? normalizePhoneForWhatsapp(item.phone) : ('__no_phone_' + item.id);
+      if(!byPhone.has(key)) byPhone.set(key, []);
+      byPhone.get(key).push(item);
+    });
+
+    const dupGroups = Array.from(byPhone.values()).filter(group => group.length > 1); // فقط الأرقام المكررة فعليًا
+    dupGroups.forEach((group, idx) => {
+        const reportNumbers = group
+          .filter(g => g.reportNo && !(g.status && g.status.trim() === 'مغلق'))
+          .map(g => {
+            const isDisaster = g.classification && g.classification.trim() === 'حوادث الكوارث الطبيعية والصناعية';
+            const statusLabel = isDisaster
+              ? `${g.status || '-'} — <span style="color:#dc2626;font-weight:700;">حوادث الكوارث الطبيعية والصناعية</span>`
+              : (g.status || '-');
+            return `${g.reportNo} <span style="color:var(--muted);">(${statusLabel})</span>`;
+          })
+          .join('<br>');
+        const phoneDisplay = group[0].phone || '-';
+        const closedCount = group.filter(g => g.status && g.status.trim() === 'مغلق').length;
+        const satCount = group.filter(g => g.rating === 'راضي').length;
+        const unsatCount = group.filter(g => g.rating === 'غير راضي').length;
+        const noneCount = group.filter(g => g.rating === 'لا يوجد').length;
+        const nameCell = `<td>${name}</td>`;
+        allRows += `<tr>
+          ${nameCell}
+          <td class="emp-reports-cell">${reportNumbers || '-'}</td>
+          <td class="emp-phone-cell">${phoneDisplay}</td>
+          <td>${closedCount}</td>
+          <td>${satCount}</td>
+          <td>${unsatCount}</td>
+          <td>${noneCount}</td>
+        </tr>`;
+      });
+  });
+
+  return `<div class="emp-report-page">
+    <div class="emp-report-title">تقرير الموظفين — الأرقام المكررة</div>
+    <div class="emp-report-sub">إجمالي البلاغات لكل الموظفين: ${totalReports}</div>
+    <table class="emp-report-table">
+      <thead>
+        <tr>
+          <th>اسم الموظف</th>
+          <th>أرقام البلاغات</th>
+          <th>رقم الجوال</th>
+          <th>مغلق</th>
+          <th>راضي</th>
+          <th>غير راضي</th>
+          <th>لا يوجد</th>
+        </tr>
+      </thead>
+      <tbody>${allRows}</tbody>
+    </table>
+  </div>`;
+}
+
+// Same grouping logic as buildEmployeeReportHtml (five target employees,
+// duplicated phone numbers only), but returns plain rows of data instead
+// of HTML — used for the Excel export.
+function buildEmployeeReportRows(){
+  const TARGET_EMPLOYEE_KEYWORDS = ['ابراهيم بندر', 'محمد ضيف الله', 'ثامر احمد', 'حامد عيظه', 'عبدالرحمن بن عويض'];
+  const employees = [...new Set(parsedData.map(p => (p.assignedEmployee || '').trim()).filter(Boolean))]
+    .filter(name => TARGET_EMPLOYEE_KEYWORDS.some(k => name.includes(k)))
+    .sort((a,b)=>a.localeCompare(b,'ar'));
+
+  const data = [['اسم الموظف','أرقام البلاغات','رقم الجوال','مغلق','راضي','غير راضي','لا يوجد']];
+
+  employees.forEach(name => {
+    const empItems = parsedData.filter(p => (p.assignedEmployee || '').trim() === name);
+    const byPhone = new Map();
+    empItems.forEach(item => {
+      const key = item.phone ? normalizePhoneForWhatsapp(item.phone) : ('__no_phone_' + item.id);
+      if(!byPhone.has(key)) byPhone.set(key, []);
+      byPhone.get(key).push(item);
+    });
+
+    Array.from(byPhone.values())
+      .filter(group => group.length > 1)
+      .forEach(group => {
+        const reportNumbers = group
+          .filter(g => g.reportNo && !(g.status && g.status.trim() === 'مغلق'))
+          .map(g => {
+            const isDisaster = g.classification && g.classification.trim() === 'حوادث الكوارث الطبيعية والصناعية';
+            const statusText = isDisaster
+              ? `${g.status || '-'} — حوادث الكوارث الطبيعية والصناعية`
+              : (g.status || '-');
+            return `${g.reportNo} (${statusText})`;
+          })
+          .join('\n');
+        const phoneDisplay = group[0].phone || '-';
+        const closedCount = group.filter(g => g.status && g.status.trim() === 'مغلق').length;
+        const satCount = group.filter(g => g.rating === 'راضي').length;
+        const unsatCount = group.filter(g => g.rating === 'غير راضي').length;
+        const noneCount = group.filter(g => g.rating === 'لا يوجد').length;
+        data.push([name, reportNumbers || '-', phoneDisplay, closedCount, satCount, unsatCount, noneCount]);
+      });
+  });
+
+  return data;
+}
+
+document.getElementById('exportEmployeeExcelBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  const data = buildEmployeeReportRows();
+  if(data.length <= 1){
+    alert('لا توجد بلاغات مكررة لهؤلاء الموظفين.');
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:28},{wch:45},{wch:16},{wch:8},{wch:8},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, 'تقرير الموظفين');
+  XLSX.writeFile(wb, 'تقرير_الموظفين.xlsx');
+});
+
+document.getElementById('printEmployeeBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  document.getElementById('employeeReportPrint').innerHTML = buildEmployeeReportHtml();
+  document.body.classList.add('printing-employee-report');
+  window.print();
+});
+
+document.getElementById('printQuarterSummaryBtn').addEventListener('click', () => {
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+  if(!hasClosureReasonCol || selectedQuarters.length === 0){
+    setStatus('اختر ربعًا واحدًا على الأقل من قائمة "فلترة ربع سنوية"، وتأكد من وجود عمود "سبب الإغلاق" بالملف.', true);
+    return;
+  }
+  renderQuarterSummaryCardsPage();
+  document.body.classList.add('printing-quarter-summary');
+  window.print();
+});
+
+window.addEventListener('afterprint', () => {
+  document.body.classList.remove('printing-employee-report');
+  document.body.classList.remove('printing-quarter-summary');
+});
+
+resetPeriodsBtn.addEventListener('click', () => {
+  periods = [];
+  renderPeriodsTable();
+  setStatus('تم تصفير جدول الفترات.');
+});
+
+// Add "weeks" periods for every currently-selected month (checkbox list).
+// Each selected month contributes its own set of week rows to the periods
+// table; existing periods from other months/ranges are kept as-is.
+monthlyWeeksBtn.addEventListener('click', () => {
+  if(selectedMonths.length === 0){
+    setStatus('اختر شهرًا واحدًا على الأقل من القائمة.', true);
+    return;
+  }
+  if(parsedData.length === 0){
+    setStatus('حمّل البيانات أولاً.', true);
+    return;
+  }
+
+  let totalAdded = 0;
+  const noteParts = [];
+
+  selectedMonths.forEach(monthValue => {
+    const info = getMonthInfo(monthValue);
+    const {monthStart, monthEnd, daysInMonth, isComplete} = info;
+    const monthLabel = monthValueLabel(monthValue);
+
+    // Build week boundaries so the last week absorbs whatever days are left
+    // over (0-6 days) instead of spawning a separate short "week 5". A month
+    // always ends up with exactly floor(daysInMonth/7) weeks this way.
+    const numWeeks = Math.max(1, Math.floor(daysInMonth / 7));
+    const weekBoundaries = [];
+    let cursor = new Date(monthStart);
+    for(let w = 1; w <= numWeeks; w++){
+      let weekEnd;
+      if(w === numWeeks){
+        weekEnd = new Date(monthEnd); // last week absorbs the remainder days
+      } else {
+        weekEnd = new Date(cursor.getTime() + 7*24*60*60*1000 - 1000);
+      }
+      weekBoundaries.push({from: new Date(cursor), to: weekEnd});
+      cursor = new Date(cursor.getTime() + 7*24*60*60*1000);
+    }
+
+    const addedPeriods = weekBoundaries.map((wb, idx) => {
+      const items = parsedData.filter(p => p.date >= wb.from && p.date <= wb.to);
+      const total = items.length;
+      const sat = items.filter(i=>i.rating==='راضي').length;
+      const unsat = items.filter(i=>i.rating==='غير راضي').length;
+      const none = items.filter(i=>i.rating==='لا يوجد').length;
+      const satEligible = items.filter(i=>i.rating==='راضي' && isSatEligible(i)).length;
+      const unsatEligible = items.filter(i=>i.rating==='غير راضي' && isSatEligible(i)).length;
+      return {label: `${monthLabel} - الأسبوع ${idx+1}`, from: wb.from, to: wb.to, total, sat, unsat, none, satEligible, unsatEligible};
+    });
+
+    periods = periods.concat(addedPeriods);
+    totalAdded += addedPeriods.length;
+
+    const completeNote = isComplete
+      ? `شهر كامل (${daysInMonth} يوم)`
+      : `غير مكتمل تقويميًا`;
+    noteParts.push(`${monthLabel}: ${addedPeriods.length} أسبوع (${completeNote})`);
+  });
+
+  renderPeriodsTable();
+  setStatus(`تمت إضافة ${totalAdded} أسبوع إجمالاً — ${noteParts.join(' | ')}.`);
+});
+
+// ---- Generic "column value picker": click a small button next to any
+// column dropdown to see every distinct value found in that column across
+// the raw uploaded rows (with counts), multi-select the ones wanted, and
+// apply that as a row-level filter for the whole analysis. Column dropdowns
+// are hidden from the UI now, but this logic is kept intact/unused so
+// nothing else in the tool changes. ----
+
+let columnFilters = {}; // { selectId: { colIdx:number, allowed:Set<string> } }
+
+const allColumnSelects = [
+  {id:'dateCol', el:dateColSel},
+  {id:'ratingCol', el:ratingColSel},
+  {id:'nameCol', el:nameColSel},
+  {id:'phoneCol', el:phoneColSel},
+  {id:'descCol', el:descColSel},
+  {id:'statusCol', el:statusColSel},
+  {id:'reportNoCol', el:reportNoColSel},
+  {id:'muniCol', el:muniColSel},
+  {id:'districtCol', el:districtColSel},
+  {id:'streetCol', el:streetColSel},
+  {id:'linkCol', el:linkColSel},
+  {id:'targetTimeCol', el:targetTimeColSel},
+  {id:'sourceCol', el:sourceColSel},
+  {id:'systemStatusCol', el:systemStatusColSel}
+];
+
+function ensureValuePickerButtons(){
+  allColumnSelects.forEach(({id, el})=>{
+    let wrap = el.parentElement.querySelector('.vp-btn-wrap');
+    if(!wrap){
+      wrap = document.createElement('div');
+      wrap.className = 'vp-btn-wrap';
+      wrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'vp-btn';
+      btn.textContent = '👁 عرض القيم واختيار';
+      btn.style.cssText = 'background:#eee;border:1px solid var(--line);border-radius:6px;padding:4px 9px;font-size:11.5px;cursor:pointer;color:var(--ink);';
+      btn.addEventListener('click', ()=> openValuePickerModal(id, el));
+      const badge = document.createElement('span');
+      badge.className = 'vp-badge';
+      badge.id = `vpBadge_${id}`;
+      badge.style.cssText = 'font-size:11px;color:var(--muted);';
+      wrap.appendChild(btn);
+      wrap.appendChild(badge);
+      el.insertAdjacentElement('afterend', wrap);
+    }
+    updateFilterBadge(id);
+  });
+}
+
+function updateFilterBadge(id){
+  const badge = document.getElementById(`vpBadge_${id}`);
+  if(!badge) return;
+  const f = columnFilters[id];
+  if(f){
+    badge.textContent = `فلتر مفعّل: ${f.allowed.size} قيمة محددة`;
+    badge.style.color = 'var(--accent)';
+    badge.style.fontWeight = '600';
+  } else {
+    badge.textContent = '';
+  }
+}
+
+function getUniqueColumnValues(colIdx){
+  const map = new Map();
+  rows.forEach(r=>{
+    const raw = (r[colIdx]!==undefined && r[colIdx]!==null) ? String(r[colIdx]).trim() : '';
+    const key = raw === '' ? '(فارغ)' : raw;
+    map.set(key, (map.get(key)||0)+1);
+  });
+  return Array.from(map.entries()).sort((a,b)=> b[1]-a[1]);
+}
+
+function openValuePickerModal(selectId, selectEl){
+  const colIdx = parseInt(selectEl.value,10);
+  if(isNaN(colIdx) || colIdx < 0){
+    alert('اختر العمود من القائمة أولاً ثم اضغط عرض القيم.');
+    return;
+  }
+  const values = getUniqueColumnValues(colIdx);
+  const existing = columnFilters[selectId];
+  const allowed = (existing && existing.colIdx === colIdx) ? existing.allowed : null;
+
+  document.getElementById('valuePickerTitle').textContent = `قيم العمود: ${headers[colIdx] || '(عمود '+(colIdx+1)+')'}`;
+  const body = document.getElementById('valuePickerBody');
+  body.innerHTML = values.map(([val,count])=>{
+    const checked = allowed ? allowed.has(val) : true;
+    return `<label class="vp-row" data-val="${val.replace(/"/g,'&quot;')}" style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--line);font-size:13px;">
+      <input type="checkbox" class="vp-check" value="${val.replace(/"/g,'&quot;')}" ${checked?'checked':''}>
+      <span style="flex:1;">${val}</span>
+      <span style="color:var(--muted);font-size:11.5px;">${count}</span>
+    </label>`;
+  }).join('') || '<div style="color:var(--muted);font-size:13px;">لا توجد قيم.</div>';
+
+  const overlay = document.getElementById('valuePickerOverlay');
+  overlay.dataset.selectId = selectId;
+  overlay.dataset.colIdx = colIdx;
+  document.getElementById('valuePickerSearch').value = '';
+  overlay.classList.remove('hidden');
+}
+
+document.getElementById('valuePickerSearch').addEventListener('input', (e)=>{
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('#valuePickerBody .vp-row').forEach(row=>{
+    const v = (row.getAttribute('data-val')||'').toLowerCase();
+    row.style.display = v.includes(q) ? 'flex' : 'none';
+  });
+});
+
+document.getElementById('valuePickerSelectAll').addEventListener('click', ()=>{
+  document.querySelectorAll('#valuePickerBody .vp-row').forEach(row=>{
+    if(row.style.display !== 'none') row.querySelector('.vp-check').checked = true;
+  });
+});
+document.getElementById('valuePickerDeselectAll').addEventListener('click', ()=>{
+  document.querySelectorAll('#valuePickerBody .vp-row').forEach(row=>{
+    if(row.style.display !== 'none') row.querySelector('.vp-check').checked = false;
+  });
+});
+document.getElementById('valuePickerClear').addEventListener('click', ()=>{
+  const overlay = document.getElementById('valuePickerOverlay');
+  const selectId = overlay.dataset.selectId;
+  delete columnFilters[selectId];
+  updateFilterBadge(selectId);
+  overlay.classList.add('hidden');
+  setStatus('تمت إزالة الفلتر عن هذا العمود. اضغط "تحميل البيانات" لتحديث النتائج.');
+});
+document.getElementById('valuePickerApply').addEventListener('click', ()=>{
+  const overlay = document.getElementById('valuePickerOverlay');
+  const selectId = overlay.dataset.selectId;
+  const colIdx = parseInt(overlay.dataset.colIdx,10);
+  const checks = Array.from(document.querySelectorAll('#valuePickerBody .vp-check'));
+  const allValues = getUniqueColumnValues(colIdx).map(v=>v[0]);
+  const checked = checks.filter(c=>c.checked).map(c=>c.value);
+
+  if(checked.length === 0){
+    alert('اختر قيمة واحدة على الأقل، أو استخدم "إزالة الفلتر".');
+    return;
+  }
+  if(checked.length === allValues.length){
+    delete columnFilters[selectId]; // all selected == no restriction
+  } else {
+    columnFilters[selectId] = {colIdx, allowed: new Set(checked)};
+  }
+  updateFilterBadge(selectId);
+  overlay.classList.add('hidden');
+  setStatus('تم تطبيق الفلتر. اضغط "تحميل البيانات" لتحديث النتائج بحسب القيم المحددة.');
+});
+document.getElementById('valuePickerClose').addEventListener('click', ()=>{
+  document.getElementById('valuePickerOverlay').classList.add('hidden');
+});
+document.getElementById('valuePickerOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'valuePickerOverlay') e.target.classList.add('hidden');
+});
+
+// Apply every active column filter to the raw rows before parsing dates.
+function applyColumnFilters(sourceRows){
+  const activeFilters = Object.values(columnFilters);
+  if(activeFilters.length === 0) return sourceRows;
+  return sourceRows.filter(r=>{
+    return activeFilters.every(f=>{
+      const raw = (r[f.colIdx]!==undefined && r[f.colIdx]!==null) ? String(r[f.colIdx]).trim() : '';
+      const key = raw === '' ? '(فارغ)' : raw;
+      return f.allowed.has(key);
+    });
+  });
+}
+
+// ---- Day-detail popup + duplicates + WhatsApp workflow (localStorage-tracked) ----
+
+let sentMsgs = JSON.parse(localStorage.getItem('sentMsgs') || '[]');
+let sentColors = JSON.parse(localStorage.getItem('sentColors') || '{}');
+let dupRows = [];
+
+// ---- جدول الصور (رقم البلاغ → صورة) ----
+// Maps a normalized report number to an image URL, parsed from a small
+// reference table the person attaches separately (columns: رقم البلاغ +
+// صورة). "➕ إدراج الصور بالتقويم" re-renders the currently-open day so
+// any matching report shows its image instead of the manual file input.
+let reportImageMap = new Map();
+
+function findColumnIndex(headers, keywords){
+  for(let i=0; i<headers.length; i++){
+    const h = (headers[i] || '').trim();
+    if(h && keywords.some(k => h === k)) return i;
+  }
+  for(let i=0; i<headers.length; i++){
+    const h = (headers[i] || '').trim();
+    if(h && keywords.some(k => h.includes(k))) return i;
+  }
+  return -1;
+}
+
+function normalizeReportNoKey(v){
+  return normalizeDigits(String(v || '').trim());
+}
+
+document.getElementById('imageTableInput').addEventListener('change', (e) => {
+  if(!e.target.files.length) return;
+  const file = e.target.files[0];
+  const statusEl = document.getElementById('imageTableStatus');
+  statusEl.textContent = '⏳ جاري قراءة جدول الصور (استخراج الصور المضمّنة)...';
+  statusEl.className = 'status';
+
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    try{
+      const arrayBuffer = ev.target.result;
+      const data = new Uint8Array(arrayBuffer);
+
+      // 1) Read plain cell values normally (رقم البلاغ column) via SheetJS.
+      const wb = XLSX.read(data, {type:'array', cellDates:true});
+      const firstSheetName = wb.SheetNames[0];
+      const sheet = wb.Sheets[firstSheetName];
+      const json = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+      if(json.length < 2){ statusEl.textContent = 'الملف لا يحتوي بيانات كافية.'; statusEl.className='status err'; return; }
+      const hdrs = json[0].map(h => String(h).trim());
+      const reportIdx = findColumnIndex(hdrs, ['رقم البلاغ']);
+      if(reportIdx < 0){
+        statusEl.textContent = 'تعذّر إيجاد عمود "رقم البلاغ" بالملف.';
+        statusEl.className = 'status err';
+        return;
+      }
+      // row index in the raw sheet (0-based, header excluded) -> رقم البلاغ
+      const reportNoByRow = {};
+      json.slice(1).forEach((r, i) => {
+        const val = normalizeReportNoKey(r[reportIdx]);
+        if(val) reportNoByRow[i] = val; // i = 0-based data row (row 2 in Excel terms)
+      });
+
+      // 2) Unzip the xlsx and pull out embedded images + their anchor row,
+      // via the sheet's drawing relationship → drawing XML → media rels.
+      if(typeof JSZip === 'undefined'){
+        statusEl.textContent = 'تعذّر تحميل مكتبة استخراج الصور (JSZip). تأكد من اتصال الإنترنت وحاول مرة أخرى.';
+        statusEl.className = 'status err';
+        return;
+      }
+      const zip = await JSZip.loadAsync(arrayBuffer);
+      const parser = new DOMParser();
+
+      // Figure out which sheetN.xml corresponds to the first sheet, and
+      // find its drawing relationship (if any).
+      const sheetIndex = wb.SheetNames.indexOf(firstSheetName) + 1; // sheet1.xml, sheet2.xml...
+      const sheetRelsPath = `xl/worksheets/_rels/sheet${sheetIndex}.xml.rels`;
+      const sheetXmlPath = `xl/worksheets/sheet${sheetIndex}.xml`;
+
+      let drawingPath = null;
+      const sheetXmlFile = zip.file(sheetXmlPath);
+      const sheetRelsFile = zip.file(sheetRelsPath);
+      if(sheetXmlFile && sheetRelsFile){
+        const sheetXmlText = await sheetXmlFile.async('text');
+        const sheetXmlDoc = parser.parseFromString(sheetXmlText, 'application/xml');
+        const drawingEl = sheetXmlDoc.getElementsByTagName('drawing')[0];
+        if(drawingEl){
+          const rId = drawingEl.getAttribute('r:id');
+          const sheetRelsText = await sheetRelsFile.async('text');
+          const sheetRelsDoc = parser.parseFromString(sheetRelsText, 'application/xml');
+          const rels = sheetRelsDoc.getElementsByTagName('Relationship');
+          for(let i=0; i<rels.length; i++){
+            if(rels[i].getAttribute('Id') === rId){
+              const target = rels[i].getAttribute('Target'); // e.g. ../drawings/drawing1.xml
+              drawingPath = 'xl/drawings/' + target.split('/').pop();
+              break;
+            }
+          }
+        }
+      }
+
+      reportImageMap = new Map();
+      let extractedCount = 0;
+
+      if(drawingPath && zip.file(drawingPath)){
+        const drawingIndexMatch = drawingPath.match(/drawing(\d+)\.xml$/);
+        const drawingIndex = drawingIndexMatch ? drawingIndexMatch[1] : '1';
+        const drawingRelsPath = `xl/drawings/_rels/drawing${drawingIndex}.xml.rels`;
+
+        const drawingXmlText = await zip.file(drawingPath).async('text');
+        const drawingDoc = parser.parseFromString(drawingXmlText, 'application/xml');
+
+        // Map rId -> media file path, from the drawing's own rels file.
+        const mediaByRid = {};
+        const drawingRelsFile = zip.file(drawingRelsPath);
+        if(drawingRelsFile){
+          const drawingRelsText = await drawingRelsFile.async('text');
+          const drawingRelsDoc = parser.parseFromString(drawingRelsText, 'application/xml');
+          const mrels = drawingRelsDoc.getElementsByTagName('Relationship');
+          for(let i=0; i<mrels.length; i++){
+            const target = mrels[i].getAttribute('Target'); // ../media/imageN.ext
+            mediaByRid[mrels[i].getAttribute('Id')] = 'xl/media/' + target.split('/').pop();
+          }
+        }
+
+        // Each <xdr:twoCellAnchor> / <xdr:oneCellAnchor> holds a <xdr:from><xdr:row>
+        // (0-based sheet row, includes header row) and a <a:blip r:embed="rIdX">.
+        const anchors = [
+          ...drawingDoc.getElementsByTagName('xdr:twoCellAnchor'),
+          ...drawingDoc.getElementsByTagName('xdr:oneCellAnchor')
+        ];
+
+        for(const anchor of anchors){
+          const fromEl = anchor.getElementsByTagName('xdr:from')[0];
+          if(!fromEl) continue;
+          const rowEl = fromEl.getElementsByTagName('xdr:row')[0];
+          if(!rowEl) continue;
+          const excelRow = parseInt(rowEl.textContent, 10); // 0-based, row 0 = header
+          const dataRowIndex = excelRow - 1; // convert to 0-based data row (matches reportNoByRow)
+
+          const blipEls = anchor.getElementsByTagName('a:blip');
+          if(blipEls.length === 0) continue;
+          const rEmbed = blipEls[0].getAttribute('r:embed');
+          const mediaPath = mediaByRid[rEmbed];
+          if(!mediaPath || !zip.file(mediaPath)) continue;
+
+          const reportNo = reportNoByRow[dataRowIndex];
+          if(!reportNo) continue;
+
+          const ext = mediaPath.split('.').pop().toLowerCase();
+          const mime = ext === 'png' ? 'image/png' : (ext === 'gif' ? 'image/gif' : 'image/jpeg');
+          const blob = await zip.file(mediaPath).async('blob');
+          const typedBlob = blob.type ? blob : new Blob([blob], {type: mime});
+          const objectUrl = URL.createObjectURL(typedBlob);
+          reportImageMap.set(reportNo, objectUrl);
+          extractedCount++;
+        }
+      }
+
+      if(extractedCount === 0){
+        statusEl.textContent = 'لم يتم العثور على صور مضمّنة بالملف (أو تعذّر قراءة موقعها). تأكد أن الصور مدرجة فعليًا داخل الخلايا وليست روابط خارجية.';
+        statusEl.className = 'status err';
+        return;
+      }
+
+      statusEl.textContent = `✅ تم استخراج ${extractedCount} صورة وربطها بأرقام بلاغاتها. اضغط "➕ إدراج الصور بالتقويم" لتطبيقها.`;
+      statusEl.className = 'status';
+    }catch(err){
+      console.error(err);
+      statusEl.textContent = 'حدث خطأ أثناء قراءة الملف: ' + err.message;
+      statusEl.className = 'status err';
+    }
+  };
+  reader.onerror = () => { statusEl.textContent = 'فشل في قراءة الملف.'; statusEl.className = 'status err'; };
+  reader.readAsArrayBuffer(file);
+});
+
+document.getElementById('insertImagesBtn').addEventListener('click', () => {
+  const statusEl = document.getElementById('imageTableStatus');
+  if(reportImageMap.size === 0){
+    statusEl.textContent = 'ارفق جدول الصور أولاً.';
+    statusEl.className = 'status err';
+    return;
+  }
+  if(parsedData.length === 0){
+    statusEl.textContent = 'حمّل الجدول الأول (البيانات الرئيسية) أولاً.';
+    statusEl.className = 'status err';
+    return;
+  }
+  const matchedCount = parsedData.filter(p => p.reportNo && reportImageMap.has(normalizeReportNoKey(p.reportNo))).length;
+  statusEl.textContent = `✅ تم العثور على ${matchedCount} تطابق. افتح أي يوم بالتقويم وشوف الصور بعمود "صورة".`;
+  statusEl.className = 'status';
+  // إعادة رسم جدول اليوم المفتوح حاليًا (إن وُجد) عشان تظهر الصور فورًا.
+  if(typeof currentDayY !== 'undefined' && currentDayY !== null){
+    renderDayTable();
+  }
+});
+
+// زر التبديل: عرض البلاغات اللي لها صور فقط بالتقويم ↔ عرض الكل.
+// فلتر عرض فقط — ما يأثر على أي نسبة أو رقم بالملخص أو جدول الفترات.
+document.getElementById('imagesOnlyToggleBtn').addEventListener('click', function(){
+  const statusEl = document.getElementById('imageTableStatus');
+  if(!imagesOnlyFilter && reportImageMap.size === 0){
+    statusEl.textContent = 'ارفق جدول الصور أولاً.';
+    statusEl.className = 'status err';
+    return;
+  }
+  if(parsedData.length === 0){
+    statusEl.textContent = 'حمّل الجدول الأول (البيانات الرئيسية) أولاً.';
+    statusEl.className = 'status err';
+    return;
+  }
+
+  imagesOnlyFilter = !imagesOnlyFilter;
+  this.textContent = imagesOnlyFilter
+    ? '📋 عرض كل البلاغات'
+    : '📷 عرض البلاغات اللي فيها صور فقط';
+  this.style.background = imagesOnlyFilter ? '#6a4f9c' : '#3d6b8a';
+
+  if(selectedMonths.length > 0) renderMonthCalendars();
+  if(selectedQuarters.length > 0) renderQuarterCalendars();
+  if(currentDayY !== null && !dayModalOverlay.classList.contains('hidden')) renderDayTable();
+
+  if(selectedMonths.length === 0 && selectedQuarters.length === 0){
+    statusEl.textContent = 'تم التفعيل — اختر شهرًا أو ربعًا لعرض التقويم.';
+  } else {
+    const withImg = getCalendarSourceData().length;
+    statusEl.textContent = imagesOnlyFilter
+      ? `✅ التقويم يعرض الآن ${withImg} بلاغ لها صور فقط.`
+      : '✅ التقويم يعرض كل البلاغات.';
+  }
+  statusEl.className = 'status';
+});
+
+// Copies the actual image (not just its URL) to the clipboard when the
+// person taps the thumbnail. Falls back to copying the image URL as text
+// if the browser/clipboard can't handle image blobs.
+async function copyImageToClipboard(url){
+  try{
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]);
+    alert('تم نسخ الصورة ✅');
+  }catch(err){
+    try{
+      await navigator.clipboard.writeText(url);
+      alert('تعذّر نسخ الصورة نفسها، تم نسخ رابطها بدلاً منها.');
+    }catch(err2){
+      alert('تعذّر النسخ: ' + err.message);
+    }
+  }
+}
+
+let dupPhone = '';
+let currentDayY = null, currentDayM = null, currentDayD = null;
+let dayStatusFilter = '';
+let pendingHighlightId = null; // set by the report/phone search; consumed once the matching day's modal opens
+let activeHighlightRowId = null; // stays set while that day's modal is open, so the row keeps its blue border across re-renders (e.g. status filter changes)
+
+function saveSentMsgs(){ localStorage.setItem('sentMsgs', JSON.stringify(sentMsgs)); }
+function saveSentColors(){ localStorage.setItem('sentColors', JSON.stringify(sentColors)); }
+
+// ---- حالة الإرسال لكل بلاغ (تجميد الأزرار + علامة ✓) ----
+// أي إرسال (مراسلة المستفيد / تواصل / نسخ الرسالة / إرسال صورة / إرسال
+// الملاحظات) يعلّم البلاغ كمُرسل. المفتاح رقم البلاغ (بعد توحيد الأرقام)،
+// وإذا ما فيه رقم بلاغ يُستخدم الجوال + وقت البلاغ بدلاً منه.
+function sentKeyOf(item){
+  if(item.reportNo) return normalizeReportNoKey(item.reportNo);
+  return 'ph_' + normalizePhoneForWhatsapp(item.phone) + '_' + (item.date ? item.date.getTime() : item.id);
+}
+function getSentColor(item){
+  if(!item) return '';
+  return sentColors[sentKeyOf(item)] || (item.reportNo ? sentColors[item.reportNo] : '') || '';
+}
+function markSent(item, color){
+  // البرتقالي (مراسلة المستفيد) ما ينكتب فوقه أزرق
+  if(color === 'blue' && getSentColor(item) === 'orange') return;
+  sentColors[sentKeyOf(item)] = color;
+}
+function unmarkSent(item){
+  delete sentColors[sentKeyOf(item)];
+  if(item.reportNo) delete sentColors[item.reportNo];
+}
+
+// Total/راضي/غير راضي/مغلق counts for every report matching a phone
+// number, across the WHOLE loaded file (not just the currently-open day
+// or the currently-checked rows) — used to snapshot "at the time this
+// message was sent, this phone had N total, S راضي, U غير راضي, C مغلق"
+// into the sent-messages log.
+function getPhoneStats(phone){
+  const items = parsedData.filter(p => p.phone && normalizePhoneForWhatsapp(p.phone) === normalizePhoneForWhatsapp(phone));
+  return {
+    total: items.length,
+    sat: items.filter(i => i.rating === 'راضي').length,
+    unsat: items.filter(i => i.rating === 'غير راضي').length,
+    closed: items.filter(i => i.status && i.status.trim() === 'مغلق').length
+  };
+}
+
+function addSentRecord(type, item, note, phoneStats){
+  const rec = {
+    النوع: type,
+    رقم_البلاغ: item.reportNo || '',
+    رقم_الجوال: item.phone || '',
+    البلدية: item.muni || '',
+    الحي: item.district || '',
+    التاريخ: new Date().toLocaleString('ar-EG'),
+    الملاحظة: note || '-'
+  };
+  if(phoneStats){
+    rec.إجمالي_بلاغات_الرقم = phoneStats.total;
+    rec.راضي = phoneStats.sat;
+    rec.غير_راضي = phoneStats.unsat;
+    rec.مغلق = phoneStats.closed;
+  }
+  sentMsgs.push(rec);
+  saveSentMsgs();
+}
+
+// Turn a raw phone number into an international-format digits-only string
+// suitable for a wa.me link. Assumes Saudi numbers when no country code is
+// present (05xxxxxxxx -> 9665xxxxxxxx, 5xxxxxxxx -> 9665xxxxxxxx).
+function normalizePhoneForWhatsapp(phone){
+  let digits = String(phone || '').replace(/\D/g, '');
+  if(!digits) return '';
+  if(digits.startsWith('00')) digits = digits.slice(2);
+  if(digits.startsWith('966')) return digits;
+  if(digits.startsWith('0')) return '966' + digits.slice(1);
+  if(digits.startsWith('5') && digits.length === 9) return '966' + digits;
+  return digits;
+}
+
+function getDayItems(y, m, d){
+  const dayStart = new Date(y, m-1, d, 0, 0, 0);
+  const dayEnd = new Date(y, m-1, d, 23, 59, 59);
+  return getCalendarSourceData().filter(p => p.date >= dayStart && p.date <= dayEnd);
+}
+
+function copyText(txt){
+  navigator.clipboard.writeText(String(txt || ''));
+}
+
+// Render (or re-render, e.g. after a delete) the day table for the
+// currently-open day.
+function renderDayTable(){
+  const allItems = getDayItems(currentDayY, currentDayM, currentDayD);
+  const statuses = [...new Set(parsedData.map(i => i.status).filter(Boolean))];
+  if(dayStatusFilter && !statuses.includes(dayStatusFilter)) dayStatusFilter = '';
+  const items = dayStatusFilter ? allItems.filter(i => i.status === dayStatusFilter) : allItems;
+
+  let titleSuffix = `(${items.length}${dayStatusFilter ? ' من ' + allItems.length : ''})`;
+  if(calendarStatusFilter || imagesOnlyFilter){
+    // Also show the true, un-filtered total for this day so it's obvious
+    // a calendar display filter is actually being applied here.
+    const dayStart = new Date(currentDayY, currentDayM-1, currentDayD, 0, 0, 0);
+    const dayEnd = new Date(currentDayY, currentDayM-1, currentDayD, 23, 59, 59);
+    const trueTotal = parsedData.filter(p => p.date >= dayStart && p.date <= dayEnd).length;
+    const filterNames = [];
+    if(calendarStatusFilter) filterNames.push('فلتر التقويم مفعّل');
+    if(imagesOnlyFilter) filterNames.push('البلاغات اللي لها صور فقط');
+    titleSuffix = `(${items.length} من أصل ${trueTotal} — ${filterNames.join('، ')}${dayStatusFilter ? '، ومصفّى أيضًا حسب ' + dayStatusFilter : ''})`;
+  }
+  dayModalTitle.textContent = `بلاغات يوم ${currentDayD}/${currentDayM}/${currentDayY} ${titleSuffix}`;
+
+  const satCount = items.filter(i => i.rating === 'راضي').length;
+  const unsatCount = items.filter(i => i.rating === 'غير راضي').length;
+  const noneCount = items.filter(i => i.rating === 'لا يوجد').length;
+  const pendingReviewItems = allItems.filter(i => isPendingReviewStatus(i));
+
+  let html = `<div class="day-stats">
+    <span class="stat-badge sat">راضي: ${satCount}</span>
+    <span class="stat-badge unsat">غير راضي: ${unsatCount}</span>
+    <span class="stat-badge">لا يوجد: ${noneCount}</span>
+  </div>`;
+
+  if(pendingReviewItems.length > 0){
+    html += `<button type="button" class="btn" id="pendingReviewMsgBtn" style="background:#6a4f9c;margin-top:0;margin-bottom:12px;">📩 مراسلة بلاغات "قيد المعالجة - تقييم مقدم البلاغ" (${pendingReviewItems.length})</button>`;
+  }
+
+  if(statuses.length > 0){
+    html += `<div class="row" style="margin-top:0;margin-bottom:12px;">
+      <div class="field" style="min-width:200px;max-width:280px;">
+        <label>تصفية حسب حالة البلاغ</label>
+        <select id="dayStatusFilterSel">
+          <option value="">كل الحالات (${allItems.length})</option>
+          ${statuses.map(s => `<option value="${s}" ${s===dayStatusFilter?'selected':''}>${s} (${allItems.filter(i=>i.status===s).length})</option>`).join('')}
+        </select>
+      </div>
+    </div>`;
+  }
+
+  if(allItems.length === 0){
+    html += '<div style="color:var(--muted);font-size:13px;">لا توجد بلاغات لهذا اليوم.</div>';
+    dayModalBody.innerHTML = html;
+    return;
+  }
+  if(items.length === 0){
+    html += '<div style="color:var(--muted);font-size:13px;">لا توجد بلاغات بهذه الحالة.</div>';
+    dayModalBody.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="wrap-table"><table class="day-table"><thead><tr>
+    <th>البلدية</th><th>الحي</th><th>الشارع</th><th>الوصف</th><th>رقم البلاغ</th>
+    <th>رقم الجوال</th><th>الحالة</th><th>التاريخ</th><th>المتبقي</th><th>صورة</th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+  </tr></thead><tbody>`;
+
+  items.forEach(item => {
+    const sentColor = getSentColor(item);
+    let colorClass = sentColor === 'blue' ? 'sent-blue' : (sentColor === 'orange' ? 'sent-orange' : '');
+    const safeId = String(item.reportNo || item.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    const remaining = getRemainingHours(item);
+    let remainingCell = '-';
+    if(remaining !== null){
+      remainingCell = remaining < 0
+        ? `<span style="color:var(--bad);font-weight:700;">متأخر ${Math.abs(Math.round(remaining))} س</span>`
+        : `<span style="${remaining < 48 ? 'color:var(--bad);font-weight:700;' : 'color:var(--accent);'}">غير متأخر — متبقي ${Math.round(remaining)} س</span>`;
+      if(remaining < 48) colorClass = (colorClass ? colorClass + ' ' : '') + 'urgent-row';
+    }
+
+    if(isPendingClosureCheck(item)){
+      colorClass = (colorClass ? colorClass + ' ' : '') + 'pending-closure-check';
+    }
+
+    const dupCount = item.phone
+      ? (phoneCountMap.get(normalizePhoneForWhatsapp(item.phone)) || 0)
+      : 0;
+    if(dupCount > 1){
+      colorClass = (colorClass ? colorClass + ' ' : '') + 'dup-row';
+    }
+
+    // إذا رقم الجوال مكرر، اعرض كم مرة أُرسلت رسالة لأي من بلاغاته
+    // (مو بس هذا البلاغ تحديدًا) — علامة "✓×N".
+    const isSentReport = !!sentColor;
+    let sentCheckHtml = '';
+    if(dupCount > 1 && item.phone){
+      const sameNorm = normalizePhoneForWhatsapp(item.phone);
+      const sameGroup = phoneItemsMap.get(sameNorm) || [];
+      const sentCountForPhone = sameGroup.filter(p => getSentColor(p)).length;
+      if(sentCountForPhone > 0){
+        sentCheckHtml = ` <span title="عدد مرات الإرسال لنفس الرقم" style="color:#16a34a;font-weight:900;font-size:13px;">✓×${sentCountForPhone}</span>`;
+      }
+    } else if(isSentReport){
+      sentCheckHtml = ' <span title="تم الإرسال" style="color:#16a34a;font-weight:900;font-size:14px;">✓</span>';
+    }
+
+    if(activeHighlightRowId !== null && item.id === activeHighlightRowId){
+      colorClass = (colorClass ? colorClass + ' ' : '') + 'row-target';
+    }
+
+    html += `<tr class="${colorClass}" data-id="${item.id}">
+      <td>${item.muni || '-'}</td>
+      <td>${item.district || '-'}</td>
+      <td>${item.street || '-'}</td>
+      <td class="desc-cell">${item.desc || '-'}</td>
+      <td>${item.reportNo || '-'} ${item.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${item.reportNo}">نسخ</button>` : ''}</td>
+      <td class="ltr">${dupCount > 1 ? `<span class="dup-count-badge">×${dupCount}</span>` : ''}${item.phone || '-'}${item.phone ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${item.phone}">نسخ</button>` : ''}${sentCheckHtml}</td>
+      <td>${item.status || '-'}${isPendingClosureCheck(item) ? '<br><span style="font-size:9.5px;color:#14532d;font-weight:700;">بانتظار التحقق من إجراء الإغلاق</span>' : ''}</td>
+      <td>${fmtDateShort(item.date)}</td>
+      <td>${remainingCell}</td>
+      <td class="file-cell">${
+        (item.reportNo && reportImageMap.has(normalizeReportNoKey(item.reportNo)))
+          ? `<img src="${reportImageMap.get(normalizeReportNoKey(item.reportNo))}" class="matched-img-thumb" title="اضغط للنسخ" data-img-url="${reportImageMap.get(normalizeReportNoKey(item.reportNo))}">`
+          : `<input type="file" accept="image/*" id="img_${safeId}">`
+      }</td>
+      <td>${item.phone ? (isSentReport ? `<span class="mini-btn" style="background:#c8c3b8;opacity:0.6;cursor:not-allowed;" title="تم الإرسال مسبقًا">📞 اتصال</span>` : `<a href="tel:${item.phone}" class="mini-btn" style="background:#3d6b8a;text-decoration:none;display:inline-block;">📞 اتصال</a>`) : ''}</td>
+      <td>${item.phone ? `<button type="button" class="mini-btn wa send-img-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">إرسال</button>` : ''}</td>
+      <td>${item.phone ? `<button type="button" class="mini-btn copy dup-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">عرض</button>` : ''}</td>
+      <td><button type="button" class="mini-btn del del-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">حذف</button></td>
+      <td>${item.phone ? `<button type="button" class="mini-btn followup-send-btn" data-id="${item.id}" ${isSentReport ? 'disabled' : ''} style="background:#6a4f9c;${isSentReport ? 'opacity:0.5;cursor:not-allowed;' : ''}">📩 تواصل</button>` : ''}</td>
+      <td>${item.phone ? `<button type="button" class="mini-btn followup-copy-btn" data-id="${item.id}" style="background:#c9971f;">📋 نسخ</button>` : ''}</td>
+      <td>${isSentReport ? `<button type="button" class="mini-btn reactivate-btn" data-id="${item.id}" style="background:#2f6f5e;">🔓 إعادة تفعيل</button>` : ''}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  dayModalBody.innerHTML = html;
+}
+
+function openDayModal(y, m, d){
+  currentDayY = y; currentDayM = m; currentDayD = d;
+  dayStatusFilter = '';
+  activeHighlightRowId = pendingHighlightId; // null unless we just arrived here from a search
+  renderDayTable();
+  dayModalOverlay.classList.remove('hidden');
+
+  if(pendingHighlightId !== null){
+    const targetId = pendingHighlightId;
+    pendingHighlightId = null;
+    setTimeout(() => {
+      const row = dayModalBody.querySelector(`tr[data-id="${targetId}"]`);
+      if(row){
+        row.scrollIntoView({behavior:'smooth', block:'center'});
+        row.classList.add('row-flash');
+        setTimeout(() => row.classList.remove('row-flash'), 3000);
+      }
+    }, 80);
+  }
+}
+
+function closeDayModal(){
+  dayModalOverlay.classList.add('hidden');
+  activeHighlightRowId = null;
+}
+
+dayModalClose.addEventListener('click', closeDayModal);
+dayModalOverlay.addEventListener('click', (e) => {
+  if(e.target === dayModalOverlay) closeDayModal();
+});
+
+// Click on any day cell that has data (in any of the rendered month
+// blocks) opens the popup for that day. Delegated on the shared wrapper
+// so it works regardless of how many month calendars are on screen.
+calMultiWrap.addEventListener('click', (e) => {
+  const cell = e.target.closest('.cal-day.has-data');
+  if(!cell) return;
+  const y = parseInt(cell.getAttribute('data-y'),10);
+  const m = parseInt(cell.getAttribute('data-m'),10);
+  const d = parseInt(cell.getAttribute('data-d'),10);
+  openDayModal(y, m, d);
+});
+
+// Delegated clicks inside the day table: copy ticket, delete report,
+// send an attached image via WhatsApp, or open the duplicates modal.
+dayModalBody.addEventListener('change', (e) => {
+  if(e.target.id === 'dayStatusFilterSel'){
+    dayStatusFilter = e.target.value;
+    renderDayTable();
+  }
+});
+
+dayModalBody.addEventListener('click', (e) => {
+  const pendingReviewBtn = e.target.closest('#pendingReviewMsgBtn');
+  if(pendingReviewBtn){
+    openPendingReviewModal();
+    return;
+  }
+
+  const imgThumb = e.target.closest('.matched-img-thumb');
+  if(imgThumb){ copyImageToClipboard(imgThumb.getAttribute('data-img-url')); return; }
+
+  const copyBtn = e.target.closest('.copy-btn');
+  if(copyBtn){ copyText(copyBtn.getAttribute('data-copy')); return; }
+
+  const delBtn = e.target.closest('.del-btn');
+  if(delBtn){
+    const id = parseInt(delBtn.getAttribute('data-id'),10);
+    if(!confirm('حذف هذا البلاغ نهائيًا؟')) return;
+    parsedData = parsedData.filter(p => p.id !== id);
+    renderDayTable();
+    if(selectedMonths.length > 0) renderMonthCalendars();
+    if(selectedQuarters.length > 0) renderQuarterCalendars();
+    return;
+  }
+
+  const dupBtn = e.target.closest('.dup-btn');
+  if(dupBtn){
+    const id = parseInt(dupBtn.getAttribute('data-id'),10);
+    const item = parsedData.find(p => p.id === id);
+    if(item) openDuplicatesModal(item.phone);
+    return;
+  }
+
+  const sendImgBtn = e.target.closest('.send-img-btn');
+  if(sendImgBtn){
+    const id = parseInt(sendImgBtn.getAttribute('data-id'),10);
+    sendTicketImage(id);
+    return;
+  }
+
+  const followupBtn = e.target.closest('.followup-send-btn');
+  if(followupBtn){
+    const id = parseInt(followupBtn.getAttribute('data-id'),10);
+    sendFollowupMessage(id);
+    return;
+  }
+
+  const followupCopyBtn = e.target.closest('.followup-copy-btn');
+  if(followupCopyBtn){
+    const id = parseInt(followupCopyBtn.getAttribute('data-id'),10);
+    copyFollowupMessage(id);
+    return;
+  }
+
+  const reactivateBtn = e.target.closest('.reactivate-btn');
+  if(reactivateBtn){
+    const id = parseInt(reactivateBtn.getAttribute('data-id'),10);
+    const item = parsedData.find(p => p.id === id);
+    if(item){
+      unmarkSent(item);
+      saveSentColors();
+      if(currentDayY) renderDayTable();
+    }
+    return;
+  }
+});
+
+function buildFollowupText(item){
+  return `السلام عليكم ورحمه الله وبركاته\nسوف يتم التواصل معكم لمعالجه بلاغكم رقم ${item.reportNo || ''}\nوفي حال التواصل معكم نأمل تزويد المقاول جميع الملاحظات الأخرى لديكم إن وجدت\nشاكرين حسن تعاونكم معنا`;
+}
+
+// "📋 نسخ" المستقل: ينسخ نص "تواصل" فقط، بدون أي حد ساعي أو عد تنازلي أو
+// فتح واتساب — عشان لو تعذّر النسخ التلقائي جوا زر "📩 تواصل"، يقدر الشخص
+// ينسخ النص يدويًا من هنا مباشرة بدل ما يعلق.
+function copyFollowupMessage(id){
+  const item = parsedData.find(p => p.id === id);
+  if(!item){ alert('البلاغ غير موجود'); return; }
+  const text = buildFollowupText(item);
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ تم نسخ نص الرسالة.');
+  }).catch(() => {
+    alert('تعذّر النسخ التلقائي. جرّب من متصفح آخر أو تأكد إنك فاتح الأداة من رابط https.');
+  });
+}
+
+// "📩 تواصل": نص ثابت عن التواصل بخصوص البلاغ (رقم بلاغ الصف نفسه يُدرج
+// تلقائيًا)، بنفس نمط الأمان المتبع بالأداة كاملة: يخضع لنفس الحد الساعي
+// المشترك (30 رسالة/ساعة)، ثم ينسخ النص للحافظة ويفتح واتساب على نفس رقم
+// الجوال بدون نص جاهز مسبقًا — الشخص يلصق ويرسل بنفسه يدويًا.
+function sendFollowupMessage(id){
+  const item = parsedData.find(p => p.id === id);
+  if(!item){ alert('البلاغ غير موجود'); return; }
+  if(!item.phone){ alert('لا يوجد رقم جوال لهذا البلاغ'); return; }
+
+  const recent = sendsInLastHour();
+  if(recent.length >= HOURLY_SEND_LIMIT){
+    const oldestInWindow = Math.min(...recent);
+    const minutesLeft = Math.ceil((oldestInWindow + 60*60*1000 - Date.now()) / 60000);
+    alert(`وصلت الحد الأقصى (${HOURLY_SEND_LIMIT} رسالة/ساعة). انتظر تقريبًا ${minutesLeft} دقيقة قبل إرسال رسالة جديدة.`);
+    return;
+  }
+
+  const phone = normalizePhoneForWhatsapp(item.phone);
+  const text = buildFollowupText(item);
+
+  const btn = document.querySelector(`.followup-send-btn[data-id="${id}"]`);
+  const original = btn ? btn.textContent : '📩 تواصل';
+  let timeLeft = 30;
+  if(btn) btn.disabled = true;
+
+  const timer = setInterval(() => {
+    if(btn) btn.textContent = `الإرسال خلال ${timeLeft} ثانية...`;
+    timeLeft--;
+    if(timeLeft < 0){
+      clearInterval(timer);
+      navigator.clipboard.writeText(text).then(() => {
+        alert('✅ تم نسخ نص الرسالة. الآن الصق (ضغط مطوّل) داخل صندوق الكتابة بواتساب واضغط إرسال.');
+      }).catch(() => {
+        alert('تعذّر النسخ التلقائي — انسخ النص يدويًا قبل الإرسال.');
+      });
+      window.open(`https://wa.me/${phone}`, '_blank');
+      recordSendTimestamp();
+      markSent(item, 'orange');
+      const phoneStats = getPhoneStats(item.phone);
+      addSentRecord('تواصل', item, '-', phoneStats);
+      saveSentColors();
+      if(currentDayY) renderDayTable();
+    }
+  }, 1000);
+}
+
+async function sendTicketImage(id){
+  const item = parsedData.find(p => p.id === id);
+  if(!item){ alert('البلاغ غير موجود'); return; }
+
+  const safeId = String(item.reportNo || item.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const fileInput = document.getElementById(`img_${safeId}`);
+  let file = fileInput?.files?.[0];
+  // إذا الصورة جاية من جدول الصور (ما فيه حقل إرفاق بالصف)، تُستخدم هي.
+  if(!file && item.reportNo && reportImageMap.has(normalizeReportNoKey(item.reportNo))){
+    try{
+      const blob = await (await fetch(reportImageMap.get(normalizeReportNoKey(item.reportNo)))).blob();
+      file = new File([blob], `${item.reportNo}.${(blob.type.split('/')[1]||'jpg')}`, {type: blob.type || 'image/jpeg'});
+    }catch(err){ file = null; }
+  }
+  if(!file){ alert('ارفق صورة أولاً'); return; }
+
+  const phone = normalizePhoneForWhatsapp(item.phone);
+  const text = `البلدية: ${item.muni || ''}\n\nرقم البلاغ: ${item.reportNo || ''}\n\nرقم الجوال: ${item.phone || ''}\n\nرابط الموقع:\n${item.link || ''}`;
+
+  try{
+    await navigator.share({files:[file], text});
+  }catch(err){
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+  }
+
+  addSentRecord('إرسال صورة', item, 'صورة + رابط');
+  markSent(item, 'blue');
+  saveSentColors();
+  renderDayTable();
+}
+
+// ---- Duplicates modal: every report across the whole dataset for a phone ----
+
+// يفتح نفس نافذة "البلاغات المكررة" (بنفس أزرار مراسلة المستفيد / إرسال
+// الملاحظات / نسخ الرسالة) لكن معبّاة ببلاغات هذا اليوم اللي حالتها بالنظام
+// = "قيد المعالجة - تقييم مقدم البلاغ" بدل بلاغات رقم جوال مكرر.
+// خلية الصورة المتطابقة (نفس منطق جدول اليوم) — تُستخدم بنافذة
+// المكررات ونافذة "قيد المعالجة - تقييم مقدم البلاغ" أيضًا، عشان الصور
+// المرفقة تبان بكل مكان يظهر فيه رقم البلاغ، مو بس جدول اليوم الأساسي.
+function buildMatchedImageCellHtml(reportNo){
+  if(!reportNo) return '-';
+  const key = normalizeReportNoKey(reportNo);
+  if(!reportImageMap.has(key)) return '-';
+  const url = reportImageMap.get(key);
+  return `<img src="${url}" class="matched-img-thumb" title="اضغط للنسخ" data-img-url="${url}">`;
+}
+
+function openPendingReviewModal(){
+  const allItems = getDayItems(currentDayY, currentDayM, currentDayD);
+  const items = allItems.filter(i => isPendingReviewStatus(i));
+  dupRows = items;
+  dupPhone = ''; // متعدد الأرقام هنا، مو رقم واحد
+
+  document.getElementById('dupInfo').textContent = `بلاغات "قيد المعالجة - تقييم مقدم البلاغ" ليوم ${currentDayD}/${currentDayM}/${currentDayY} — العدد: ${items.length}`;
+  document.getElementById('dupClosedSummary').classList.add('hidden');
+
+  let html = '';
+  items.forEach((r, idx) => {
+    const rc = getSentColor(r);
+    const rowColorClass = rc === 'orange' ? 'sent-orange' : (rc === 'blue' ? 'sent-blue' : '');
+    const normPhone = r.phone ? normalizePhoneForWhatsapp(r.phone) : '';
+    html += `<tr class="${rowColorClass}" data-phone="${normPhone}">
+      <td><input type="checkbox" class="dup-check" data-idx="${idx}"></td>
+      <td>${r.reportNo || '-'}</td>
+      <td>${r.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.reportNo}">نسخ</button>` : ''}</td>
+      <td>${r.muni || '-'}</td>
+      <td>${r.status || '-'}</td>
+      <td class="ltr">${r.phone || '-'}${r.phone ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.phone}">نسخ</button>` : ''}</td>
+      <td>${buildMatchedImageCellHtml(r.reportNo)}</td>
+    </tr>`;
+  });
+
+  document.getElementById('dupTableBody').innerHTML = html || `<tr><td colspan="7">لا توجد بلاغات</td></tr>`;
+  document.getElementById('dupModalOverlay').classList.remove('hidden');
+}
+
+function openDuplicatesModal(phone){
+  dupPhone = String(phone || '').trim();
+  const allRows = parsedData.filter(p => p.phone && normalizePhoneForWhatsapp(p.phone) === normalizePhoneForWhatsapp(dupPhone));
+
+  // Split: closed reports (حالة البلاغ = مغلق) are summarized as a single
+  // count line instead of being listed row by row. Everything else (قيد
+  // التنفيذ / جديد / معاد فتحه / أي حالة غير مغلق) keeps its own row with
+  // a checkbox, exactly as before.
+  const closedRows = allRows.filter(r => r.status && r.status.trim() === 'مغلق');
+  const openRows = allRows.filter(r => !(r.status && r.status.trim() === 'مغلق'));
+  dupRows = openRows; // checkboxes/actions (إرسال الملاحظات، مراسلة المستفيد) only ever apply to these
+
+  document.getElementById('dupInfo').textContent = `رقم الجوال: ${dupPhone} — عدد البلاغات: ${allRows.length} (غير مغلقة: ${openRows.length} — مغلقة: ${closedRows.length})`;
+
+  const summaryEl = document.getElementById('dupClosedSummary');
+  if(closedRows.length > 0){
+    const closedSat = closedRows.filter(r => r.rating === 'راضي').length;
+    const closedUnsat = closedRows.filter(r => r.rating === 'غير راضي').length;
+    summaryEl.innerHTML = `
+      <span class="dup-summary-item">🔒 مغلق: <b>${closedRows.length}</b></span>
+      <span class="dup-summary-item sat">✅ راضي: <b>${closedSat}</b></span>
+      <span class="dup-summary-item unsat">❌ غير راضي: <b>${closedUnsat}</b></span>
+    `;
+    summaryEl.classList.remove('hidden');
+  } else {
+    summaryEl.innerHTML = '';
+    summaryEl.classList.add('hidden');
+  }
+
+  let html = '';
+  openRows.forEach((r, idx) => {
+    const rc = getSentColor(r);
+    const rowColorClass = rc === 'orange' ? 'sent-orange' : (rc === 'blue' ? 'sent-blue' : '');
+    const normPhone = r.phone ? normalizePhoneForWhatsapp(r.phone) : '';
+    html += `<tr class="${rowColorClass}" data-phone="${normPhone}">
+      <td><input type="checkbox" class="dup-check" data-idx="${idx}"></td>
+      <td>${r.reportNo || '-'}</td>
+      <td>${r.reportNo ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.reportNo}">نسخ</button>` : ''}</td>
+      <td>${r.muni || '-'}</td>
+      <td>${r.status || '-'}</td>
+      <td class="ltr">${r.phone || '-'}${r.phone ? `<button type="button" class="mini-btn copy copy-btn" data-copy="${r.phone}">نسخ</button>` : ''}</td>
+      <td>${buildMatchedImageCellHtml(r.reportNo)}</td>
+    </tr>`;
+  });
+
+  document.getElementById('dupTableBody').innerHTML = html || `<tr><td colspan="7">لا توجد بلاغات</td></tr>`;
+  document.getElementById('dupModalOverlay').classList.remove('hidden');
+}
+
+// إذا رقم الجوال مكرر داخل نفس النافذة (مثل نفس المستفيد له أكثر من بلاغ
+// بنفس اليوم)، تحديد أي بلاغ منها يعلّم تلقائيًا كل البلاغات الثانية
+// اللي لها نفس رقم الجوال بالضبط.
+document.getElementById('dupTableBody').addEventListener('change', (e) => {
+  const chk = e.target.closest('.dup-check');
+  if(!chk) return;
+  const row = chk.closest('tr');
+  const phone = row ? row.getAttribute('data-phone') : '';
+  if(!phone) return;
+  document.querySelectorAll(`#dupTableBody tr[data-phone="${phone}"]`).forEach(r => {
+    const c = r.querySelector('.dup-check');
+    if(c) c.checked = chk.checked;
+  });
+});
+
+document.getElementById('dupTableBody').addEventListener('click', (e) => {
+  const imgThumb = e.target.closest('.matched-img-thumb');
+  if(imgThumb){ copyImageToClipboard(imgThumb.getAttribute('data-img-url')); return; }
+
+  const copyBtn = e.target.closest('.copy-btn');
+  if(copyBtn){
+    // إذا فيه أي تحديد شغّال بالنافذة، ما يسمح بالنسخ إلا من صف محدد
+    // (معلّم) — عشان ما تنسخ رقم غلط بالغلط وانت مركّز على المحدد.
+    const anyChecked = document.querySelectorAll('#dupTableBody .dup-check:checked').length > 0;
+    if(anyChecked){
+      const row = copyBtn.closest('tr');
+      const rowChecked = row ? row.querySelector('.dup-check')?.checked : false;
+      if(!rowChecked){
+        alert('عندك بلاغات محدّدة (معلّمة) بالنافذة — النسخ متاح بس من الصفوف المحدّدة.');
+        return;
+      }
+    }
+    copyText(copyBtn.getAttribute('data-copy'));
+  }
+});
+
+document.getElementById('dupModalClose').addEventListener('click', () => {
+  document.getElementById('dupModalOverlay').classList.add('hidden');
+});
+document.getElementById('dupModalOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'dupModalOverlay') document.getElementById('dupModalOverlay').classList.add('hidden');
+});
+
+function getCheckedDupRows(){
+  const checks = Array.from(document.querySelectorAll('.dup-check:checked'));
+  return checks.map(ch => dupRows[parseInt(ch.getAttribute('data-idx'),10)]);
+}
+
+const closingVariations = [
+  'هل تم معالجة وتلافي الملاحظة على الوجه المطلوب؟',
+  'نأمل إفادتنا عن حالة الملاحظة وهل تم معالجتها بالشكل المطلوب؟',
+  'هل تم إنهاء الملاحظة بشكل كامل؟',
+  'هل تمت معالجة البلاغ بالشكل الصحيح؟',
+  'هل لازالت لديكم أي ملاحظات تحتاج متابعة؟',
+  'هل تم تصحيح وضع الملاحظة كما هو مطلوب؟',
+  'هل تمت معالجة البلاغ أم لازالت هناك ملاحظات؟',
+  'هل انتهت المشكلة وتم إغلاق الملاحظة لديكم؟',
+  'هل تم التعامل مع الملاحظة وحلها تمامًا؟',
+  'هل تمت المعالجة بالشكل المطلوب أم توجد ملاحظات إضافية؟'
+];
+
+// "مراسلة المستفيد": message the beneficiary directly on WhatsApp, with a
+// 30-second countdown (so it's easy to cancel by closing the modal) before
+// the chat actually opens.
+// حد أقصى 30 رسالة "مراسلة المستفيد" بالساعة — يُحسب من عدد الأوقات
+// الفعلية المسجّلة بآخر 60 دقيقة (محفوظة بـ localStorage عشان تصمد حتى
+// لو أعدت فتح الصفحة)، مو مجرد عدّاد بالجلسة.
+const HOURLY_SEND_LIMIT = 30;
+function getSendTimestamps(){
+  return JSON.parse(localStorage.getItem('waSendTimestamps') || '[]');
+}
+function recordSendTimestamp(){
+  const list = getSendTimestamps();
+  list.push(Date.now());
+  localStorage.setItem('waSendTimestamps', JSON.stringify(list));
+}
+function sendsInLastHour(){
+  const cutoff = Date.now() - 60*60*1000;
+  return getSendTimestamps().filter(t => t > cutoff);
+}
+
+document.getElementById('dupSendAll').addEventListener('click', () => {
+  const rows = getCheckedDupRows();
+  if(rows.length === 0){ alert('اختر بلاغ واحد على الأقل'); return; }
+
+  const recent = sendsInLastHour();
+  if(recent.length >= HOURLY_SEND_LIMIT){
+    const oldestInWindow = Math.min(...recent);
+    const minutesLeft = Math.ceil((oldestInWindow + 60*60*1000 - Date.now()) / 60000);
+    alert(`وصلت الحد الأقصى (${HOURLY_SEND_LIMIT} رسالة/ساعة). انتظر تقريبًا ${minutesLeft} دقيقة قبل إرسال رسالة جديدة، عشان تقلل خطر حظر واتساب.`);
+    return;
+  }
+
+  const phone = normalizePhoneForWhatsapp(rows[0].phone);
+  let lines = '';
+  rows.forEach(r => {
+    lines += `${r.reportNo || ''}\n`;
+    lines += `${r.desc || '—'}\n\n`;
+  });
+
+  const closingLine = closingVariations[Math.floor(Math.random() * closingVariations.length)];
+  const text = `السلام عليكم ورحمة الله وبركاته\n\nلديكم بلاغ:\n\n${lines}\n${closingLine}`;
+
+  const btn = document.getElementById('dupSendAll');
+  const original = btn.textContent;
+  let timeLeft = 30;
+  btn.disabled = true;
+
+  const timer = setInterval(() => {
+    btn.textContent = `الإرسال خلال ${timeLeft} ثانية... (${sendsInLastHour().length}/${HOURLY_SEND_LIMIT} بآخر ساعة)`;
+    timeLeft--;
+    if(timeLeft < 0){
+      clearInterval(timer);
+      btn.disabled = false;
+      btn.textContent = original;
+      // ينسخ النص للحافظة أولاً، ثم يفتح واتساب على نفس الرقم بدون أي
+      // نص جاهز مسبقًا (بدون معامل ?text=) — الشخص يلصق (ضغط مطول) ويرسل
+      // بنفسه يدويًا داخل واتساب.
+      navigator.clipboard.writeText(text).then(() => {
+        alert('✅ تم نسخ نص الرسالة. الآن الصق (ضغط مطوّل) داخل صندوق الكتابة بواتساب واضغط إرسال.');
+      }).catch(() => {
+        alert('تعذّر النسخ التلقائي — انسخ النص يدويًا قبل الإرسال.');
+      });
+      window.open(`https://wa.me/${phone}`, '_blank');
+      recordSendTimestamp();
+      const phoneStats = getPhoneStats(phone);
+      rows.forEach(r => {
+        markSent(r, 'orange');
+        addSentRecord('مراسلة المستفيد', r, '-', phoneStats);
+      });
+      saveSentColors();
+      if(currentDayY) renderDayTable();
+    }
+  }, 1000);
+});
+
+// "📋 نسخ الرسالة": copies the same exact beneficiary-message text to the
+// clipboard, with no WhatsApp/Telegram link involved at all — the person
+// pastes and sends it themselves however they prefer.
+document.getElementById('dupCopyMsg').addEventListener('click', () => {
+  const rows = getCheckedDupRows();
+  if(rows.length === 0){ alert('اختر بلاغ واحد على الأقل'); return; }
+
+  let lines = '';
+  rows.forEach(r => {
+    lines += `${r.reportNo || ''}\n`;
+    lines += `${r.desc || '—'}\n\n`;
+  });
+
+  const closingLine = closingVariations[Math.floor(Math.random() * closingVariations.length)];
+  const text = `السلام عليكم ورحمة الله وبركاته\n\nلديكم بلاغ:\n\n${lines}\n${closingLine}`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ تم نسخ نص الرسالة.');
+  }).catch(() => {
+    alert('تعذّر النسخ التلقائي.');
+  });
+
+  // نفس تجميد الصف اللي يصير بعد "مراسلة المستفيد" — بما إنك خلاص نسخت
+  // رسالة هذا البلاغ ونويت ترسلها، يصير معطّل مثل باقي البلاغات المُرسلة.
+  const phoneStats = rows[0] && rows[0].phone ? getPhoneStats(rows[0].phone) : null;
+  rows.forEach(r => {
+    markSent(r, 'orange');
+    addSentRecord('نسخ الرسالة', r, '-', phoneStats);
+  });
+  saveSentColors();
+  if(currentDayY) renderDayTable();
+});
+
+// "إرسال الملاحظات": compose and send an internal note (to any destination
+// number, e.g. a supervisor/contractor group) about the selected reports.
+let blueSelectedRows = [];
+
+document.getElementById('dupBlueGroup').addEventListener('click', () => {
+  const rows = getCheckedDupRows();
+  if(rows.length === 0){ alert('اختر بلاغ واحد على الأقل'); return; }
+  blueSelectedRows = rows;
+  document.getElementById('blueGroupTo').value = '';
+  document.getElementById('blueGroupNote').value = '';
+  document.getElementById('blueGroupModalOverlay').classList.remove('hidden');
+});
+
+document.getElementById('blueGroupClose').addEventListener('click', () => {
+  document.getElementById('blueGroupModalOverlay').classList.add('hidden');
+});
+document.getElementById('blueGroupModalOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'blueGroupModalOverlay') document.getElementById('blueGroupModalOverlay').classList.add('hidden');
+});
+
+document.getElementById('blueGroupSend').addEventListener('click', () => {
+  if(blueSelectedRows.length === 0){ alert('لم يتم اختيار أي بلاغ'); return; }
+
+  const dest = normalizePhoneForWhatsapp(document.getElementById('blueGroupTo').value);
+  if(!dest){ alert('أدخل رقم الإرسال'); return; }
+
+  const note = document.getElementById('blueGroupNote').value.trim();
+  const rows = blueSelectedRows;
+  const links = rows.map(r => r.link).filter(Boolean);
+  const uniqueLinks = [...new Set(links)];
+
+  let msg = `رقم الجوال: ${dupPhone}\nعدد البلاغات: ${rows.length}\n\nالبلاغات:\n`;
+
+  if(uniqueLinks.length === 1){
+    rows.forEach(r => {
+      msg += `${r.reportNo || ''}\n`;
+      msg += `الحي: ${r.district || ''}\n`;
+      msg += `الشارع: ${r.street || ''}\n`;
+      msg += `الوقت المستهدف: ${r.targetTime ? fmtDate(r.targetTime) : ''}\n\n`;
+    });
+    msg += `رابط الموقع:\n${uniqueLinks[0]}`;
+  } else {
+    rows.forEach(r => {
+      msg += `${r.reportNo || ''}\n`;
+      if(r.link) msg += `رابط الموقع: ${r.link}\n`;
+      msg += `الحي: ${r.district || ''}\n`;
+      msg += `الشارع: ${r.street || ''}\n`;
+      msg += `الوقت المستهدف: ${r.targetTime ? fmtDate(r.targetTime) : ''}\n\n`;
+    });
+  }
+
+  if(note) msg += `\nالملاحظة: ${note}`;
+
+  window.open(`https://wa.me/${dest}?text=${encodeURIComponent(msg)}`, '_blank');
+
+  rows.forEach(r => {
+    markSent(r, 'blue');
+    addSentRecord('إرسال الملاحظات', r, note || '-');
+  });
+  saveSentColors();
+
+  document.getElementById('blueGroupModalOverlay').classList.add('hidden');
+  if(currentDayY) renderDayTable();
+});
+
+// Export the full sent-message log (kept in localStorage) to an Excel file.
+document.getElementById('exportMsgsBtn').addEventListener('click', () => {
+  if(sentMsgs.length === 0){ alert('لا يوجد سجل مرسلات'); return; }
+
+  const data = [['النوع','رقم البلاغ','رقم الجوال','البلدية','الحي','التاريخ','الملاحظة','إجمالي بلاغات الرقم','راضي','غير راضي','مغلق']];
+  sentMsgs.forEach(r => {
+    data.push([
+      r.النوع||'', r.رقم_البلاغ||'', r.رقم_الجوال||'', r.البلدية||'', r.الحي||'', r.التاريخ||'', r.الملاحظة||'',
+      r.إجمالي_بلاغات_الرقم ?? '', r.راضي ?? '', r.غير_راضي ?? '', r.مغلق ?? ''
+    ]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, 'سجل المرسلات');
+  XLSX.writeFile(wb, 'سجل_المرسلات.xlsx');
+});
+</script>
+
+</div>
+
+<div id="employeeReportPrint"></div>
+<div id="quarterSummaryCardsPage"></div>
+
+</body>
+</html>
