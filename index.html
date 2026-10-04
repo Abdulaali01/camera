@@ -4488,23 +4488,73 @@ document.getElementById('imagesOnlyToggleBtn').addEventListener('click', functio
   statusEl.className = 'status';
 });
 
-// Copies the actual image (not just its URL) to the clipboard when the
-// person taps the thumbnail. Falls back to copying the image URL as text
-// if the browser/clipboard can't handle image blobs.
-async function copyImageToClipboard(url){
+// يدمج عدة صور في صورة واحدة (فوق بعض) عشان تنسخ كلها مرة وحدة
+function mergeImagesToBlob(urls){
+  return Promise.all(urls.map(u => new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = rej;
+    im.src = u;
+  }))).then(imgs => {
+    const maxW = Math.min(1200, Math.max(...imgs.map(i => i.naturalWidth)));
+    const gap = 14;
+    const sizes = imgs.map(i => {
+      const s = Math.min(1, maxW / i.naturalWidth);
+      return {w: Math.round(i.naturalWidth * s), h: Math.round(i.naturalHeight * s)};
+    });
+    const totalH = sizes.reduce((a, s) => a + s.h, 0) + gap * (imgs.length - 1);
+    const canvas = document.createElement('canvas');
+    canvas.width = maxW;
+    canvas.height = totalH;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    let y = 0;
+    imgs.forEach((im, i) => {
+      const s = sizes[i];
+      ctx.drawImage(im, (maxW - s.w) / 2, y, s.w, s.h);
+      y += s.h + gap;
+    });
+    return new Promise(res => canvas.toBlob(res, 'image/png'));
+  });
+}
+
+// يقبل رابط صورة واحد أو مصفوفة روابط — إذا أكثر من صورة تُدمج وتنسخ كلها
+async function copyImageToClipboard(urlOrUrls){
+  const urls = (Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls]).filter(Boolean);
+  const uniqueUrls = [...new Set(urls)];
+  if(uniqueUrls.length === 0) return;
   try{
-    const resp = await fetch(url);
-    const blob = await resp.blob();
-    await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]);
-    alert('تم نسخ الصورة ✅');
+    let item;
+    if(uniqueUrls.length === 1){
+      const blob = await (await fetch(uniqueUrls[0])).blob();
+      item = new ClipboardItem({[blob.type]: blob});
+    } else {
+      item = new ClipboardItem({'image/png': mergeImagesToBlob(uniqueUrls)});
+    }
+    await navigator.clipboard.write([item]);
+    alert(uniqueUrls.length > 1
+      ? `تم نسخ ${uniqueUrls.length} صور مع بعض (مدموجة بصورة وحدة) ✅`
+      : 'تم نسخ الصورة ✅');
   }catch(err){
     try{
-      await navigator.clipboard.writeText(url);
-      alert('تعذّر نسخ الصورة نفسها، تم نسخ رابطها بدلاً منها.');
+      await navigator.clipboard.writeText(uniqueUrls.join('\n'));
+      alert('تعذّر نسخ الصور نفسها، تم نسخ روابطها بدلاً منها.');
     }catch(err2){
       alert('تعذّر النسخ: ' + err.message);
     }
   }
+}
+
+// يرجّع روابط صور كل بلاغات نفس رقم الجوال (المكررة) اللي لها صور
+function getDuplicateImageUrlsForReport(reportNo){
+  const key = normalizeReportNoKey(reportNo);
+  const item = parsedData.find(p => p.reportNo && normalizeReportNoKey(p.reportNo) === key);
+  if(!item || !item.phone) return reportImageMap.has(key) ? [reportImageMap.get(key)] : [];
+  const group = phoneItemsMap.get(normalizePhoneForWhatsapp(item.phone)) || [item];
+  return group
+    .filter(p => p.reportNo && reportImageMap.has(normalizeReportNoKey(p.reportNo)))
+    .map(p => reportImageMap.get(normalizeReportNoKey(p.reportNo)));
 }
 
 let dupPhone = '';
@@ -4794,7 +4844,14 @@ dayModalBody.addEventListener('click', (e) => {
   }
 
   const imgThumb = e.target.closest('.matched-img-thumb');
-  if(imgThumb){ copyImageToClipboard(imgThumb.getAttribute('data-img-url')); return; }
+  if(imgThumb){
+    const row = imgThumb.closest('tr');
+    const id = row ? parseInt(row.getAttribute('data-id'),10) : NaN;
+    const item = parsedData.find(p => p.id === id);
+    const urls = (item && item.reportNo) ? getDuplicateImageUrlsForReport(item.reportNo) : [];
+    copyImageToClipboard(urls.length ? urls : imgThumb.getAttribute('data-img-url'));
+    return;
+  }
 
   const copyBtn = e.target.closest('.copy-btn');
   if(copyBtn){ copyText(copyBtn.getAttribute('data-copy')); return; }
@@ -5058,7 +5115,21 @@ document.getElementById('dupTableBody').addEventListener('change', (e) => {
 
 document.getElementById('dupTableBody').addEventListener('click', (e) => {
   const imgThumb = e.target.closest('.matched-img-thumb');
-  if(imgThumb){ copyImageToClipboard(imgThumb.getAttribute('data-img-url')); return; }
+  if(imgThumb){
+    // إذا فيه بلاغات معلّمة بصح ← تنسخ صور المعلّمة كلها مع بعض
+    // وإلا ← تنسخ صور كل البلاغات المكررة لنفس الرقم
+    const checkedRows = getCheckedDupRows();
+    const source = checkedRows.length > 0 ? checkedRows : (() => {
+      const row = imgThumb.closest('tr');
+      const phone = row ? row.getAttribute('data-phone') : '';
+      return phone ? dupRows.filter(r => r.phone && normalizePhoneForWhatsapp(r.phone) === phone) : [];
+    })();
+    const urls = source
+      .filter(r => r.reportNo && reportImageMap.has(normalizeReportNoKey(r.reportNo)))
+      .map(r => reportImageMap.get(normalizeReportNoKey(r.reportNo)));
+    copyImageToClipboard(urls.length ? urls : imgThumb.getAttribute('data-img-url'));
+    return;
+  }
 
   const copyBtn = e.target.closest('.copy-btn');
   if(copyBtn){
